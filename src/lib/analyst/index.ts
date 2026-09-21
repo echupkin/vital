@@ -106,3 +106,13 @@ export {
 } from './validate';
 
 export { scrubText, safeExcerpt, hostOf, REDACTED } from './scrub';
+
+export {
+  MAX_MEMORY_TURNS,
+  MAX_MEMORY_CHARS,
+  MAX_MEMORY_TURN_CHARS,
+  boundedHistory,
+  renderHistory,
+  type ChatTurn,
+  type ChatTurnRole,
+} from './memory';

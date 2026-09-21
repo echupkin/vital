@@ -215,6 +215,7 @@ abstract class RemoteAnalystProviderBase implements AnalystProvider {
         bundle: context.bundle,
         system: context.system,
         notes: context.notes,
+        history: context.history,
       }),
     };
   }

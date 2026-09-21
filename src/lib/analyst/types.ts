@@ -125,6 +125,13 @@ export interface AnalystRequest {
   /** Imported user content. Treated as untrusted data, never as instructions. */
   notes?: string;
   system?: UnitSystem;
+  /**
+   * The conversation's earlier turns, oldest first. Bounded by
+   * `boundedHistory` before it is used (see memory.ts): at most
+   * MAX_MEMORY_TURNS turns and MAX_MEMORY_CHARS characters, oldest dropped
+   * first. A new conversation passes none.
+   */
+  history?: { role: 'user' | 'assistant'; content: string }[];
 }
 
 export type AnalystStatus =
@@ -143,6 +150,11 @@ export interface AnalystProviderContext {
   prompt: string;
   /** Imported notes, already sanitized: untrusted data, never instructions. */
   notes?: string;
+  /**
+   * Already-bounded earlier turns of this conversation (memory.ts), oldest
+   * first. Empty for a new conversation. Carried as untrusted DATA too.
+   */
+  history?: { role: 'user' | 'assistant'; content: string }[];
 }
 
 /**

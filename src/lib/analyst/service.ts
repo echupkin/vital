@@ -25,6 +25,7 @@ import { AnalysisNotAvailable, GENERAL_HANDLER_ID, retrieve, retrieveGeneral } f
 import { AnalystProviderError, createProvider, DEMO_LABEL } from './provider';
 import { readAnalystConfig, type AnalystConfig } from './config';
 import { checkGrounding, parseAnalystReply } from './validate';
+import { boundedHistory } from './memory';
 import type {
   AnalystAnswer,
   AnalystGrounding,
@@ -221,6 +222,9 @@ export async function askAnalyst(
   }
 
   const system: UnitSystem = request?.system === 'imperial' ? 'imperial' : 'metric';
+  // Conversation memory: the earlier turns of THIS conversation, bounded here so
+  // no caller can send an unbounded history. Empty for a new conversation.
+  const history = boundedHistory(request?.history);
   const withContext = {
     handlerId,
     retrieval: retrievalSummary(bundle),
@@ -237,6 +241,7 @@ export async function askAnalyst(
       question: validated.query,
       prompt: config.systemPrompt,
       notes: notes.text.length > 0 ? notes.text : undefined,
+      history,
     });
 
     if (!result) {
