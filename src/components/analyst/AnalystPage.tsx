@@ -11,15 +11,20 @@ import { TrendFigure } from '@/components/charts';
 import { useUnits } from '@/components/ui/UnitsProvider';
 import { SUPPORTED_PROMPTS } from '@/lib/analyst/prompts';
 import type { AnalystAnswer, AnalystResponse } from '@/lib/analyst/types';
+import type { ConversationAvailability, ConversationSummary } from '@/lib/analyst/conversation-types';
+import { ConversationSelector } from './ConversationSelector';
+import { exchangesFromMessages, type ConversationExchange } from './conversation-view';
+import { useConversations } from './useConversations';
 import { providerBadge, useAnalystConfig } from './useAnalystConfig';
 
-interface Exchange {
-  id: number;
-  question: string;
-  response: AnalystResponse | null;
-  pending: boolean;
-  failed: string | null;
+/** The ask endpoint's response: the answer plus what happened to the turn. */
+interface AskResponse extends AnalystResponse {
+  persisted?: boolean;
+  persistence?: ConversationAvailability;
+  conversation?: ConversationSummary | null;
 }
+
+type Exchange = ConversationExchange;
 
 export function AnalystPage() {
   const { units } = useUnits();
@@ -42,6 +47,21 @@ export function AnalystPage() {
   const conversationRef = useRef<HTMLDivElement>(null);
   const started = useRef(false);
 
+  // ── Conversations ───────────────────────────────────────
+  // The list and the turns come from the server, so the history survives a
+  // refresh, a different browser and a different device.
+  const {
+    availability,
+    conversations,
+    loading: conversationsLoading,
+    error: conversationsError,
+    refresh: refreshConversations,
+    load: loadConversation,
+    rename: renameConversation,
+    remove: deleteConversation,
+  } = useConversations();
+  const [activeId, setActiveId] = useState<number | null>(null);
+
   const ask = useCallback(
     async (question: string) => {
       const id = nextId.current++;
@@ -51,13 +71,21 @@ export function AnalystPage() {
         const res = await fetch('/api/analyst', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: question, notes, system: units }),
+          // A null conversation means "a new one": the server creates it and
+          // titles it from this question.
+          body: JSON.stringify({ query: question, notes, system: units, conversationId: activeId }),
         });
         if (!res.ok) throw new Error(`The analyst endpoint answered HTTP ${res.status}.`);
-        const data = (await res.json()) as AnalystResponse;
+        const data = (await res.json()) as AskResponse;
         setExchanges(prev =>
           prev.map(e => (e.id === id ? { ...e, response: data, pending: false } : e))
         );
+        // The turn belongs to a conversation now: adopt it and refresh the list
+        // so the selector shows it without a reload.
+        if (data.conversation) {
+          setActiveId(data.conversation.id);
+          void refreshConversations();
+        }
       } catch (error) {
         setExchanges(prev =>
           prev.map(e =>
@@ -74,7 +102,47 @@ export function AnalystPage() {
         setPending(false);
       }
     },
-    [notes, units]
+    [notes, units, activeId, refreshConversations]
+  );
+
+  /** Start fresh: an empty view. The server creates the conversation on the
+   *  first question, so it is named after that question rather than "New". */
+  const startNewConversation = useCallback(() => {
+    setActiveId(null);
+    setExchanges([]);
+  }, []);
+
+  /** Load a stored conversation and rebuild what was shown for each turn. */
+  const openConversation = useCallback(
+    async (id: number | null) => {
+      if (id === null) {
+        startNewConversation();
+        return;
+      }
+      const detail = await loadConversation(id);
+      if (!detail) return;
+      setActiveId(detail.id);
+      setExchanges(exchangesFromMessages(detail.messages));
+    },
+    [loadConversation, startNewConversation]
+  );
+
+  const handleRename = useCallback(
+    (id: number, title: string) => {
+      void renameConversation(id, title);
+    },
+    [renameConversation]
+  );
+
+  const handleDelete = useCallback(
+    async (id: number) => {
+      const removed = await deleteConversation(id);
+      if (removed && id === activeId) {
+        setActiveId(null);
+        setExchanges([]);
+      }
+    },
+    [deleteConversation, activeId]
   );
 
   // /analyst?q=… prefills and runs the question.
@@ -132,6 +200,13 @@ export function AnalystPage() {
               </p>
             )}
             {!configError && !configState && <p>Reading the analyst provider state…</p>}
+            {!availability.available && (
+              <p>
+                <strong className="font-medium">Conversations are not being saved.</strong>{' '}
+                {availability.reason ??
+                  'No database is configured, so this conversation lives in this browser tab only and will not survive a refresh.'}
+              </p>
+            )}
             {demoMode && (
               <p>
                 <strong className="font-medium">Demo analyst.</strong> No AI provider is configured, so nothing is
@@ -163,7 +238,23 @@ export function AnalystPage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 items-start">
+        {/* ── Conversation selector ──────────────────── */}
+        <div className="lg:col-span-1 space-y-4">
+          <ConversationSelector
+            availability={availability}
+            conversations={conversations}
+            activeId={activeId}
+            loading={conversationsLoading}
+            error={conversationsError}
+            onSelect={id => void openConversation(id)}
+            onCreate={startNewConversation}
+            onRename={handleRename}
+            onDelete={id => void handleDelete(id)}
+            onRefresh={() => void refreshConversations()}
+          />
+        </div>
+
         {/* ── Conversation ─────────────────────────── */}
         <div className="lg:col-span-2 space-y-4">
           <div
