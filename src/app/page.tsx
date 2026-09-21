@@ -19,12 +19,19 @@
 
 import { OverviewPage } from '@/components/metric/OverviewPage';
 import { kickBriefing } from '@/lib/briefing/kick';
+import { ensureBriefingScheduler } from '@/lib/briefing/scheduler';
 import { readProfile } from '@/lib/profile/store';
 import { greetingLine } from '@/lib/profile/types';
 
 export default async function Home() {
   const profile = await readProfile();
   kickBriefing('metric', profile);
+  // Writes the briefing AT the configured hour rather than only when someone
+  // happens to visit afterwards. Armed here, in the bundle that serves requests
+  // (the instrumentation hook runs in a separate module graph — see ./kick), and
+  // the container's healthcheck hits this route every 30 seconds, so the timer is
+  // armed from shortly after startup.
+  ensureBriefingScheduler(profile);
   const now = new Date();
   return <OverviewPage initialGreeting={greetingLine(profile.name, now, profile.timezone)} />;
 }
