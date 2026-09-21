@@ -1,0 +1,155 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design Tokens ─────────────────────────────────────── */
+:root {
+  /* Light theme (default) */
+  --color-page: #F6F5F1;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #EEEDE7;
+  --color-surface-elevated: #FFFFFF;
+  --color-text-primary: #202722;
+  --color-text-secondary: #626B65;
+  --color-border: #E1E4DD;
+  --color-accent: #285C49;
+  --color-accent-tint: #E7EFE8;
+  --color-primary: #285C49;
+  --color-primary-text: #FFFFFF;
+
+  /* Hero surface — follows the theme.
+     Light theme: the briefing is a warm, lightly green-tinted panel with dark
+     text, so the page reads as one palette (a dark slab in a light UI looked
+     like the wrong theme had leaked in). The green accent still marks it as the
+     briefing. Dark theme keeps the deep green-black anchor.
+     The foreground tokens exist so components never hard-code a hex on a themed
+     surface. Contrast on this surface: headline 12.7:1, label 6.6:1, body 6.2:1. */
+  --color-hero: #E7EFE8;
+  --color-hero-border: #D2E0D5;
+  --color-hero-foreground: #172B24;
+  --color-hero-muted: #285C49;
+  --color-hero-secondary: #4A5B50;
+
+  /* Floating surfaces (tooltips) stay dark in both themes: they sit over
+     arbitrary content, and a dark chip reads as an overlay rather than as part
+     of the page. Kept separate from the hero tokens so the briefing surface can
+     follow the theme without dragging tooltips with it. */
+  --color-tooltip: #172B24;
+  --color-tooltip-foreground: #F1F4EF;
+
+  /* Category accents */
+  --color-category-activity: #4A8B8B;
+  --color-category-cardiovascular: #D4796A;
+  --color-category-sleep: #6A6D9E;
+  --color-category-body: #A6896A;
+  --color-category-nutrition: #7F9C7A;
+  --color-category-respiratory: #5FA8B3;
+  --color-category-recovery: #7B7EAD;
+  --color-category-attention: #C4913E;
+
+  /* Layout */
+  --sidebar-width: 224px;
+  --content-max-width: 1360px;
+  --radius-card: 20px;
+  --radius-control: 12px;
+}
+
+.dark {
+  --color-page: #101713;
+  --color-surface: #19221D;
+  --color-surface-muted: #1A2A20;
+  --color-surface-elevated: #222E27;
+  --color-text-primary: #F1F4EF;
+  --color-text-secondary: #ABB6AC;
+  --color-border: #334238;
+  --color-accent: #A9CBB2;
+  --color-accent-tint: #1E332A;
+  --color-primary: #A9CBB2;
+  --color-primary-text: #101713;
+
+  /* Hero stays dark and readable in dark theme too. */
+  --color-hero: #0E1E18;
+  --color-hero-border: #24382E;
+  --color-hero-foreground: #F1F4EF;
+  --color-hero-muted: #A9CBB2;
+  --color-hero-secondary: #C6D3C8;
+
+  /* Tooltips: dark in this theme as well; see the light block's note. */
+  --color-tooltip: #0E1E18;
+  --color-tooltip-foreground: #F1F4EF;
+}
+
+/* ── Typography ────────────────────────────────────────── */
+html {
+  font-family: -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular numerals utility */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Base reset ────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-page);
+  color: var(--color-text-primary);
+  transition: background-color 200ms, color 200ms;
+  overflow-x: hidden;
+}
+
+/* ── Focus ─────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+/* ── Recharts responsive ───────────────────────────────── */
+.recharts-responsive-container {
+  min-height: 0 !important;
+}
+
+/* Brush is a deliberate zoom control, not a grey sliver. */
+.recharts-brush-slide {
+  fill: var(--color-surface-muted);
+  fill-opacity: 1;
+}
+.recharts-brush-traveller rect {
+  fill: var(--color-accent);
+}
+.recharts-brush > rect {
+  stroke: var(--color-border);
+}
+
+/* ── Reduced motion ────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

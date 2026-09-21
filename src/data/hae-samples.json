@@ -1,0 +1,2417 @@
+{
+ "recordedAt": "2026-01-01",
+ "source": "Synthetic replacement for the shape of Health Auto Export /api/metrics/:metric and /api/workouts",
+ "note": "SYNTHETIC. Generated test fixtures shaped like Health Auto Export responses, not a recording of anyone's data: every value here is drawn by a seeded generator, and the device names are generic placeholders. Kept in the repository so the normaliser, the de-duplication rules and the unit conversions are exercised against realistic payloads.",
+ "window": {
+  "from": "2026-09-13T00:00:00.000Z",
+  "to": "2026-09-17T23:59:59.999Z"
+ },
+ "metrics": {
+  "resting_heart_rate": [
+   {
+    "date": "2026-09-13T05:20:00.000Z",
+    "source": "Apple Watch",
+    "qty": 62.22,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-14T05:02:00.000Z",
+    "source": "Apple Watch",
+    "qty": 63.49,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-15T05:02:00.000Z",
+    "source": "Apple Watch",
+    "qty": 62.03,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T05:01:00.000Z",
+    "source": "Apple Watch",
+    "qty": 66.41,
+    "units": "count/min"
+   }
+  ],
+  "heart_rate_variability": [
+   {
+    "date": "2026-09-15T07:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 54.65,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-15T09:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 31.48,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-15T11:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 52.68,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-15T15:29:00.000Z",
+    "source": "Apple Watch",
+    "qty": 22.93,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-15T16:04:00.000Z",
+    "source": "Apple Watch",
+    "qty": 36.82,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-15T18:21:00.000Z",
+    "source": "Apple Watch",
+    "qty": 17.07,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-15T19:57:00.000Z",
+    "source": "Apple Watch",
+    "qty": 27.11,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-15T21:57:00.000Z",
+    "source": "Apple Watch",
+    "qty": 21.3,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-16T00:39:00.000Z",
+    "source": "Apple Watch",
+    "qty": 26.55,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-16T03:28:00.000Z",
+    "source": "Apple Watch",
+    "qty": 49.7,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-16T05:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 49.6,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-16T07:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 24.76,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-16T09:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 30.23,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-16T11:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 37.92,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-16T13:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 46.42,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-16T16:04:00.000Z",
+    "source": "Apple Watch",
+    "qty": 42.35,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-16T18:29:00.000Z",
+    "source": "Apple Watch",
+    "qty": 43.53,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-16T21:43:00.000Z",
+    "source": "Apple Watch",
+    "qty": 18.1,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-16T22:04:00.000Z",
+    "source": "Apple Watch",
+    "qty": 44.34,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-17T00:02:00.000Z",
+    "source": "Apple Watch",
+    "qty": 42.26,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-17T01:57:00.000Z",
+    "source": "Apple Watch",
+    "qty": 31.07,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-17T05:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 55.96,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-17T07:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 51.21,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-17T09:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 29.69,
+    "units": "ms"
+   },
+   {
+    "date": "2026-09-17T11:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 29.34,
+    "units": "ms"
+   }
+  ],
+  "step_count": [
+   {
+    "date": "2026-09-17T01:02:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 27.06,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T01:03:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 21.7231,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T01:41:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 14.74,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T01:42:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 4.42,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T01:43:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 27.28,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T01:44:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 21.29,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T01:55:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 22.64,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T01:59:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 23.83,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T02:00:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 14.11,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T02:53:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 24.2077,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T02:54:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 17.94,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T02:55:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 28.38,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T02:56:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 21.66,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T02:57:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 15.7349,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T03:31:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 23.6,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T03:32:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 25.68,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T05:03:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 27.23,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T05:04:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 20.71,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T05:05:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 6.34,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T05:06:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 8.19,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T05:07:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 6.44,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T05:08:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 5.23,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T05:09:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 21.08,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T10:18:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 13.07,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T11:01:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 22.2,
+    "units": "count"
+   }
+  ],
+  "active_energy": [
+   {
+    "date": "2026-09-17T06:44:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.1249,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T06:45:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.6374,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T07:02:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.1023,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T07:03:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.4998,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T07:37:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.0909,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T07:53:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0747,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T09:21:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.4799,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T09:22:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.419,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T09:23:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.6287,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T09:24:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.1346,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T09:25:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.5854,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T09:26:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.1946,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T09:27:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.628,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T09:28:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0417,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T09:29:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.905,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T09:30:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.5993,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T09:31:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.911,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T10:18:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.2437,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T10:19:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.1278,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T10:29:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.604,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T10:30:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.3821,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:01:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.1333,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:02:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.3782,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:03:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.0675,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:31:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.9319,
+    "units": "kcal"
+   }
+  ],
+  "apple_exercise_time": [
+   {
+    "date": "2026-09-16T17:44:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:45:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:46:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:47:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:48:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:49:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:50:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:51:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:52:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:53:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:54:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:55:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:57:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:58:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T17:59:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T21:12:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T22:05:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T22:06:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:22:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:45:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-17T00:34:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-17T01:44:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-17T05:06:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-17T06:44:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0,
+    "units": "min"
+   }
+  ],
+  "apple_stand_hour": [
+   {
+    "date": "2026-09-15T17:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-15T18:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-15T19:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-15T21:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-15T22:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-15T23:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T00:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T01:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T02:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T03:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T12:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T14:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T15:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T16:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T17:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T18:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T20:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T21:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T22:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T23:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T00:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T01:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T02:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T03:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T05:00:00.000Z",
+    "source": "",
+    "qty": 1.0,
+    "units": "count"
+   }
+  ],
+  "walking_running_distance": [
+   {
+    "date": "2026-09-17T01:02:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0112,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T01:03:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0091,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T01:41:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0084,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T01:42:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0099,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T01:43:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0017,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T01:44:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0082,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T01:55:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0054,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T01:59:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0032,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T02:00:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0038,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T02:53:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0049,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T02:54:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0097,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T02:55:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.01,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T02:56:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0104,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T02:57:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0024,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T03:31:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0045,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T03:32:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0072,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T05:03:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0065,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T05:04:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0026,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T05:05:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0085,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T05:06:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0095,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T05:07:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0071,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T05:08:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.005,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T05:09:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0118,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T10:18:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0076,
+    "units": "mi"
+   },
+   {
+    "date": "2026-09-17T11:01:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0035,
+    "units": "mi"
+   }
+  ],
+  "flights_climbed": [
+   {
+    "date": "2026-09-14T22:37:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.1877,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-14T22:38:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.758,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-14T22:39:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.9662,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-14T22:40:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.1856,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-14T22:41:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.8667,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-14T22:42:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.5899,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-14T22:43:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 1.1,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-14T22:44:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 1.0956,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-15T00:44:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.0744,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-15T13:18:00.000Z",
+    "source": "iPhone",
+    "qty": 1.0463,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-15T17:26:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.5547,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-15T19:53:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 1.0852,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-15T21:21:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 1.0314,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T16:08:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0736,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T16:50:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.1654,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T21:13:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 1.0946,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T22:06:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.6441,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T23:23:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 1.2308,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T23:24:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 1.1216,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T23:25:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.4836,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T23:33:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.8144,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T00:35:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 1.1684,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T01:43:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.2314,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T01:44:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.1756,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-17T05:06:00.000Z",
+    "source": "Apple Watch|iPhone",
+    "qty": 0.9266,
+    "units": "count"
+   }
+  ],
+  "basal_energy_burned": [
+   {
+    "date": "2026-09-17T11:43:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.7844,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:44:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.6087,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:45:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.7021,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:46:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.8588,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:47:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.9212,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:48:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.1624,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:49:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.727,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:50:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.9396,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:51:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.9133,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:52:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.6403,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:53:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.732,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:54:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0703,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:55:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.6484,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:56:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.0173,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:57:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.4642,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:58:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.746,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T11:59:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.9302,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T12:00:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.6032,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T12:01:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.1515,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T12:02:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.2125,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T12:03:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.7178,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T12:04:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.8264,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T12:05:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.1764,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T12:06:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.745,
+    "units": "kcal"
+   },
+   {
+    "date": "2026-09-17T12:07:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.8913,
+    "units": "kcal"
+   }
+  ],
+  "time_in_daylight": [
+   {
+    "date": "2026-09-16T23:27:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.5947,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:28:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.5139,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:29:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.2874,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:30:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.0859,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:31:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.7588,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:32:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.4031,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:33:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.2041,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:34:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.3411,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:35:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.4099,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:36:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.8372,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:37:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.4361,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:38:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.5787,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:39:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.3259,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:40:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.8258,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:41:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.7886,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:42:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.2317,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:43:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.305,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:44:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.2534,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:45:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.6914,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:46:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.1104,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:47:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.9111,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:48:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.2202,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:49:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.1415,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:50:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.4432,
+    "units": "min"
+   },
+   {
+    "date": "2026-09-16T23:51:00.000Z",
+    "source": "Apple Watch",
+    "qty": 0.7611,
+    "units": "min"
+   }
+  ],
+  "physical_effort": [
+   {
+    "date": "2026-09-17T00:34:00.000Z",
+    "source": "Apple Watch",
+    "qty": 3.2862,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T00:35:00.000Z",
+    "source": "Apple Watch",
+    "qty": 2.266,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T00:39:00.000Z",
+    "source": "Apple Watch",
+    "qty": 3.6315,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T00:51:00.000Z",
+    "source": "Apple Watch",
+    "qty": 4.5421,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T00:53:00.000Z",
+    "source": "Apple Watch",
+    "qty": 3.9547,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T00:57:00.000Z",
+    "source": "Apple Watch",
+    "qty": 4.6636,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T01:44:00.000Z",
+    "source": "Apple Watch",
+    "qty": 3.4897,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T01:45:00.000Z",
+    "source": "Apple Watch",
+    "qty": 2.4423,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T01:51:00.000Z",
+    "source": "Apple Watch",
+    "qty": 2.8964,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T01:59:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.1692,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T02:15:00.000Z",
+    "source": "Apple Watch",
+    "qty": 4.3613,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T02:53:00.000Z",
+    "source": "Apple Watch",
+    "qty": 4.7506,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T02:55:00.000Z",
+    "source": "Apple Watch",
+    "qty": 4.6975,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T05:04:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.7011,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T05:06:00.000Z",
+    "source": "Apple Watch",
+    "qty": 3.7252,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T05:08:00.000Z",
+    "source": "Apple Watch",
+    "qty": 4.2385,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T05:09:00.000Z",
+    "source": "Apple Watch",
+    "qty": 3.5325,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T05:10:00.000Z",
+    "source": "Apple Watch",
+    "qty": 2.9795,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T06:09:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.1302,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T07:09:00.000Z",
+    "source": "Apple Watch",
+    "qty": 2.2141,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T07:37:00.000Z",
+    "source": "Apple Watch",
+    "qty": 2.2353,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T08:28:00.000Z",
+    "source": "Apple Watch",
+    "qty": 3.0465,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T08:29:00.000Z",
+    "source": "Apple Watch",
+    "qty": 2.5596,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T09:29:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.9289,
+    "units": "kcal/hr·kg"
+   },
+   {
+    "date": "2026-09-17T10:18:00.000Z",
+    "source": "Apple Watch",
+    "qty": 3.1079,
+    "units": "kcal/hr·kg"
+   }
+  ],
+  "respiratory_rate": [
+   {
+    "date": "2026-09-16T09:28:00.000Z",
+    "source": "Apple Watch",
+    "qty": 14.26,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T09:33:00.000Z",
+    "source": "Apple Watch",
+    "qty": 11.3,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T09:42:00.000Z",
+    "source": "Apple Watch",
+    "qty": 11.29,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T10:01:00.000Z",
+    "source": "Apple Watch",
+    "qty": 11.0,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T10:08:00.000Z",
+    "source": "Apple Watch",
+    "qty": 13.69,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T10:12:00.000Z",
+    "source": "Apple Watch",
+    "qty": 11.88,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T10:27:00.000Z",
+    "source": "Apple Watch",
+    "qty": 12.09,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T10:34:00.000Z",
+    "source": "Apple Watch",
+    "qty": 11.94,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T10:42:00.000Z",
+    "source": "Apple Watch",
+    "qty": 12.95,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T10:57:00.000Z",
+    "source": "Apple Watch",
+    "qty": 14.88,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T11:06:00.000Z",
+    "source": "Apple Watch",
+    "qty": 13.67,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T11:15:00.000Z",
+    "source": "Apple Watch",
+    "qty": 12.61,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T11:23:00.000Z",
+    "source": "Apple Watch",
+    "qty": 13.62,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T11:35:00.000Z",
+    "source": "Apple Watch",
+    "qty": 12.39,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T11:49:00.000Z",
+    "source": "Apple Watch",
+    "qty": 11.07,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T11:59:00.000Z",
+    "source": "Apple Watch",
+    "qty": 14.26,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T12:03:00.000Z",
+    "source": "Apple Watch",
+    "qty": 14.63,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T12:13:00.000Z",
+    "source": "Apple Watch",
+    "qty": 11.94,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T12:28:00.000Z",
+    "source": "Apple Watch",
+    "qty": 12.3,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T12:39:00.000Z",
+    "source": "Apple Watch",
+    "qty": 13.25,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T12:44:00.000Z",
+    "source": "Apple Watch",
+    "qty": 13.43,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T13:01:00.000Z",
+    "source": "Apple Watch",
+    "qty": 10.51,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T13:03:00.000Z",
+    "source": "Apple Watch",
+    "qty": 13.55,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T13:20:00.000Z",
+    "source": "Apple Watch",
+    "qty": 14.57,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-16T13:27:00.000Z",
+    "source": "Apple Watch",
+    "qty": 11.08,
+    "units": "count/min"
+   }
+  ],
+  "blood_oxygen_saturation": [
+   {
+    "date": "2026-09-16T10:01:00.000Z",
+    "source": "Apple Watch",
+    "qty": 94.86,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-16T10:31:00.000Z",
+    "source": "Apple Watch",
+    "qty": 94.88,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-16T11:01:00.000Z",
+    "source": "Apple Watch",
+    "qty": 99.82,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-16T11:31:00.000Z",
+    "source": "Apple Watch",
+    "qty": 94.4,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-16T12:16:00.000Z",
+    "source": "Apple Watch",
+    "qty": 99.01,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-16T12:53:00.000Z",
+    "source": "Apple Watch",
+    "qty": 98.95,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-16T13:23:00.000Z",
+    "source": "Apple Watch",
+    "qty": 98.09,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-16T14:16:00.000Z",
+    "source": "Apple Watch",
+    "qty": 98.21,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-16T22:05:00.000Z",
+    "source": "Apple Watch",
+    "qty": 95.96,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-16T23:40:00.000Z",
+    "source": "Apple Watch",
+    "qty": 97.74,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T01:12:00.000Z",
+    "source": "Apple Watch",
+    "qty": 94.67,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T01:53:00.000Z",
+    "source": "Apple Watch",
+    "qty": 94.07,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T02:59:00.000Z",
+    "source": "Apple Watch",
+    "qty": 98.33,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T05:10:00.000Z",
+    "source": "Apple Watch",
+    "qty": 96.46,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T06:23:00.000Z",
+    "source": "Apple Watch",
+    "qty": 96.76,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T07:38:00.000Z",
+    "source": "Apple Watch",
+    "qty": 97.59,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T08:08:00.000Z",
+    "source": "Apple Watch",
+    "qty": 98.31,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T08:38:00.000Z",
+    "source": "Apple Watch",
+    "qty": 97.96,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T09:08:00.000Z",
+    "source": "Apple Watch",
+    "qty": 97.91,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T09:38:00.000Z",
+    "source": "Apple Watch",
+    "qty": 95.22,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T10:08:00.000Z",
+    "source": "Apple Watch",
+    "qty": 96.5,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T10:38:00.000Z",
+    "source": "Apple Watch",
+    "qty": 97.46,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T11:08:00.000Z",
+    "source": "Apple Watch",
+    "qty": 94.66,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T11:38:00.000Z",
+    "source": "Apple Watch",
+    "qty": 94.06,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-17T12:08:00.000Z",
+    "source": "Apple Watch",
+    "qty": 96.5,
+    "units": "%"
+   }
+  ],
+  "apple_sleeping_wrist_temperature": [
+   {
+    "date": "2026-09-13T05:20:00.000Z",
+    "source": "Apple Watch",
+    "qty": 97.27,
+    "units": "degF"
+   },
+   {
+    "date": "2026-09-14T04:30:00.000Z",
+    "source": "Apple Watch",
+    "qty": 96.62,
+    "units": "degF"
+   },
+   {
+    "date": "2026-09-15T04:36:00.000Z",
+    "source": "Apple Watch",
+    "qty": 97.09,
+    "units": "degF"
+   },
+   {
+    "date": "2026-09-16T04:30:00.000Z",
+    "source": "Apple Watch",
+    "qty": 97.31,
+    "units": "degF"
+   }
+  ],
+  "weight_body_mass": [
+   {
+    "date": "2026-09-13T15:57:00.000Z",
+    "source": "Smart Scale",
+    "qty": 183.05,
+    "units": "lb"
+   },
+   {
+    "date": "2026-09-14T13:14:00.000Z",
+    "source": "Smart Scale",
+    "qty": 184.61,
+    "units": "lb"
+   },
+   {
+    "date": "2026-09-15T12:28:00.000Z",
+    "source": "Smart Scale",
+    "qty": 184.32,
+    "units": "lb"
+   },
+   {
+    "date": "2026-09-16T13:33:00.000Z",
+    "source": "Smart Scale",
+    "qty": 184.04,
+    "units": "lb"
+   }
+  ],
+  "body_mass_index": [
+   {
+    "date": "2026-09-13T15:57:00.000Z",
+    "source": "Smart Scale",
+    "qty": 24.44,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-14T13:14:00.000Z",
+    "source": "Smart Scale",
+    "qty": 24.55,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-15T12:28:00.000Z",
+    "source": "Smart Scale",
+    "qty": 24.41,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T13:33:00.000Z",
+    "source": "Smart Scale",
+    "qty": 24.41,
+    "units": "count"
+   }
+  ],
+  "body_fat_percentage": [
+   {
+    "date": "2026-09-13T15:57:00.000Z",
+    "source": "Smart Scale",
+    "qty": 19.14,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-14T13:14:00.000Z",
+    "source": "Smart Scale",
+    "qty": 19.11,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-15T12:28:00.000Z",
+    "source": "Smart Scale",
+    "qty": 19.69,
+    "units": "%"
+   },
+   {
+    "date": "2026-09-16T13:33:00.000Z",
+    "source": "Smart Scale",
+    "qty": 19.67,
+    "units": "%"
+   }
+  ],
+  "lean_body_mass": [
+   {
+    "date": "2026-09-13T15:57:00.000Z",
+    "source": "Smart Scale",
+    "qty": 149.49,
+    "units": "lb"
+   },
+   {
+    "date": "2026-09-14T13:14:00.000Z",
+    "source": "Smart Scale",
+    "qty": 148.3,
+    "units": "lb"
+   },
+   {
+    "date": "2026-09-15T12:28:00.000Z",
+    "source": "Smart Scale",
+    "qty": 148.32,
+    "units": "lb"
+   },
+   {
+    "date": "2026-09-16T13:33:00.000Z",
+    "source": "Smart Scale",
+    "qty": 148.28,
+    "units": "lb"
+   }
+  ],
+  "breathing_disturbances": [
+   {
+    "date": "2026-09-13T05:27:00.000Z",
+    "source": "Apple Watch",
+    "qty": 1.7772,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-14T05:10:00.000Z",
+    "source": "Apple Watch",
+    "qty": 2.332,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-15T04:38:00.000Z",
+    "source": "Apple Watch",
+    "qty": 2.5466,
+    "units": "count"
+   },
+   {
+    "date": "2026-09-16T04:55:00.000Z",
+    "source": "Apple Watch",
+    "qty": 2.2116,
+    "units": "count"
+   }
+  ],
+  "cardio_recovery": [],
+  "heart_rate": [
+   {
+    "date": "2026-09-17T10:34:20.000Z",
+    "source": "Apple Watch",
+    "Avg": 61.3,
+    "Max": 122.3,
+    "Min": 49.5,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T10:38:44.000Z",
+    "source": "Apple Watch",
+    "Avg": 87.2,
+    "Max": 117.4,
+    "Min": 78.1,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T10:39:09.000Z",
+    "source": "Apple Watch",
+    "Avg": 68.8,
+    "Max": 136.1,
+    "Min": 52.8,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T10:41:48.000Z",
+    "source": "Apple Watch",
+    "Avg": 90.5,
+    "Max": 140.7,
+    "Min": 80.4,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T10:48:42.000Z",
+    "source": "Apple Watch",
+    "Avg": 72.1,
+    "Max": 100.0,
+    "Min": 52.4,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T10:51:50.000Z",
+    "source": "Apple Watch",
+    "Avg": 61.2,
+    "Max": 110.0,
+    "Min": 44.1,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T10:56:15.000Z",
+    "source": "Apple Watch",
+    "Avg": 77.2,
+    "Max": 139.5,
+    "Min": 69.0,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:04:25.000Z",
+    "source": "Apple Watch",
+    "Avg": 80.5,
+    "Max": 142.9,
+    "Min": 71.6,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:08:45.000Z",
+    "source": "Apple Watch",
+    "Avg": 60.8,
+    "Max": 90.9,
+    "Min": 49.3,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:11:03.000Z",
+    "source": "Apple Watch",
+    "Avg": 91.8,
+    "Max": 144.7,
+    "Min": 80.6,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:13:16.000Z",
+    "source": "Apple Watch",
+    "Avg": 62.8,
+    "Max": 98.7,
+    "Min": 48.5,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:16:42.000Z",
+    "source": "Apple Watch",
+    "Avg": 85.3,
+    "Max": 142.1,
+    "Min": 65.0,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:21:21.000Z",
+    "source": "Apple Watch",
+    "Avg": 78.6,
+    "Max": 114.3,
+    "Min": 62.5,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:26:27.000Z",
+    "source": "Apple Watch",
+    "Avg": 60.0,
+    "Max": 91.9,
+    "Min": 48.0,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:35:37.000Z",
+    "source": "Apple Watch",
+    "Avg": 77.9,
+    "Max": 126.3,
+    "Min": 65.6,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:37:46.000Z",
+    "source": "Apple Watch",
+    "Avg": 75.7,
+    "Max": 103.4,
+    "Min": 53.8,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:38:46.000Z",
+    "source": "Apple Watch",
+    "Avg": 58.9,
+    "Max": 105.7,
+    "Min": 44.5,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:41:10.000Z",
+    "source": "Apple Watch",
+    "Avg": 74.9,
+    "Max": 105.8,
+    "Min": 64.7,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:48:25.000Z",
+    "source": "Apple Watch",
+    "Avg": 75.9,
+    "Max": 127.9,
+    "Min": 61.7,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:51:18.000Z",
+    "source": "Apple Watch",
+    "Avg": 89.0,
+    "Max": 115.7,
+    "Min": 68.9,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:56:28.000Z",
+    "source": "Apple Watch",
+    "Avg": 68.7,
+    "Max": 104.4,
+    "Min": 53.9,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T11:56:29.000Z",
+    "source": "Apple Watch",
+    "Avg": 72.3,
+    "Max": 127.6,
+    "Min": 52.3,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T12:02:55.000Z",
+    "source": "Apple Watch",
+    "Avg": 76.1,
+    "Max": 121.9,
+    "Min": 62.2,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T12:06:15.000Z",
+    "source": "Apple Watch",
+    "Avg": 63.3,
+    "Max": 126.1,
+    "Min": 54.0,
+    "units": "count/min"
+   },
+   {
+    "date": "2026-09-17T12:08:46.000Z",
+    "source": "Apple Watch",
+    "Avg": 72.1,
+    "Max": 107.1,
+    "Min": 50.8,
+    "units": "count/min"
+   }
+  ],
+  "sleep_analysis": [
+   {
+    "date": "2026-09-13T05:00:00.000Z",
+    "source": "Apple Watch",
+    "awake": 0.0775,
+    "core": 4.9259,
+    "deep": 1.7268,
+    "inBed": 0,
+    "inBedEnd": "2026-09-14T07:18:51.000Z",
+    "inBedStart": "2026-09-13T22:40:00.000Z",
+    "rem": 1.9173,
+    "sleepEnd": "2026-09-14T07:29:11.000Z",
+    "sleepStart": "2026-09-13T22:55:00.000Z",
+    "units": "hr"
+   },
+   {
+    "date": "2026-09-14T05:00:00.000Z",
+    "source": "Apple Watch",
+    "awake": 0.2495,
+    "core": 4.9217,
+    "deep": 1.656,
+    "inBed": 0,
+    "inBedEnd": "2026-09-15T07:02:52.000Z",
+    "inBedStart": "2026-09-14T22:40:00.000Z",
+    "rem": 1.554,
+    "sleepEnd": "2026-09-15T07:02:54.000Z",
+    "sleepStart": "2026-09-14T22:55:00.000Z",
+    "units": "hr"
+   },
+   {
+    "date": "2026-09-15T05:00:00.000Z",
+    "source": "Apple Watch",
+    "awake": 0.5353,
+    "core": 4.159,
+    "deep": 0.9812,
+    "inBed": 0,
+    "inBedEnd": "2026-09-16T05:55:51.000Z",
+    "inBedStart": "2026-09-15T22:40:00.000Z",
+    "rem": 1.5889,
+    "sleepEnd": "2026-09-16T05:38:44.000Z",
+    "sleepStart": "2026-09-15T22:55:00.000Z",
+    "units": "hr"
+   },
+   {
+    "date": "2026-09-16T05:00:00.000Z",
+    "source": "Apple Watch",
+    "awake": 0.2736,
+    "core": 4.1433,
+    "deep": 1.6844,
+    "inBed": 0,
+    "inBedEnd": "2026-09-17T06:05:10.000Z",
+    "inBedStart": "2026-09-16T22:40:00.000Z",
+    "rem": 1.3183,
+    "sleepEnd": "2026-09-17T06:03:45.000Z",
+    "sleepStart": "2026-09-16T22:55:00.000Z",
+    "units": "hr"
+   }
+  ],
+  "blood_pressure": [
+   {
+    "date": "2026-09-13T02:00:00.000Z",
+    "source": "BP Monitor",
+    "diastolic": 85.2,
+    "systolic": 116.5,
+    "units": "mmHg"
+   },
+   {
+    "date": "2026-09-13T02:01:00.000Z",
+    "source": "BP Monitor",
+    "diastolic": 72.8,
+    "systolic": 114.0,
+    "units": "mmHg"
+   },
+   {
+    "date": "2026-09-13T18:26:00.000Z",
+    "source": "BP Monitor",
+    "diastolic": 83.3,
+    "systolic": 116.6,
+    "units": "mmHg"
+   },
+   {
+    "date": "2026-09-14T20:08:00.000Z",
+    "source": "BP Monitor",
+    "diastolic": 81.3,
+    "systolic": 128.8,
+    "units": "mmHg"
+   },
+   {
+    "date": "2026-09-15T12:54:00.000Z",
+    "source": "BP Monitor",
+    "diastolic": 81.2,
+    "systolic": 108.4,
+    "units": "mmHg"
+   }
+  ],
+  "dietary_energy": [],
+  "carbohydrates": [],
+  "total_fat": [],
+  "dietary_sugar": [],
+  "walking_heart_rate": [],
+  "vo2max": [],
+  "waist_circumference": []
+ },
+ "workouts": [
+  {
+   "id": "22DC8D26-10EE-4F2F-B2D3-E84282570D6C",
+   "workout_type": "Outdoor Walk",
+   "start_time": "2026-09-16T17:43:07.000Z",
+   "end_time": "2026-09-16T18:22:17.000Z",
+   "duration_minutes": 39.1697040339311,
+   "calories_burned": 105.08213960273284
+  },
+  {
+   "id": "03CDF58E-AC41-443F-8B3F-51BC2E60AEEE",
+   "workout_type": "Indoor Cycle",
+   "start_time": "2026-09-16T01:05:26.000Z",
+   "end_time": "2026-09-16T02:55:37.000Z",
+   "duration_minutes": 110.1858019510905,
+   "calories_burned": 823.0810000000156
+  },
+  {
+   "id": "7E92769A-D6F1-4299-9C65-D93DE3399F93",
+   "workout_type": "Traditional Strength Training",
+   "start_time": "2026-09-15T01:06:39.000Z",
+   "end_time": "2026-09-15T02:15:55.000Z",
+   "duration_minutes": 69.26078254977863,
+   "calories_burned": 661.4419999999985
+  }
+ ],
+ "synthetic": {
+  "note": "Hand-written records that exercise de-duplication and unit conversion. Not from the API and not derived from anyone's measurements.",
+  "compositeAndDuplicate": [
+   {
+    "date": "2026-09-16T05:00:00.000Z",
+    "qty": 100,
+    "units": "count",
+    "source": "iPhone"
+   },
+   {
+    "date": "2026-09-16T05:00:00.000Z",
+    "qty": 120,
+    "units": "count",
+    "source": "Apple Watch"
+   },
+   {
+    "date": "2026-09-16T06:00:00.000Z",
+    "qty": 7,
+    "units": "count",
+    "source": "Apple Watch|iPhone"
+   },
+   {
+    "date": "2026-09-16T07:00:00.000Z",
+    "qty": 3,
+    "units": "count",
+    "source": "iPhone"
+   }
+  ],
+  "pounds": [
+   {
+    "date": "2026-09-16T13:33:00.000Z",
+    "qty": 220.46226218,
+    "units": "lb",
+    "source": "Apple Watch"
+   }
+  ],
+  "miles": [
+   {
+    "date": "2026-09-16T13:33:00.000Z",
+    "qty": 1,
+    "units": "mi",
+    "source": "Apple Watch"
+   }
+  ],
+  "fahrenheit": [
+   {
+    "date": "2026-09-16T05:00:00.000Z",
+    "qty": 98.6,
+    "units": "degF",
+    "source": "Apple Watch"
+   }
+  ],
+  "hours": [
+   {
+    "date": "2026-09-16T05:00:00.000Z",
+    "source": "Apple Watch",
+    "units": "hr",
+    "awake": 0.5,
+    "core": 4,
+    "deep": 1,
+    "rem": 1,
+    "inBed": 0,
+    "inBedStart": "2026-09-16T05:00:00.000Z",
+    "inBedEnd": "2026-09-16T13:00:00.000Z",
+    "sleepStart": "2026-09-16T05:00:00.000Z",
+    "sleepEnd": "2026-09-16T12:30:00.000Z"
+   }
+  ]
+ }
+}

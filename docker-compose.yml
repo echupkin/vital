@@ -1,0 +1,176 @@
+# Vital — Docker Compose stack.
+# No obsolete `version:` key (Compose v2 ignores it).
+#
+# Host ports 3000/3001/27017/8000 are taken on this machine, so Vital publishes
+# on ${VITAL_PORT:-8080} and listens on container port 3000 internally.
+#
+# Compose reads the sibling .env file automatically (gitignored). Every value
+# below is SERVER-SIDE ONLY — none is prefixed NEXT_PUBLIC_, so none can reach the
+# browser bundle. The read token is injected into the container environment at run
+# time and is never baked into the image (.env is listed in .dockerignore).
+
+services:
+  # ── Postgres: configuration, non-health records and analyst conversations ────
+  # NOT health data: no observations, metric series or workouts ever reach this
+  # database (see db/migrations/0001-init.sql). Health history stays with the
+  # Health Auto Export source and is read server-side.
+  #
+  # The port is published on LOOPBACK ONLY, at ${VITAL_PG_PORT:-5433} on the
+  # host: 5432 on this machine already belongs to another Postgres instance
+  # (Honcho's pgvector image), so Vital must not collide with it. Inside the
+  # compose network the app connects to `vital-postgres:5432` directly, which is
+  # why the app's own VITAL_PG_PORT below is 5432 while .env's is the host port.
+  #
+  # Credentials come from .env; generate them once with `npm run db:init`
+  # (scripts/init-env.sh). The `:?` guard turns a missing password into a clear
+  # instruction instead of a database that starts with an empty password.
+  vital-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${VITAL_PG_USER:-vital}"
+      POSTGRES_PASSWORD: "${VITAL_PG_PASSWORD:?run 'npm run db:init' to generate the database credentials}"
+      POSTGRES_DB: "${VITAL_PG_DATABASE:-vital}"
+      # Keep the data directory below the mount point so the volume holds one
+      # self-contained cluster directory.
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:${VITAL_PG_PORT:-5433}:5432"
+    volumes:
+      - vital-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  vital:
+    build: .
+    image: vital:latest
+    restart: unless-stopped
+    # The app must never serve before the database is genuinely ready: the
+    # migration step at container start depends on it.
+    depends_on:
+      vital-postgres:
+        condition: service_healthy
+    # Explicit non-root uid/gid (matches the image's `nextjs` user).
+    user: "1001:1001"
+    ports:
+      - "${VITAL_PORT:-8080}:3000"
+    environment:
+      NODE_ENV: production
+      # Bounded runtime heap: the container must survive a small-RAM host.
+      NODE_OPTIONS: --max-old-space-size=384
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      # ── Postgres (server-side only) ─────────────────────────────────────────
+      # Configuration, the owner's profile and (part B) analyst conversations
+      # live here. NO health data: see db/migrations/0001-init.sql.
+      # Inside the compose network the app talks to the service by name on 5432;
+      # .env's VITAL_PG_HOST/VITAL_PG_PORT (127.0.0.1:5433) are the HOST-side
+      # values for psql and `npm run db:migrate` run on this machine. The app's
+      # values are deliberately separate variables so the host defaults can never
+      # make the container dial itself instead of the database service.
+      DATABASE_URL: "${DATABASE_URL:-}"
+      VITAL_PG_HOST: "${VITAL_PG_INTERNAL_HOST:-vital-postgres}"
+      VITAL_PG_PORT: "${VITAL_PG_INTERNAL_PORT:-5432}"
+      VITAL_PG_DATABASE: "${VITAL_PG_DATABASE:-vital}"
+      VITAL_PG_USER: "${VITAL_PG_USER:-vital}"
+      VITAL_PG_PASSWORD: "${VITAL_PG_PASSWORD:-}"
+      VITAL_PG_SSL: "${VITAL_PG_SSL:-false}"
+      # ── Data source (server-side only) ──────────────────────────────────────
+      # `live` reads the Health Auto Export history on the server; `demo` serves
+      # the committed fixtures. A failed live read shows a connection error and
+      # never falls back to demo data.
+      VITAL_DATA_MODE: "${VITAL_DATA_MODE:-demo}"
+      HAE_API_URL: "${HAE_API_URL:-}"
+      HAE_API_KEY: "${HAE_API_KEY:-}"
+      HAE_PROBE_METRIC: "${HAE_PROBE_METRIC:-resting_heart_rate}"
+      HAE_CACHE_TTL_SECONDS: "${HAE_CACHE_TTL_SECONDS:-300}"
+      # Timezone overnight sleep is assigned in and days are cut on.
+      VITAL_TIMEZONE: "${VITAL_TIMEZONE:-UTC}"
+      # ── Profile (server-side only) ──────────────────────────────────────────
+      # The profile is NOT an environment variable: it is a JSON file the server
+      # owns on a writable volume (./data → /app/data, mounted below), written by
+      # Settings → Account. VITAL_PROFILE_PATH only overrides where that file
+      # lives; the default is /app/data/profile.json.
+      VITAL_PROFILE_PATH: "${VITAL_PROFILE_PATH:-}"
+      # ── AI analyst (server-side only; five configurable things) ─────────────
+      # provider · model · endpoint · credential · system prompt
+      # `demo` (the default) needs no provider and sends nothing anywhere.
+      # ANALYST_PROVIDER=openai means ANY OpenAI-compatible /chat/completions
+      # (OpenAI, OpenRouter, LM Studio, llama.cpp, vLLM, Ollama, Together…).
+      ANALYST_PROVIDER: "${ANALYST_PROVIDER:-demo}"
+      ANALYST_MODEL: "${ANALYST_MODEL:-}"
+      ANALYST_API_URL: "${ANALYST_API_URL:-}"
+      ANALYST_API_KEY: "${ANALYST_API_KEY:-}"
+      # A prompt file wins over the inline prompt and is re-read when it changes.
+      ANALYST_SYSTEM_PROMPT: "${ANALYST_SYSTEM_PROMPT:-}"
+      ANALYST_SYSTEM_PROMPT_FILE: "${ANALYST_SYSTEM_PROMPT_FILE:-}"
+      ANALYST_MAX_TOKENS: "${ANALYST_MAX_TOKENS:-1200}"
+      ANALYST_TEMPERATURE: "${ANALYST_TEMPERATURE:-0.2}"
+      ANALYST_TIMEOUT_MS: "${ANALYST_TIMEOUT_MS:-60000}"
+      ANALYST_JSON_MODE: "${ANALYST_JSON_MODE:-auto}"
+      # ── Today's briefing (server-side only) ────────────────────────────────
+      # The optional local seam: a model server on this machine, reachable as
+      # host.docker.internal (mapped below). It is probed with a bounded GET
+      # /models; when it does not answer, the briefing uses ANALYST_* instead.
+      # VITAL_LLM_MODEL=auto resolves to the first model id the server advertises.
+      VITAL_LLM_BASE_URL: "${VITAL_LLM_BASE_URL:-}"
+      VITAL_LLM_MODEL: "${VITAL_LLM_MODEL:-}"
+      VITAL_LLM_API_KEY: "${VITAL_LLM_API_KEY:-}"
+      # The fallback provider: a stronger hosted model the briefing is re-asked
+      # from, ONCE, when the preferred engine's reply fails the number guard.
+      # Server-side only. If it is unset or unusable, a rejected reply simply
+      # leaves the computed briefing on screen.
+      VITAL_LLM_FALLBACK_BASE_URL: "${VITAL_LLM_FALLBACK_BASE_URL:-}"
+      VITAL_LLM_FALLBACK_MODEL: "${VITAL_LLM_FALLBACK_MODEL:-}"
+      VITAL_LLM_FALLBACK_API_KEY: "${VITAL_LLM_FALLBACK_API_KEY:-}"
+      # There is deliberately NO briefing cache TTL. The briefing's cache key
+      # carries the local calendar day, so one briefing is reused for the whole
+      # day it belongs to and a new one is written lazily on the first request
+      # at/after the profile's briefingHour. A TTL on top of that would be a
+      # second, weaker answer to the same question.
+      # A reasoning model spends this budget on reasoning AND its reply, so it is
+      # generous: the reply itself is only a few hundred tokens.
+      BRIEFING_MAX_TOKENS: "${BRIEFING_MAX_TOKENS:-4000}"
+      BRIEFING_TEMPERATURE: "${BRIEFING_TEMPERATURE:-0.3}"
+      BRIEFING_TIMEOUT_MS: "${BRIEFING_TIMEOUT_MS:-60000}"
+    # A model server running on the host (LM Studio, llama.cpp, Ollama, vLLM,
+    # together.ai proxy, …) is reachable as host.docker.internal. Without this the
+    # name does not resolve from inside the bridge. A loopback endpoint needs no
+    # credential.
+    #   ANALYST_API_URL=http://host.docker.internal:1234/v1   (LM Studio)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Prompt file mount: edit ./config/analyst-prompt.md on the host and point
+      # ANALYST_SYSTEM_PROMPT_FILE at /app/config/analyst-prompt.md. Read-only, so
+      # the container can never rewrite your prompt.
+      - ./config:/app/config:ro
+      # The profile: the ONE writable mount. The server writes ./data/profile.json
+      # here when you save Settings → Account, and reads it on every request for
+      # the greeting and the briefing. It must be writable by uid 1001 (the
+      # container's user), so make the host directory writable by it:
+      #   mkdir -p data && chmod 777 data
+      # If it cannot be written, nothing crashes: the defaults are served and the
+      # Account tab reports the failure.
+      - ./data:/app/data
+    # Networking note: the configured Health Auto Export host resolves to this
+    # machine's LAN address and the container reaches it directly
+    # over the bridge — verified from inside the container, so no extra_hosts
+    # override is needed. If the name ever stops resolving from inside the bridge,
+    # add:  extra_hosts: ["your-export-host:host-gateway"]
+    healthcheck:
+      # Probes the app's own overview route, not just process liveness.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  # Named volume, so the database survives `docker compose down` / `up`.
+  # `docker compose down -v` DOES delete it — that is the only command that does.
+  vital-pgdata:

@@ -1,0 +1,23 @@
+# Build context exclusions — keep the image build small and secret-free.
+node_modules
+.next
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+.env
+.env.*
+!.env.example
+coverage
+*.log
+npm-debug.log*
+.vscode
+.idea
+.DS_Store
+*.tsbuildinfo
+README.md
+# The live profile is personal data and must never be baked into an image. The
+# container reads it from the ./data bind mount at run time instead.
+data/profile.json
+data/profile.json.tmp
