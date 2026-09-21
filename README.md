@@ -15,6 +15,38 @@ security* below.
 
 ---
 
+## Data sources
+
+**Vital supports exactly one data source today: Apple Health, via the Health Auto Export app for
+iPhone, paired with a self-hosted metrics API server —
+[HealthyApps/health-auto-export-server](https://github.com/HealthyApps/health-auto-export-server).**
+
+The chain has three links, and Vital implements only the last one:
+
+| Link | What it is | Provided by |
+|------|-----------|-------------|
+| iPhone | Apple Health records exported by the **Health Auto Export** app for iOS, on a schedule or on change | You (the app) |
+| Metrics API server | [`HealthyApps/health-auto-export-server`](https://github.com/HealthyApps/health-auto-export-server) — a Node.js server that receives those exports, stores them, and exposes `GET /api/metrics/:metric` and `GET /api/workouts` | **Required** — paired with the app; it is the only thing Vital can read |
+| Vital | Reads that server **server-side**, normalizes it into the internal dataset | This repository |
+
+What that means in practice:
+
+- **The metrics API server is not optional.** Apple Health has no public cloud API, a web app
+  cannot read HealthKit, and the phone cannot be queried directly. Point `HAE_API_URL` at your
+  `health-auto-export-server` instance and set `HAE_API_KEY` to its token, or run in `demo` mode.
+- **No other source is supported, partially or otherwise.** There is no direct HealthKit or iCloud
+  bridge; no Google Fit, Android or Samsung Health; no Garmin, Fitbit, Withings or Oura; no Apple
+  Health `export.xml` upload and no CSV/JSON import. The adapter layer knows one wire protocol, and
+  the pipeline panel lists only the stages this build can actually check.
+- **Demo mode is not a source.** `VITAL_DATA_MODE=demo` serves the committed fixtures
+  (`src/data/health-fixtures.json`) and is labelled as demo; it connects to nothing.
+- **Adding a source means implementing its contract** under `src/lib/adapters/` (see
+  *Integrations*): a module that knows the wire protocol, a mapping into the internal dataset
+  shape, and a unit mapping. Nothing else in the app changes, because both modes produce the same
+  dataset.
+
+---
+
 ## Data modes
 
 | Mode | Dataset | How it is read |
@@ -423,8 +455,11 @@ What is still demo or unwired in this build, exhaustively:
 
 ## Integrations
 
-**Health Auto Export — implemented (server-side).** Apple Health records are pushed by an iOS
-export app to a Health Auto Export API, and Vital reads them over these verified contracts:
+**Health Auto Export — implemented (server-side), and the only source.** Apple Health records are
+exported by the iOS app and received by a
+[`health-auto-export-server`](https://github.com/HealthyApps/health-auto-export-server) instance —
+the metrics API server this app requires — and Vital reads them from that server over these
+verified contracts:
 
 - `GET /api/metrics/:metric` with an `api-key` header and `from`/`to` ISO query parameters →
   an array of observations. Plain metrics carry `{ date, qty, units, source }`; `heart_rate`
