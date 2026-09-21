@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertCircle, Bot, ChevronDown, ChevronRight, Loader2, Send, ShieldCheck, Sparkles, User,
+  AlertCircle, Bot, Loader2, Send, ShieldCheck, Sparkles, User,
 } from 'lucide-react';
-import { Badge, Button, Card, DataStateNote, ErrorState, Skeleton } from '@/components/ui/primitives';
+import { Badge, Button, Card, ErrorState, Skeleton } from '@/components/ui/primitives';
 import { TrendFigure } from '@/components/charts';
 import { useUnits } from '@/components/ui/UnitsProvider';
 import { SUPPORTED_PROMPTS } from '@/lib/analyst/prompts';
@@ -41,8 +41,6 @@ export function AnalystPage() {
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [input, setInput] = useState(initialQuery);
   const [pending, setPending] = useState(false);
-  const [contextOpen, setContextOpen] = useState(false);
-  const [notes, setNotes] = useState('');
   const nextId = useRef(1);
   const conversationRef = useRef<HTMLDivElement>(null);
   const started = useRef(false);
@@ -73,7 +71,7 @@ export function AnalystPage() {
           headers: { 'Content-Type': 'application/json' },
           // A null conversation means "a new one": the server creates it and
           // titles it from this question.
-          body: JSON.stringify({ query: question, notes, system: units, conversationId: activeId }),
+          body: JSON.stringify({ query: question, system: units, conversationId: activeId }),
         });
         if (!res.ok) throw new Error(`The analyst endpoint answered HTTP ${res.status}.`);
         const data = (await res.json()) as AskResponse;
@@ -102,7 +100,7 @@ export function AnalystPage() {
         setPending(false);
       }
     },
-    [notes, units, activeId, refreshConversations]
+    [units, activeId, refreshConversations]
   );
 
   /** Start fresh: an empty view. The server creates the conversation on the
@@ -188,7 +186,8 @@ export function AnalystPage() {
         </div>
       </header>
 
-      {/* ── State notice ───────────────────────────── */}
+      {/* State notice: rendered only when there is something to say. */}
+      {(configError || !configState || !availability.available || demoMode || misconfigured) && (
       <Card variant="accent" className="p-4" as="section">
         <div className="flex items-start gap-2 text-xs text-primary">
           <AlertCircle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
@@ -222,21 +221,10 @@ export function AnalystPage() {
                 environment is fixed; the analyst does not fall back to demo answers.
               </p>
             )}
-            {providerReady && (
-              <p>
-                <strong className="font-medium">
-                  {configState?.providerDisplayName}
-                  {configState?.model ? ` · ${configState.model}` : ''}
-                </strong>{' '}
-                is configured{configState?.endpointIsLoopback ? ' on a loopback endpoint on this machine' : ''}. Your
-                question and the selected summaries are sent to {configState?.destination ?? 'the configured endpoint'},
-                and the model&rsquo;s reply is validated against the selected context before it is shown.
-                {configState?.systemPromptSource === 'custom' ? ' A custom system prompt is in use.' : ''}
-              </p>
-            )}
           </div>
         </div>
       </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 items-start">
         {/* ── Conversation selector ──────────────────── */}
@@ -256,10 +244,10 @@ export function AnalystPage() {
         </div>
 
         {/* ── Conversation ─────────────────────────── */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-3 space-y-4">
           <div
             ref={conversationRef}
-            className="space-y-5 max-h-[60vh] lg:max-h-[70vh] overflow-y-auto pr-1"
+            className="space-y-5 max-h-[56vh] lg:max-h-[58vh] overflow-y-auto pr-2"
             aria-live="polite"
             aria-busy={pending}
             aria-label="Conversation"
@@ -270,7 +258,7 @@ export function AnalystPage() {
                 <p className="text-sm text-text-primary font-medium mb-1">Ask a question about your health data</p>
                 <p className="text-xs text-text-secondary mb-4">
                   {providerReady
-                    ? `Any question is sent to ${configState?.providerDisplayName}${configState?.model ? ` (${configState.model})` : ''} with a bounded selection of your data. The prompts below are examples.`
+                    ? 'Ask anything about your sleep, recovery, activity or trends. The prompts below are examples.'
                     : `${SUPPORTED_PROMPTS.length} questions are wired to handlers in this build. Pick one below or type it yourself.`}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
@@ -363,123 +351,6 @@ export function AnalystPage() {
           </p>
         </div>
 
-        {/* ── Context panel ────────────────────────── */}
-        <Card className="p-5 space-y-4" as="section">
-          <button
-            type="button"
-            onClick={() => setContextOpen(o => !o)}
-            aria-expanded={contextOpen}
-            aria-controls="analyst-context"
-            className="w-full flex items-center justify-between gap-2 text-left min-h-[44px]"
-          >
-            <span className="text-sm font-semibold text-text-primary">Context and evidence</span>
-            {contextOpen ? (
-              <ChevronDown size={15} className="text-text-secondary shrink-0" aria-hidden="true" />
-            ) : (
-              <ChevronRight size={15} className="text-text-secondary shrink-0" aria-hidden="true" />
-            )}
-          </button>
-
-          <div id="analyst-context" hidden={!contextOpen} className="space-y-4 text-xs text-text-secondary">
-            <div>
-              <p className="text-text-primary font-medium mb-1">What is sent</p>
-              {demoMode || !configState ? (
-                <p className="leading-relaxed">
-                  Nothing. No provider is configured, so no health context leaves this machine: the question is answered
-                  by a server route on the same machine, from the committed dataset.
-                </p>
-              ) : (
-                <div className="leading-relaxed space-y-2">
-                  <p>
-                    Destination: <span className="text-text-primary">{configState.destination ?? 'not set'}</span>
-                    {configState.endpointIsLoopback ? ' (loopback — on this machine)' : ''} · model{' '}
-                    <span className="text-text-primary">{configState.model ?? 'not set'}</span>
-                  </p>
-                  <ul className="list-disc pl-5 space-y-0.5">
-                    {configState.sendingCategories.map(c => (
-                      <li key={c}>{c}</li>
-                    ))}
-                  </ul>
-                  <p>
-                    Imported notes, if you attach any, travel inside the same untrusted-data block. The analyst never
-                    sends the whole dataset: retrieval selects the summaries a question needs and caps each series.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <p className="text-text-primary font-medium mb-1">Who handles this request</p>
-              <p className="leading-relaxed">
-                {configState == null
-                  ? 'Reading the provider configuration…'
-                  : demoMode
-                    ? 'The demo analyst: a deterministic set of handlers computing from the shared dataset on the server. No provider, no model and no network request are involved.'
-                    : configState.misconfigured
-                      ? `${configState.providerDisplayName} is configured but unusable (${configState.misconfiguredReason ?? 'invalid configuration'}), so no request is sent and no answer is produced.`
-                      : `${configState.providerDisplayName}${configState.model ? ` · ${configState.model}` : ''} at ${configState.destination ?? 'the configured endpoint'}. This is the provider and model that generates the answer you receive.`}
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="analyst-notes" className="text-text-primary font-medium block mb-1">
-                Imported notes (treated as untrusted data)
-              </label>
-              <textarea
-                id="analyst-notes"
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                rows={3}
-                maxLength={1000}
-                placeholder="Paste notes from another app. They are never followed as instructions."
-                className="w-full bg-surface-muted border border-border rounded-control px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary outline-none focus:ring-2 focus:ring-accent"
-              />
-              <p className="text-[11px] mt-1 leading-relaxed">
-                Notes are length-capped, stripped of control characters and kept as opaque text. They are not parsed,
-                not executed and not used to compute any figure.
-              </p>
-            </div>
-
-            {lastResponse && (
-              <div className="space-y-3">
-                <div>
-                  <p className="text-text-primary font-medium mb-1">Selected for the last question</p>
-                  <p className="leading-relaxed">{lastResponse.retrieval.note}</p>
-                  {lastResponse.retrieval.metrics.length > 0 && (
-                    <ul className="list-none p-0 m-0 mt-2 space-y-1">
-                      {lastResponse.retrieval.metrics.map(m => (
-                        <li key={`${m.metricId}-${m.window}`} className="flex justify-between gap-2">
-                          <span className="text-text-primary">{m.metricId}</span>
-                          <span className="tnum text-right">
-                            {m.observations} obs · {m.window}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                <div>
-                  <p className="text-text-primary font-medium mb-1">Provider that handled that answer</p>
-                  <p className="leading-relaxed">
-                    {lastResponse.providerConfigured
-                      ? `${lastResponse.providerDisplayName}${lastResponse.model ? ` · ${lastResponse.model}` : ''}`
-                      : 'Demo analyst (deterministic handlers, no model)'}{' '}
-                    · destination {lastResponse.retrieval.metrics.length > 0 ? 'the configured endpoint on the server' : 'none'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-text-primary font-medium mb-1">Untrusted notes</p>
-                  <p className="leading-relaxed">{lastResponse.untrustedNotes.note}</p>
-                </div>
-              </div>
-            )}
-
-            <DataStateNote>
-              Queries are read-only. The service validates and length-caps every question, caps how much of each series
-              is selected, and writes no health value to any log.
-            </DataStateNote>
-          </div>
-        </Card>
       </div>
 
       {/* ── Educational notice ─────────────────────── */}
