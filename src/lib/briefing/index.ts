@@ -120,28 +120,57 @@ interface FailureRecord {
   reason: string;
 }
 
-const entries = new Map<string, CachedBriefing>();
-const inFlight = new Map<string, Promise<BriefingPayload>>();
-/** Recent generation failures, so a dead provider is not hammered on every view. */
-const failures = new Map<string, FailureRecord>();
-let hits = 0;
-let misses = 0;
+// ── One cache per PROCESS, not one per bundle ────────────
+//
+// Next.js builds the page and the route handlers as separate server bundles, so
+// a module-level Map in this file exists once per bundle: `/` and `/api/briefing`
+// each held their own copy, generated the same day's briefing separately, and
+// disagreed about when it was written and which model wrote it (observed: the
+// API served 08:02 written by the fallback, while the hero showed 10:39 written
+// by the local model — the same module-graph trap `instrumentation.ts` warns
+// about). `globalThis` is per process, so anchoring the state there gives every
+// bundle one cache, one in-flight fill and one failure record.
+interface BriefingStore {
+  entries: Map<string, CachedBriefing>;
+  inFlight: Map<string, Promise<BriefingPayload>>;
+  failures: Map<string, FailureRecord>;
+  hits: number;
+  misses: number;
+}
+
+const BRIEFING_STORE_KEY = Symbol.for('vital.briefing.store');
+
+function processStore(): BriefingStore {
+  const g = globalThis as unknown as Record<symbol, BriefingStore | undefined>;
+  if (!g[BRIEFING_STORE_KEY]) {
+    g[BRIEFING_STORE_KEY] = {
+      entries: new Map(),
+      inFlight: new Map(),
+      failures: new Map(),
+      hits: 0,
+      misses: 0,
+    };
+  }
+  return g[BRIEFING_STORE_KEY] as BriefingStore;
+}
+
+const state = processStore();
 
 function peekPayload(key: string): BriefingPayload | undefined {
-  return entries.get(key)?.payload;
+  return state.entries.get(key)?.payload;
 }
 
 function startLoad(key: string, loader: () => Promise<BriefingPayload>): Promise<BriefingPayload> {
-  const existing = inFlight.get(key);
+  const existing = state.inFlight.get(key);
   if (existing) return existing;
   const promise = (async () => {
     const payload = await loader();
-    entries.set(key, { payload, storedAt: Date.now() });
+    state.entries.set(key, { payload, storedAt: Date.now() });
     return payload;
   })();
-  inFlight.set(key, promise);
+  state.inFlight.set(key, promise);
   const settle = () => {
-    if (inFlight.get(key) === promise) inFlight.delete(key);
+    if (state.inFlight.get(key) === promise) state.inFlight.delete(key);
   };
   // A background fill may reject with nobody awaiting it: attach the settle
   // handler to both outcomes so it is never an unhandled rejection.
@@ -155,27 +184,27 @@ function prefetch(key: string, loader: () => Promise<BriefingPayload>): void {
 }
 
 export function clearBriefingCache(): void {
-  entries.clear();
-  inFlight.clear();
-  failures.clear();
+  state.entries.clear();
+  state.inFlight.clear();
+  state.failures.clear();
 }
 
 export function briefingCacheStats(): { keys: string[]; inFlight: number; hits: number; misses: number } {
-  return { keys: [...entries.keys()], inFlight: inFlight.size, hits, misses };
+  return { keys: [...state.entries.keys()], inFlight: state.inFlight.size, hits: state.hits, misses: state.misses };
 }
 
 /** Resolve once no briefing generation is in flight (tests, and the warm-up). */
 export function awaitBriefingIdle(): Promise<void> {
   return (async () => {
-    while (inFlight.size > 0) {
-      await Promise.allSettled([...inFlight.values()]);
+    while (state.inFlight.size > 0) {
+      await Promise.allSettled([...state.inFlight.values()]);
     }
   })();
 }
 
 /** The last recorded generation failure for a key, or null when there is none. */
 export function lastBriefingFailure(key: string): FailureRecord | null {
-  return failures.get(key) ?? null;
+  return state.failures.get(key) ?? null;
 }
 
 // ── Cache key ───────────────────────────────────────────
@@ -298,7 +327,7 @@ async function generateFor(
     const text = deps.generate
       ? await deps.generate(context, engine)
       : await generateBriefingText(context, deps as EngineDeps, engine);
-    failures.delete(key);
+    state.failures.delete(key);
     return payloadFromModel(text, engine, context, schedule);
   } catch (error) {
     const reason = error instanceof BriefingEngineError
@@ -306,7 +335,7 @@ async function generateFor(
       : error instanceof Error
         ? error.message
         : 'The briefing model could not be reached.';
-    failures.set(key, { at: Date.now(), reason });
+    state.failures.set(key, { at: Date.now(), reason });
     throw error;
   }
 }
@@ -318,8 +347,8 @@ function startGeneration(
   deps: BriefingDeps,
   schedule: BriefingSchedule
 ): void {
-  if (inFlight.has(key)) return;
-  const last = failures.get(key);
+  if (state.inFlight.has(key)) return;
+  const last = state.failures.get(key);
   if (last && Date.now() - last.at < BRIEFING_FAILURE_COOLDOWN_MS) return;
   prefetch(key, () => generateFor(key, context, deps, schedule));
 }
@@ -364,10 +393,10 @@ export function readBriefing(deps: BriefingDeps = {}): BriefingView {
 
   const cached = peekPayload(key);
   if (cached) {
-    hits += 1;
-    return { ...cached, pending: inFlight.size > 0, cached: true };
+    state.hits += 1;
+    return { ...cached, pending: state.inFlight.size > 0, cached: true };
   }
-  misses += 1;
+  state.misses += 1;
 
   // Before the hour there is nothing to write: the previous day's briefing is
   // what stays on screen, and if the process has none it says so honestly.
@@ -375,7 +404,7 @@ export function readBriefing(deps: BriefingDeps = {}): BriefingView {
   const failure = lastBriefingFailure(key);
   return {
     ...computedBriefing(context, schedule, { reason: failure?.reason ?? null }),
-    pending: inFlight.size > 0,
+    pending: state.inFlight.size > 0,
     cached: false,
   };
 }
@@ -391,10 +420,10 @@ export function readBriefing(deps: BriefingDeps = {}): BriefingView {
  */
 export async function regenerateBriefing(deps: BriefingDeps = {}): Promise<BriefingView> {
   const { schedule, key, context } = resolve(deps);
-  entries.delete(key);
-  failures.delete(key);
+  state.entries.delete(key);
+  state.failures.delete(key);
   const payload = await startLoad(key, () => generateFor(key, context, deps, schedule));
-  return { ...payload, pending: inFlight.size > 0, cached: false };
+  return { ...payload, pending: state.inFlight.size > 0, cached: false };
 }
 
 // ── Warm-up ─────────────────────────────────────────────
