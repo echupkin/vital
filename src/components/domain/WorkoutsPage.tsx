@@ -43,7 +43,7 @@ const SORT_OPTIONS: { value: WorkoutSort; label: string }[] = [
 export function WorkoutsPage() {
   const { units } = useUnits();
   const [type, setType] = useState('all');
-  const [days, setDays] = useState('90');
+  const [days, setDays] = useState('30');
   const [sort, setSort] = useState<WorkoutSort>('date-desc');
   const [selected, setSelected] = useState<WorkoutView | null>(null);
 

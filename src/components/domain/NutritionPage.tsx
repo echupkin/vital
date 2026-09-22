@@ -22,7 +22,7 @@ import { MetricChart, TrendFigure } from '@/components/charts';
 import { useUnits } from '@/components/ui/UnitsProvider';
 import { DomainHeader, SectionTitle, MetricGrid } from './DomainShared';
 
-const LOGGED_WINDOW_DAYS = 90;
+const LOGGED_WINDOW_DAYS = 30;
 
 /** The six headline intake metrics, in the order SPEC §7 lists them. */
 const HEADLINE = [
@@ -351,7 +351,7 @@ function LoggedIntakeCard({
 
       <div className="mt-3">
         <Link
-          href={`/metric/${stats.metricId}?range=90d`}
+          href={`/metric/${stats.metricId}?range=30d`}
           className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
         >
           Open {stats.metricName} detail

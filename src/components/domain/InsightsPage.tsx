@@ -361,7 +361,7 @@ function ReportCard({ report }: { report: PeriodReport }) {
 // ── Health story ───────────────────────────────────────
 
 function HealthStory({ units }: { units: 'metric' | 'imperial' }) {
-  const [days, setDays] = useState('90');
+  const [days, setDays] = useState('30');
   const story = useMemo(() => buildStorySummary(REFERENCE_KEY, Number(days), units), [days, units]);
   const figure = useMemo(() => buildTrendFigure('resting_heart_rate', REFERENCE_KEY, Number(days), units), [days, units]);
   // Owner request 2: an observation for a metric with no reading in this window

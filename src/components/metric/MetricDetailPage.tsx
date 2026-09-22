@@ -94,7 +94,7 @@ function MetricDetailContent({ metaId }: { metaId: string }) {
   // at the period the insight was computed over.
   const requestedRange = searchParams.get('range');
   const [range, setRange] = useState<string>(
-    requestedRange && RANGE_TOKENS.includes(requestedRange) ? requestedRange : meta.defaultRange || '90d'
+    requestedRange && RANGE_TOKENS.includes(requestedRange) ? requestedRange : meta.defaultRange || '30d'
   );
   const [showBaseline, setShowBaseline] = useState(true);
   const [view, setView] = useState<'chart' | 'table'>('chart');

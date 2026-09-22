@@ -316,7 +316,7 @@ function RelationshipsTab() {
   const { units } = useUnits();
   const [xId, setXId] = useState('sleep_analysis');
   const [yId, setYId] = useState('heart_rate_variability');
-  const [days, setDays] = useState('90');
+  const [days, setDays] = useState('30');
   const [alignment, setAlignment] = useState<Alignment>('same-day');
   const [lagDays, setLagDays] = useState('1');
 
