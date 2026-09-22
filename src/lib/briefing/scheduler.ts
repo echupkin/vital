@@ -24,6 +24,8 @@
 import { readProfile } from '../profile/store';
 import type { VitalProfile } from '../profile/types';
 import { warmBriefing } from './index';
+import { readPreferences } from '../prefs/store';
+import type { UnitSystem } from '../prefs/types';
 import { briefingInstant, nextBriefingAt } from './schedule';
 
 /** setTimeout is fine for a day; this is the Node maximum, used as a guard. */
@@ -54,6 +56,21 @@ export function briefingSchedulerState(): { armed: boolean; targetAt: number | n
   return { armed: armed !== null, targetAt: armed?.targetAt ?? null, lastRunAt };
 }
 
+/**
+ * The unit system the stored preferences say the reader uses.
+ *
+ * Defaults to `metric` when the preferences cannot be read: the briefing must
+ * still be written on time, and a wrong system is a lazy re-fill at worst.
+ */
+async function readUnitSystem(): Promise<UnitSystem> {
+  try {
+    const prefs = await readPreferences();
+    return prefs.units === 'imperial' ? 'imperial' : 'metric';
+  } catch {
+    return 'metric';
+  }
+}
+
 async function fire(): Promise<void> {
   armed = null;
   lastRunAt = new Date().toISOString();
@@ -66,11 +83,18 @@ async function fire(): Promise<void> {
     return;
   }
 
+  // The briefing cache key includes the unit system, so warming "metric" for
+  // someone who reads in imperial wrote two briefings a day: the scheduled one
+  // they never saw, and a lazy one on their first visit (observed: the hero
+  // showed a 10:39 write while the scheduled 08:00 one sat in the other key).
+  // Write the system the reader actually uses.
+  const system = await readUnitSystem();
+
   try {
-    const outcome = await warmBriefing({ profile });
+    const outcome = await warmBriefing({ profile, system });
     log(
       outcome.ok
-        ? `wrote the briefing at the configured hour (${outcome.engine}${outcome.model ? `, ${outcome.model}` : ''}).`
+        ? `wrote the briefing at the configured hour (${system}${outcome.engine ? `, ${outcome.engine}` : ''}${outcome.model ? `, ${outcome.model}` : ''}).`
         : `could not write the briefing at the configured hour: ${outcome.reason ?? 'unknown reason'}. ` +
           'The next request will retry, and the hero reports the computed briefing in the meantime.'
     );

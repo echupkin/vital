@@ -22,10 +22,17 @@ import { kickBriefing } from '@/lib/briefing/kick';
 import { ensureBriefingScheduler } from '@/lib/briefing/scheduler';
 import { readProfile } from '@/lib/profile/store';
 import { greetingLine } from '@/lib/profile/types';
+import { readPreferences } from '@/lib/prefs/store';
+import type { UnitSystem } from '@/lib/prefs/types';
 
 export default async function Home() {
   const profile = await readProfile();
-  kickBriefing('metric', profile);
+  // The cache key includes the unit system: kicking 'metric' for a reader who
+  // uses imperial primed a briefing they would never be served, and their own
+  // copy was written lazily on their first visit instead of on schedule.
+  const prefs = await readPreferences().catch(() => null);
+  const system: UnitSystem = prefs?.units === 'imperial' ? 'imperial' : 'metric';
+  kickBriefing(system, profile);
   // Writes the briefing AT the configured hour rather than only when someone
   // happens to visit afterwards. Armed here, in the bundle that serves requests
   // (the instrumentation hook runs in a separate module graph — see ./kick), and
