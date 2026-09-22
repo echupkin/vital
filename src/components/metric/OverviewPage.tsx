@@ -51,7 +51,7 @@ import { useUnits } from '@/components/ui/UnitsProvider';
 import { useAnalystConfig } from '@/components/analyst/useAnalystConfig';
 import { useBriefing } from '@/components/analyst/useBriefing';
 import { COMPUTED_ATTRIBUTION, BRIEFING_BOUNDARY_NOTE } from '@/lib/briefing/attribution';
-import { briefingSchedule, briefingTimeLabel, briefingWrittenLate } from '@/lib/briefing/schedule';
+import { briefingSchedule, briefingTimeLabel } from '@/lib/briefing/schedule';
 import { useProfile } from '@/components/profile/ProfileProvider';
 import { greetingLine } from '@/lib/profile/types';
 import { useDatasetMeta } from '@/components/data/DatasetProvider';
@@ -96,13 +96,8 @@ export function OverviewPage({ initialGreeting }: { initialGreeting: string }) {
   const coversDay = written?.coversDay ?? schedule.coversDay;
   const writtenAt = written ? briefingTimeLabel(written.generatedAt, profile.timezone) : null;
   const scheduledLabel = `${String(schedule.hour).padStart(2, '0')}:00`;
-  // A briefing is written AT the configured hour by the server's scheduler. If it
-  // was written later than that — the process was down at the hour, or this is the
-  // first run after the setting changed — the label says so rather than implying
-  // the schedule ran on time.
-  const writtenLate = written
-    ? briefingWrittenLate(written.generatedAt, schedule.hour, profile.timezone)
-    : false;
+  // Both times are stated absolutely — when it was written and when it was due —
+  // instead of hedging about whether the schedule ran on time.
 
   const briefing = useMemo(() => buildBriefing(REFERENCE_KEY), []);
   const watch = useMemo(() => buildWatchItem(briefing, units), [briefing, units]);
@@ -289,9 +284,8 @@ export function OverviewPage({ initialGreeting }: { initialGreeting: string }) {
             <p className="text-[11px] text-hero-muted">
               <span data-briefing-day>Briefing for {formatDayKeyLong(coversDay)}</span>
               {writtenAt ? ` · written ${writtenAt}` : ' · not written yet'}
-              {writtenAt && writtenLate ? `, after the ${scheduledLabel} briefing hour` : ''}
+              {schedule.allowed && writtenAt ? ` · scheduled ${scheduledLabel}` : ''}
               {!written && !schedule.allowed ? ` · today's is written at ${scheduledLabel}` : ''}
-              {schedule.allowed && writtenLate ? ` · scheduled for ${scheduledLabel}` : ''}
               {' · '}
               <span data-briefing-attribution>{written?.attribution ?? COMPUTED_ATTRIBUTION}</span>
               {written?.model && written.provider ? ` · ${written.provider}` : ''}
