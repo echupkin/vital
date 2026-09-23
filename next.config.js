@@ -9,6 +9,14 @@ const nextConfig = {
   // server. Keeping it external leaves the resolution to Node at runtime and
   // keeps it out of every client bundle.
   serverExternalPackages: ['pdfjs-dist'],
+  // …and external means the tracer does not follow it into the standalone output
+  // on its own: without this, `.next/standalone/node_modules/pdfjs-dist` is
+  // absent (verified) and the first lab upload throws MODULE_NOT_FOUND in the
+  // container. Include the package explicitly so both `next start` on the
+  // standalone build and the runtime image can resolve it.
+  outputFileTracingIncludes: {
+    '/**': ['./node_modules/pdfjs-dist/**'],
+  },
   async headers() {
     return [
       {

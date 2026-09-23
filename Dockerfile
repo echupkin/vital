@@ -39,6 +39,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
+# pdfjs-dist is a server-external package (it must not be bundled). Next's file
+# tracer only reliably carries it once `outputFileTracingIncludes` names it, so
+# copy the package explicitly as a second guarantee: without it the lab PDF
+# parser throws MODULE_NOT_FOUND at runtime, on the first upload.
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/pdfjs-dist ./node_modules/pdfjs-dist
+
 # ── migration step ───────────────────────────────────────────────────────────
 # The container applies pending SQL migrations BEFORE it serves, so the image
 # needs the migration CLI, the SQL it applies, and the two small modules it
