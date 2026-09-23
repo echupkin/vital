@@ -4,6 +4,11 @@ const nextConfig = {
   // Emit a self-contained server bundle (.next/standalone) so the runtime image
   // needs no node_modules install. Required by the Dockerfile's runner stage.
   output: 'standalone',
+  // pdfjs-dist ships an ESM build that must NOT be bundled: it is imported
+  // dynamically by src/lib/lab/extract/pdf-items.ts, which only ever runs on the
+  // server. Keeping it external leaves the resolution to Node at runtime and
+  // keeps it out of every client bundle.
+  serverExternalPackages: ['pdfjs-dist'],
   async headers() {
     return [
       {
