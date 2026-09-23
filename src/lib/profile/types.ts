@@ -1,9 +1,9 @@
 // ── Profile: shared types and pure rules ────────────────
 //
 // The profile is the small set of facts Vital knows about the person that the
-// health report cannot contain: a display name, a date of birth, a short note,
-// the timezone the app's calendar days are cut on, and the hour a new briefing
-// may be written.
+// health report cannot contain: a display name, a date of birth, the person's
+// sex, a short note, the timezone the app's calendar days are cut on, and the
+// hour a new briefing may be written.
 //
 // It is OWNED BY THE SERVER and stored as JSON on a writable volume
 // (`./data/profile.json` → `/app/data/profile.json`; see `store.ts`). Both the
@@ -27,6 +27,14 @@ export interface VitalProfile {
   /** ISO calendar date (`YYYY-MM-DD`) of birth, or `null`. */
   dateOfBirth: string | null;
   /**
+   * The person's sex, or `null` when unset. Set BY THE OWNER ONLY, and it exists
+   * for one purpose: choosing sex-specific reference intervals when scoring lab
+   * results (see `@/lib/lab/status`). It is NEVER inferred from an uploaded
+   * document; with it unset a sex-specific band is not used and the result stays
+   * unscored rather than being defaulted to one sex.
+   */
+  sex: ProfileSex | null;
+  /**
    * Free text for context the health report cannot carry (a training goal, a
    * medication that affects heart rate). Treated as UNTRUSTED DATA by every
    * prompt that receives it — never as instructions.
@@ -38,8 +46,15 @@ export interface VitalProfile {
   briefingHour: number;
 }
 
+/**
+ * The two values `profile.sex` may hold, or `null`. Nothing else is a valid sex
+ * here: there is deliberately no "unknown" member, because "unset" is `null` and
+ * inventing a third state would invite a default.
+ */
+export type ProfileSex = 'male' | 'female';
+
 /** The fields a profile may contain. Anything else is rejected by the route. */
-export const PROFILE_FIELDS = ['name', 'dateOfBirth', 'notes', 'timezone', 'briefingHour'] as const;
+export const PROFILE_FIELDS = ['name', 'dateOfBirth', 'sex', 'notes', 'timezone', 'briefingHour'] as const;
 export type ProfileField = (typeof PROFILE_FIELDS)[number];
 
 export const PROFILE_NAME_MAX = 80;
@@ -58,6 +73,7 @@ export function defaultProfile(timezone: string = DEFAULT_PROFILE_TIMEZONE): Vit
   return {
     name: null,
     dateOfBirth: null,
+    sex: null,
     notes: null,
     timezone,
     briefingHour: DEFAULT_BRIEFING_HOUR,
@@ -155,6 +171,19 @@ export function validateProfileInput(raw: unknown, now: Date = new Date()): Prof
 
   const notes = optionalString(body, 'notes', PROFILE_NOTES_MAX, errors);
 
+  // Sex is a closed set: `male`, `female`, or null. Anything else — including a
+  // differently-cased spelling or a string that merely looks like one — is
+  // rejected rather than coerced, so a bad value can never reach a band lookup.
+  const rawSex = body.sex;
+  let sex: ProfileSex | null = null;
+  if (rawSex === undefined || rawSex === null) {
+    sex = null;
+  } else if (rawSex === 'male' || rawSex === 'female') {
+    sex = rawSex;
+  } else {
+    errors.push('"sex" must be "male", "female" or null.');
+  }
+
   const rawTimezone = body.timezone;
   let timezone = DEFAULT_PROFILE_TIMEZONE;
   if (rawTimezone === undefined) {
@@ -176,7 +205,7 @@ export function validateProfileInput(raw: unknown, now: Date = new Date()): Prof
   }
 
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, profile: { name, dateOfBirth, notes, timezone, briefingHour } };
+  return { ok: true, profile: { name, dateOfBirth, sex, notes, timezone, briefingHour } };
 }
 
 // ── Greeting ────────────────────────────────────────────

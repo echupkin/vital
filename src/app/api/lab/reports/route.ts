@@ -32,15 +32,19 @@ const NO_DATABASE_REASON =
   'No Postgres database is configured, so uploaded reports are not saved. Configure DATABASE_URL or the VITAL_PG_* variables to store them.';
 
 export async function GET() {
+  // The size cap travels with the list so the browser can refuse an oversize
+  // file itself, with the same number the route enforces, instead of learning it
+  // only after a doomed upload. It is not a secret: it is a documented limit.
+  const { maxBytes } = resolveLabConfig();
   const client = storeClient();
   if (!client) {
     return NextResponse.json(
-      { available: false, reason: NO_DATABASE_REASON, reports: [] },
+      { available: false, reason: NO_DATABASE_REASON, maxBytes, reports: [] },
       { status: 200, headers: NO_STORE }
     );
   }
   const reports = await listReports(client);
-  return NextResponse.json({ available: true, reports }, { status: 200, headers: NO_STORE });
+  return NextResponse.json({ available: true, maxBytes, reports }, { status: 200, headers: NO_STORE });
 }
 
 export async function POST(request: Request) {

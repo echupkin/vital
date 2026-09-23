@@ -13,7 +13,7 @@ import {
   SLIGHTLY_OUT_FRACTION,
   type StatusInput,
 } from './status';
-import type { LabBand } from './analytes';
+import { analyteByKey, type LabBand } from './analytes';
 
 const twoSided: LabBand = {
   sex: 'any',
@@ -263,5 +263,57 @@ describe('band selection', () => {
     const picked = bandForObservation([maleAdult], { dateOfBirth: '1980-01-01', sex: null }, '2026-01-01');
     expect(picked.band).toBeNull();
     expect(picked.reason).toBe('sex_unset');
+  });
+});
+
+// ── sex-specific bands against the real registry ────────────────────────────
+//
+// `profile.sex` exists for exactly one job, and this is it. `creatinine` in the
+// registry carries ONLY sex-specific bands, so it is the honest witness: with sex
+// set the fallback interval applies, with sex unset there is no interval at all
+// and the result stays unscored — the reason is recorded, and nothing is silently
+// banded by an assumed sex.
+
+describe('sex-specific bands are used only when sex is set', () => {
+  const creatinine = analyteByKey('creatinine')!;
+
+  function scoreCreatinine(sex: 'male' | 'female' | null) {
+    const selection = bandForObservation(creatinine.bands, { dateOfBirth: '1980-06-15', sex }, '2026-06-15');
+    const scored = scoreResult({
+      value: 1.2,
+      valueText: null,
+      refLow: null,
+      refHigh: null,
+      printedFlag: null,
+      band: selection.band,
+    });
+    return { scored, selection };
+  }
+
+  it('scores against the sex-specific band when the sex is set', () => {
+    const { scored, selection } = scoreCreatinine('male');
+    expect(scored.status).toBe('in_range');
+    expect(scored.interval.origin).toBe('reference_table');
+    expect(scored.interval.refBasis).toContain('male');
+    expect(selection.reason).toBeNull();
+  });
+
+  it('leaves the result UNSCORED with the sex_unset reason when sex is unset', () => {
+    const { scored, selection } = scoreCreatinine(null);
+    expect(scored.status).toBe('unscored_no_range');
+    expect(scored.tone).toBe('neutral');
+    expect(scored.interval.origin).toBe('none');
+    expect(scored.interval.band).toBeNull();
+    expect(selection.band).toBeNull();
+    expect(selection.reason).toBe('sex_unset');
+    // It is never quietly scored against either sex's band.
+    expect(scored.interval.low).toBeNull();
+    expect(scored.interval.high).toBeNull();
+  });
+
+  it('picks a different band for each sex, so neither is a default', () => {
+    expect(scoreCreatinine('male').scored.interval.low).not.toBe(
+      scoreCreatinine('female').scored.interval.low
+    );
   });
 });

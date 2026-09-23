@@ -34,6 +34,7 @@ import type { PipelineStatusReport, StageStatus } from '@/lib/pipeline/types';
 import { STAGE_STATUS_LABEL } from '@/lib/pipeline/types';
 import { FreshnessIndicator } from '@/components/shell/FreshnessIndicator';
 import { useProfile } from '@/components/profile/ProfileProvider';
+import { LabUpload } from '@/components/settings/LabUpload';
 import {
   DEFAULT_PROFILE_TIMEZONE,
   PROFILE_CONTAINER_PATH,
@@ -379,19 +380,33 @@ function AccountTab() {
             />
           </Field>
 
-          {/* ── Date of birth ────────────────────── */}
-          <Field
-            label="Date of birth"
-            hint="Optional. Only the resulting age is used, as context for the briefing; the date itself is not sent anywhere."
-          >
-            <input
-              type="date"
-              value={draft.dateOfBirth ?? ''}
-              onChange={e => setDraft({ ...draft, dateOfBirth: e.target.value })}
-              aria-label="Date of birth"
-              className="bg-surface border border-border rounded-control px-3 py-2 text-sm text-text-primary outline-none focus:ring-2 focus:ring-accent min-h-[44px] tnum"
-            />
-          </Field>
+          {/* ── Date of birth + Sex ──────────────── */}
+          <div className="grid sm:grid-cols-2 gap-5">
+            <Field
+              label="Date of birth"
+              hint="Optional. Only the resulting age is used, as context for the briefing; the date itself is not sent anywhere."
+            >
+              <input
+                type="date"
+                value={draft.dateOfBirth ?? ''}
+                onChange={e => setDraft({ ...draft, dateOfBirth: e.target.value })}
+                aria-label="Date of birth"
+                className="bg-surface border border-border rounded-control px-3 py-2 text-sm text-text-primary outline-none focus:ring-2 focus:ring-accent min-h-[44px] tnum"
+              />
+            </Field>
+
+            <Field
+              label="Sex"
+              hint="Used only to pick sex-specific reference intervals for lab results, and never inferred from an uploaded document."
+            >
+              <Select
+                value={draft.sex ?? ''}
+                onChange={v => setDraft({ ...draft, sex: v === 'male' || v === 'female' ? v : null })}
+                options={SEX_OPTIONS}
+                aria-label="Sex"
+              />
+            </Field>
+          </div>
 
           {/* ── Notes ────────────────────────────── */}
           <Field
@@ -494,6 +509,17 @@ const BRIEFING_HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => ({
   label: `${String(hour).padStart(2, '0')}:00`,
 }));
 
+/**
+ * The Sex select's options. `''` is "not set", which the change handler maps to
+ * `null` — the only representation of an unset sex, so nothing can default to
+ * one of the two values by accident.
+ */
+const SEX_OPTIONS = [
+  { value: '', label: 'Not set' },
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+];
+
 function Field({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
   return (
     <div>
@@ -512,6 +538,9 @@ function DataTab() {
 
   return (
     <div className="space-y-5">
+      {/* ── Lab report upload ─────────────────────── */}
+      <LabUpload />
+
       <Card className="p-6">
         <SectionHead icon={<Database size={18} className="text-text-secondary" />} title="Data coverage" />
         <p className="text-sm text-text-secondary mb-4">

@@ -8,12 +8,12 @@
 //   nothing configured  → the JSON file
 //
 // One row, pinned to `id = 1` by the schema's CHECK constraint. The row carries
-// the same five fields plus the bookkeeping the file never had: `revision`,
+// the same six fields plus the bookkeeping the file never had: `revision`,
 // bumped by the database on every write, and `updated_at`.
 //
-// CONFIGURATION ONLY. The profile holds a display name, a birth date, a short
-// note, the IANA timezone and the briefing hour. There is no column for a health
-// observation and no query here can read one.
+// CONFIGURATION ONLY. The profile holds a display name, a birth date, the
+// person's sex, a short note, the IANA timezone and the briefing hour. There is
+// no column for a health observation and no query here can read one.
 //
 // Reads and writes are still validated on the way in and out with the same
 // `validateProfileInput` the route uses, so a hand-typed `INSERT` cannot smuggle
@@ -38,6 +38,7 @@ export interface StoredProfileRow {
 const SELECT_PROFILE = `
   SELECT name,
          to_char(date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
+         sex,
          notes,
          timezone,
          briefing_hour,
@@ -48,11 +49,12 @@ const SELECT_PROFILE = `
 `;
 
 const UPSERT_PROFILE = `
-  INSERT INTO profile (id, name, date_of_birth, notes, timezone, briefing_hour, schema_version, revision, updated_at)
-  VALUES (1, $1, $2, $3, $4, $5, ${PROFILE_SCHEMA_VERSION}, 1, now())
+  INSERT INTO profile (id, name, date_of_birth, sex, notes, timezone, briefing_hour, schema_version, revision, updated_at)
+  VALUES (1, $1, $2, $3, $4, $5, $6, ${PROFILE_SCHEMA_VERSION}, 1, now())
   ON CONFLICT (id) DO UPDATE
      SET name           = EXCLUDED.name,
          date_of_birth  = EXCLUDED.date_of_birth,
+         sex            = EXCLUDED.sex,
          notes          = EXCLUDED.notes,
          timezone       = EXCLUDED.timezone,
          briefing_hour  = EXCLUDED.briefing_hour,
@@ -84,6 +86,7 @@ export async function readProfileRow(env: NodeJS.ProcessEnv = process.env): Prom
   const validated = validateProfileInput({
     name: row.name ?? null,
     dateOfBirth: row.date_of_birth ?? null,
+    sex: row.sex ?? null,
     notes: row.notes ?? null,
     timezone: row.timezone,
     briefingHour: row.briefing_hour,
@@ -112,6 +115,7 @@ export async function writeProfileRow(
   const result = await pool.query(UPSERT_PROFILE, [
     p.name,
     p.dateOfBirth,
+    p.sex,
     p.notes,
     p.timezone,
     p.briefingHour,

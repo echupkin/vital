@@ -10,14 +10,21 @@
 //
 // The response body IS the profile and nothing else — no path, no timestamp, no
 // environment echo. There is no secret field to leak: the profile holds a name,
-// a birth date, a short note, a timezone and an hour.
+// a birth date, the person's sex, a short note, a timezone and an hour.
 //
 //   GET  → the stored profile, or the documented defaults when nothing is stored
 //   PUT  → validate, replace the whole record, return what was stored
 //
 // Validation rejects unknown fields, checks every type, bounds every string and
-// requires an IANA timezone and a whole briefing hour. A rejected body changes
-// nothing anywhere.
+// requires an IANA timezone and a whole briefing hour. `sex` is a closed set —
+// `"male"`, `"female"` or `null` — and is refused otherwise rather than coerced.
+// A rejected body changes nothing anywhere.
+//
+// On concurrency: the profile PUT replaces the whole record and carries no
+// client revision, so there is no 409 here. The database still bumps `revision`
+// on every write (`@/lib/db/profile-store`), and the revision/409 guard lives on
+// the preferences route, which is where a stale write is refused. Adding a
+// second, different token to this route would be a new contract, not a fix.
 //
 // A configured store that cannot be read (database unreachable, configuration
 // invalid) answers 500 with the reason: reporting a read failure as "the profile"

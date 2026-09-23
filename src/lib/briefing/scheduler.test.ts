@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const profile = {
   name: null,
   dateOfBirth: null,
+  sex: null,
   notes: null,
   timezone: 'America/Chicago',
   briefingHour: 8,

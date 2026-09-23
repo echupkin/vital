@@ -94,6 +94,7 @@ describe('profile validation', () => {
   const valid = {
     name: 'Avery',
     dateOfBirth: '1985-04-12',
+    sex: null,
     notes: 'Training for a half marathon.',
     timezone: 'America/Chicago',
     briefingHour: 6,
@@ -108,6 +109,25 @@ describe('profile validation', () => {
     expect(blank.ok).toBe(true);
     if (blank.ok) expect(blank.profile.name).toBeNull();
     if (blank.ok) expect(blank.profile.notes).toBeNull();
+  });
+
+  it('accepts only male, female or null for sex, and rejects everything else', () => {
+    for (const sex of ['male', 'female', null] as const) {
+      const accepted = validateProfileInput({ ...valid, sex });
+      expect(accepted.ok).toBe(true);
+      if (accepted.ok) expect(accepted.profile.sex).toBe(sex);
+    }
+    // A missing key is "not set", never a default.
+    const missing = validateProfileInput({ ...valid, sex: undefined });
+    expect(missing.ok).toBe(true);
+    if (missing.ok) expect(missing.profile.sex).toBeNull();
+
+    // Anything else is refused rather than coerced — including a near miss.
+    for (const junk of ['MALE', 'Male', 'other', 'unknown', 'm', '', 0, 1, true, {}, [], 'nonbinary']) {
+      const rejected = validateProfileInput({ ...valid, sex: junk });
+      expect(rejected.ok).toBe(false);
+      if (!rejected.ok) expect(rejected.errors.join(' ')).toMatch(/"sex" must be/);
+    }
   });
 
   it('rejects unknown fields instead of dropping them silently', () => {
@@ -175,6 +195,7 @@ describe('the profile store', () => {
     const profile: VitalProfile = {
       name: 'Ada Lovelace',
       dateOfBirth: '1815-12-10',
+      sex: 'female',
       notes: 'Counts things.',
       timezone: 'Europe/London',
       briefingHour: 7,

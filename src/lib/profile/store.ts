@@ -78,6 +78,7 @@ function defaultsFor(env: NodeJS.ProcessEnv): VitalProfile {
   return {
     name: null,
     dateOfBirth: null,
+    sex: null,
     notes: null,
     timezone: tz && isTimezone(tz) ? tz : DEFAULT_PROFILE_TIMEZONE,
     briefingHour: DEFAULT_BRIEFING_HOUR,
