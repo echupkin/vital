@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
   LayoutDashboard, TrendingUp, Lightbulb, Bot, Menu,
-  Heart, Activity, Moon, Weight, UtensilsCrossed, Dumbbell, Settings, X,
+  Heart, FlaskConical, Activity, Moon, Weight, UtensilsCrossed, Dumbbell, Settings, X,
 } from 'lucide-react';
 import { Dialog } from '@/components/ui/primitives';
 
@@ -18,6 +18,7 @@ const PRIMARY = [
 
 const MORE = [
   { label: 'Health', href: '/health', icon: <Heart size={18} /> },
+  { label: 'Lab', href: '/lab', icon: <FlaskConical size={18} /> },
   { label: 'Activity', href: '/activity', icon: <Activity size={18} /> },
   { label: 'Sleep', href: '/sleep', icon: <Moon size={18} /> },
   { label: 'Body', href: '/body', icon: <Weight size={18} /> },

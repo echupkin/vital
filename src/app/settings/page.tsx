@@ -12,8 +12,8 @@
 // pre-paint theme. No API key, token or health record is ever stored in the browser.
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Bell, Clock, Database, Info, Palette, Ruler, Save, Shield, Trash2, TriangleAlert, UserRound,
 } from 'lucide-react';
@@ -63,10 +63,38 @@ const TIMEZONES = [
   'Australia/Sydney',
 ];
 
+/**
+ * A deep link such as `/settings?tab=data` opens that tab, which is what the Lab
+ * page's empty state and the sex-specific-interval notice link to. `useSearchParams`
+ * needs a Suspense boundary, so the view sits inside one.
+ */
 export default function SettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-4xl mx-auto space-y-6">
+          <h1 className="text-2xl md:text-3xl font-semibold text-text-primary">Settings</h1>
+          <div role="status" aria-live="polite" className="space-y-3">
+            <span className="sr-only">Loading settings</span>
+            <Skeleton height={120} />
+            <Skeleton height={200} />
+          </div>
+        </div>
+      }
+    >
+      <SettingsView />
+    </Suspense>
+  );
+}
+
+function SettingsView() {
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get('tab');
   const [prefs, setPrefs] = useState<VitalPreferences | null>(null);
   const [notice, setNotice] = useState<{ tone: 'ok' | 'warn' | 'error'; text: string } | null>(null);
-  const [tab, setTab] = useState('account');
+  const [tab, setTab] = useState(
+    requestedTab && TABS.some(candidate => candidate.id === requestedTab) ? requestedTab : 'account'
+  );
 
   // Read the cached value for the first paint, then let the engine's server read
   // replace it. These settings belong to the account, not to this browser.
