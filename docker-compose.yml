@@ -137,6 +137,14 @@ services:
       BRIEFING_MAX_TOKENS: "${BRIEFING_MAX_TOKENS:-4000}"
       BRIEFING_TEMPERATURE: "${BRIEFING_TEMPERATURE:-0.3}"
       BRIEFING_TIMEOUT_MS: "${BRIEFING_TIMEOUT_MS:-60000}"
+      # ── Uploaded lab reports (server-side only) ────────────────────────────
+      # Uploaded PDFs are stored content-addressed under this directory, which
+      # lives inside the writable ./data mount. VITAL_LAB_MAX_BYTES caps an
+      # upload; VITAL_LAB_MODEL_ASSIST (`auto`|`on`|`off`) controls the OPTIONAL
+      # second extraction pass — `off` guarantees no network call.
+      VITAL_LAB_DIR: "${VITAL_LAB_DIR:-/app/data/lab}"
+      VITAL_LAB_MAX_BYTES: "${VITAL_LAB_MAX_BYTES:-15728640}"
+      VITAL_LAB_MODEL_ASSIST: "${VITAL_LAB_MODEL_ASSIST:-auto}"
     # A model server running on the host (LM Studio, llama.cpp, Ollama, vLLM,
     # together.ai proxy, …) is reachable as host.docker.internal. Without this the
     # name does not resolve from inside the bridge. A loopback endpoint needs no

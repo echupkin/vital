@@ -14,3 +14,7 @@ data/profile.json.tmp
 # Runtime state written by the server when no database is configured.
 data/preferences.json
 data/*.tmp
+
+# Uploaded lab PDFs: runtime data (documents a person uploaded), never source.
+# Content-addressed, so every file here is a person's own document.
+data/lab/
