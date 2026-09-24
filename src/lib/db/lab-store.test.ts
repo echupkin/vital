@@ -716,6 +716,49 @@ describe('the specimen split', () => {
     expect(protein[0]!.split).toBe(false);
   });
 
+  it('merges the same analyte across differently-worded headings of the SAME specimen', async () => {
+    // THE PANEL IS A HEADING, NOT IDENTITY. The same measurement prints under
+    // differently-worded headings across labs and documents — LabCorp's
+    // `Metabolic,Comprehensive` and Quest's `COMPREHENSIVE METABOLIC PANEL` — and
+    // must stay ONE series, or the owner's history is split into a chart per
+    // wording. The urinalysis row is a different specimen and still stays apart.
+    const base = rows()[0]!;
+    const db = new FakeDb([
+      {
+        test: sql => sql.includes('FROM lab_results'),
+        rows: () => [
+          { ...base, id: 'a', panel: 'Metabolic,Comprehensive', result_on: '2024-01-01', value: 80 },
+          { ...base, id: 'b', panel: 'COMPREHENSIVE METABOLIC PANEL', result_on: '2024-02-01', value: 90 },
+          {
+            ...base,
+            id: 'c',
+            panel: 'URINALYSIS, COMPLETE',
+            result_on: '2024-03-01',
+            value: null,
+            value_text: 'NEGATIVE',
+            unit: null,
+          },
+        ],
+      },
+    ]);
+    const read = await getSeries(db, null);
+    const glucose = read.analytes.filter(analyte => analyte.analyteKey === 'glucose');
+    expect(glucose).toHaveLength(2);
+
+    const blood = glucose.find(analyte => analyte.specimen === 'other')!;
+    expect(blood.points.map(point => point.resultId)).toEqual(['a', 'b']);
+    // The panel headings survive as ROW METADATA, in order, without splitting the
+    // series.
+    expect(blood.panels).toEqual(['Metabolic,Comprehensive', 'COMPREHENSIVE METABOLIC PANEL']);
+    expect(blood.panel).toBe('Metabolic,Comprehensive');
+    expect(blood.seriesKey).toBe('glucose');
+    expect(blood.split).toBe(true);
+
+    const urine = glucose.find(analyte => analyte.specimen === 'urine')!;
+    expect(urine.points.map(point => point.resultId)).toEqual(['c']);
+    expect(urine.seriesKey).toBe('glucose~urine');
+  });
+
   it('keeps a row whose page printed no heading with the analyte’s ordinary series', async () => {
     // No panel is the document making no statement about the specimen, so the row
     // is not moved into the urine series on a guess.
