@@ -330,11 +330,30 @@ export const ANALYTES: LabAnalyte[] = [
 
   // ── Metabolic / glycaemic ─────────────────────────────────────────────────
   {
+    // The generic glucose entry. The extractor writes the key `glucose` for a
+    // bare "GLUCOSE", and a bare GLUCOSE does not say whether the sample was
+    // fasting — so this is its own analyte rather than an alias of
+    // `glucose_fasting`, whose 70-99 band would assert a fasting state the
+    // document never printed. (Key derivation is the parser's; see
+    // extract/parse.ts. This entry exists so the key that is already stored
+    // resolves to a name, a category and a unit.)
+    key: 'glucose',
+    displayName: 'Glucose',
+    category: 'Metabolic',
+    unit: 'mg/dL',
+    aliases: ['Glucose', 'Blood glucose', 'glucose'],
+    bands: [],
+    note:
+      'No agreed interval — leave unscored. A report printing a bare "GLUCOSE" does not state whether the sample was fasting or random, so the fasting band (70-99 mg/dL) is deliberately NOT applied: doing so would assert a fasting state the document never printed. When the report prints its own interval, that interval is used.',
+  },
+  {
     key: 'glucose_fasting',
     displayName: 'Glucose, fasting',
     category: 'Metabolic',
     unit: 'mg/dL',
-    aliases: ['Glucose, Fasting', 'FPG', 'GLU', 'FBS', 'Glucose', 'glucose'],
+    // The bare "Glucose"/"glucose" names belong to the generic `glucose` entry
+    // above; only the names that state the fasting state stay here.
+    aliases: ['Glucose, Fasting', 'FPG', 'GLU', 'FBS'],
     bands: [
       {
         sex: 'any',
@@ -924,7 +943,7 @@ export const ANALYTES: LabAnalyte[] = [
     displayName: 'Alkaline phosphatase',
     category: 'Liver',
     unit: 'U/L',
-    aliases: ['ALP', 'Alk Phos', 'ALKP', 'alkalinephosphatase'],
+    aliases: ['ALP', 'Alk Phos', 'ALKP', 'alkalinephosphatase', 'alkaline_phosphatase'],
     bands: [
       {
         sex: 'any',
@@ -1231,7 +1250,7 @@ export const ANALYTES: LabAnalyte[] = [
     displayName: 'BUN:creatinine ratio',
     category: 'Kidney/Electrolytes',
     unit: 'ratio',
-    aliases: ['BUN/Cr', 'BUN:Creatinine Ratio', 'Calculated BUN/Creat', 'BUN Creatinine Ratio'],
+    aliases: ['BUN/Cr', 'BUN:Creatinine Ratio', 'Calculated BUN/Creat', 'BUN Creatinine Ratio', 'calculated_bun_creat'],
     bands: [
       {
         sex: 'any',
@@ -2647,6 +2666,17 @@ export const ANALYTES: LabAnalyte[] = [
     bands: [],
     note: 'Derived ratio; the cited document gives no interval — left unscored.',
   },
+  {
+    key: 'ldl_hdl_ratio',
+    displayName: 'LDL/HDL ratio',
+    category: 'Lipids',
+    unit: 'ratio',
+    // "LDL/HDL RATIO" is what the owner's report prints; the extractor's own key
+    // for it is the slug `ldl_hdl_ratio`, which is this entry's canonical key.
+    aliases: ['LDL/HDL Ratio', 'LDL:HDL Ratio', 'ldl/hdlratio'],
+    bands: [],
+    note: 'Derived ratio; the cited document gives no interval — left unscored.',
+  },
 ];
 
 // ── Resolution ──────────────────────────────────────────────────────────────
@@ -2702,9 +2732,28 @@ export function resolveAnalyte(printedName: string): AnalyteResolution {
   return { analyte: null, key: slugFor(printedName ?? ''), fallback: true };
 }
 
-/** The registered analyte for a canonical key, or null. */
+/**
+ * The registered analyte for a canonical key, for a stored key the extractor
+ * wrote, or for any registered alias — or null when the name is unknown.
+ *
+ * WHY THE ALIAS MAP IS CONSULTED HERE. The registry's canonical key is not
+ * always the key the extractor writes: `extract/parse.ts` owns the key
+ * derivation (and must not change, because those keys are already stored on the
+ * owner's real rows), and it writes keys such as `protein_total` where the
+ * registry's canonical key is `total_protein`. Both spellings name the SAME
+ * analyte, and the entry's own `aliases` carry the extractor's spelling, so a
+ * stored key resolves to the entry that already describes it — otherwise a
+ * stored row renders with a generic name, no category, no unit and no
+ * description.
+ *
+ * A canonical key always wins: `BY_KEY` is consulted first, so a later entry's
+ * alias can never shadow another entry's own key.
+ */
 export function analyteByKey(key: string): LabAnalyte | null {
-  return BY_KEY.get(key) ?? null;
+  const direct = BY_KEY.get(key);
+  if (direct) return direct;
+  const lookup = normalizeName(key ?? '');
+  return lookup ? (BY_ALIAS.get(lookup) ?? null) : null;
 }
 
 /** A display name for a key or printed name: the registry's, else the name as printed. */

@@ -8,8 +8,9 @@
 // provenance. Keeping the row builder here means the summary card's alternative
 // table and the detail page's history table cannot drift apart.
 
-import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ExternalLink, Info } from 'lucide-react';
 import { TONE_CLASS, TONE_ICON } from '@/lib/lab/tone';
+import { analyteDescription } from '@/lib/lab/descriptions';
 import type { RowProvenance } from '@/lib/lab/client-data';
 import type { StatusTone } from '@/lib/lab/status';
 import {
@@ -22,10 +23,12 @@ import {
   type LabProfileFacts,
 } from '@/lib/lab/view';
 import {
+  LAB_DESCRIPTION_NOTICE,
   LAB_EDUCATIONAL_NOTICE,
   LAB_INTERVAL_NOTICE,
   LAB_SOURCE_NOTICE,
 } from '@/lib/lab/notice';
+import { Card } from '@/components/ui/primitives';
 import type { LabTableRow } from '@/components/charts';
 
 /** A verdict as a WORD with an ICON and a tone. Never colour alone. */
@@ -117,5 +120,50 @@ export function needsSexNotice(analyte: LabAnalyte, profile: LabProfileFacts): b
     point =>
       point.status === 'unscored_no_range' &&
       (unscoredReason(analyte, point, profile) ?? '').includes('Sex in Settings')
+  );
+}
+
+/**
+ * An analyte's description on the detail route: what it is, what a high or a low
+ * value may mean, the cited page as a link the reader can open and check any
+ * sentence against, and the one line that says this is general information and
+ * not a diagnosis.
+ *
+ * AN ABSENT DESCRIPTION IS ABSENT. An analyte with no description entry renders
+ * NOTHING here — no card, no "Description" header and no placeholder — which is
+ * this app's standing convention: a thing that is missing is missing.
+ */
+export function LabAnalyteDescription({ analyteKey }: { analyteKey: string }) {
+  const description = analyteDescription(analyteKey);
+  if (!description) return null;
+
+  return (
+    <Card className="p-5" as="section" aria-label="Description">
+      <h2 className="text-sm font-semibold text-text-primary mb-2">Description</h2>
+      <p className="text-sm text-text-primary leading-relaxed">{description.whatItIs}</p>
+      {description.ifHigh && (
+        <p className="mt-2 text-sm text-text-primary leading-relaxed">
+          <span className="font-medium">If high:</span> {description.ifHigh}
+        </p>
+      )}
+      {description.ifLow && (
+        <p className="mt-2 text-sm text-text-primary leading-relaxed">
+          <span className="font-medium">If low:</span> {description.ifLow}
+        </p>
+      )}
+      <p className="mt-3">
+        <a
+          href={description.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-sm text-primary hover:underline min-h-[44px]"
+        >
+          {description.sourceTitle}
+          <ExternalLink size={12} aria-hidden="true" />
+          <span className="sr-only">(opens in a new tab)</span>
+        </a>
+      </p>
+      <p className="text-[11px] text-text-secondary leading-relaxed">{LAB_DESCRIPTION_NOTICE}</p>
+    </Card>
   );
 }

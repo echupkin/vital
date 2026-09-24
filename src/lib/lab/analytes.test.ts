@@ -139,3 +139,83 @@ describe('the exact legacy duplicate names carry disjoint bands', () => {
     expect(resolveAnalyte('Ca').key).toBe('calcium');
   });
 });
+
+describe('every name in the registry resolves, by key or by alias', () => {
+  // The guard this registry was missing. A name the registry itself publishes —
+  // its canonical key, its display name or one of its aliases — must resolve
+  // back to THAT entry. If it does not, the name is a hole: a stored row using
+  // it renders with a generic name, no category, no unit and no description.
+  it('resolves every canonical key, display name and alias to its own entry', () => {
+    for (const analyte of ANALYTES) {
+      const names = [analyte.key, analyte.displayName, ...analyte.aliases];
+      for (const name of names) {
+        expect(resolveAnalyte(name).analyte?.key, `${analyte.key} → ${name}`).toBe(analyte.key);
+        expect(analyteByKey(name)?.key, `${analyte.key} → ${name} (by key)`).toBe(analyte.key);
+      }
+    }
+  });
+});
+
+describe('the keys the owner’s stored rows already use', () => {
+  // Measured from the live database: these 14 stored `analyte_key` values
+  // resolved to no registry entry, so they rendered with no category, no unit
+  // and no description. The keys come from the extractor's own alias table
+  // (extract/parse.ts), which is frozen — the owner's rows are already stored
+  // under them — so the REGISTRY is extended to cover them instead.
+  const STORED_KEYS: Array<[string, string]> = [
+    ['alkaline_phosphatase', 'alp'],
+    ['basophils_pct', 'basophils'],
+    ['bilirubin_total', 'total_bilirubin'],
+    ['calculated_bun_creat', 'bun_creatinine_ratio'],
+    ['cholesterol_total', 'total_cholesterol'],
+    ['co2', 'co2_bicarbonate'],
+    ['eosinophils_pct', 'eosinophils'],
+    ['glucose', 'glucose'],
+    ['hdl', 'hdl_c'],
+    ['ldl', 'ldl_c'],
+    ['lymphocytes_pct', 'lymphocytes'],
+    ['monocytes_pct', 'monocytes'],
+    ['neutrophils_pct', 'neutrophils'],
+    ['protein_total', 'total_protein'],
+  ];
+
+  it('resolves every one of them to a registry entry', () => {
+    for (const [stored, canonical] of STORED_KEYS) {
+      const analyte = analyteByKey(stored);
+      expect(analyte, stored).not.toBeNull();
+      expect(analyte?.key, stored).toBe(canonical);
+      // A resolved entry is what gives the card its name, its category, its
+      // unit convention and its description.
+      expect(analyte?.displayName.length ?? 0, stored).toBeGreaterThan(0);
+      expect(analyte?.category, stored).toBeTruthy();
+    }
+  });
+
+  it('keeps a bare glucose distinct from the fasting glucose entry', () => {
+    // A report printing a bare "GLUCOSE" never states that the sample was
+    // fasting, so it must NOT inherit the fasting interval.
+    expect(analyteByKey('glucose')?.key).toBe('glucose');
+    expect(analyteByKey('glucose')?.bands).toHaveLength(0);
+    expect(analyteByKey('glucose_fasting')?.key).toBe('glucose_fasting');
+    expect(analyteByKey('glucose_fasting')?.bands).toHaveLength(1);
+    expect(resolveAnalyte('Glucose').key).toBe('glucose');
+    expect(resolveAnalyte('Glucose, Fasting').key).toBe('glucose_fasting');
+  });
+
+  it('still treats a genuinely unknown key as unregistered', () => {
+    expect(analyteByKey('widget_one')).toBeNull();
+    expect(analyteByKey('some_new_marker')).toBeNull();
+  });
+});
+
+describe('the LDL/HDL ratio the owner’s report prints', () => {
+  it('is registered with a name, a category and a unit', () => {
+    const ratio = analyteByKey('ldl_hdl_ratio');
+    expect(ratio).not.toBeNull();
+    expect(ratio?.displayName).toBe('LDL/HDL ratio');
+    expect(ratio?.category).toBe('Lipids');
+    expect(ratio?.unit).toBe('ratio');
+    expect(ratio?.bands).toHaveLength(0);
+    expect(ratio?.note ?? '').toContain('unscored');
+  });
+});

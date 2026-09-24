@@ -32,6 +32,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ChevronRight, FlaskConical, Info } from 'lucide-react';
 import { formatDayKeyLong } from '@/lib/analytics/windows';
+import { analyteDescription } from '@/lib/lab/descriptions';
 import {
   fetchLabDocuments,
   fetchLabSummary,
@@ -40,6 +41,7 @@ import {
 } from '@/lib/lab/client-data';
 import {
   BUCKET_LABEL,
+  cardDescription,
   changeFromPrevious,
   chartModel,
   countStatuses,
@@ -380,6 +382,7 @@ function AnalyteCard({
   const model = useMemo(() => chartModel(analyte), [analyte]);
   const change = useMemo(() => changeFromPrevious(analyte), [analyte]);
   const rows = useMemo(() => observationRows(analyte, provenance, profile), [analyte, provenance, profile]);
+  const description = useMemo(() => analyteDescription(analyte.analyteKey), [analyte.analyteKey]);
   if (!latest) return null;
 
   const points = orderedPoints(analyte);
@@ -393,6 +396,12 @@ function AnalyteCard({
         <h3 className="text-sm font-semibold text-text-primary">{analyte.displayName}</h3>
         <LabStatusBadge label={latest.statusLabel} tone={latest.tone} />
       </div>
+      {/* A short line of meaning under the name, trimmed to about two lines so
+          the card stays scannable and the chart keeps its space. An analyte with
+          no description renders nothing here — never a placeholder. */}
+      {description && (
+        <p className="text-xs text-text-secondary leading-relaxed">{cardDescription(description.whatItIs)}</p>
+      )}
       <p className="text-xs text-text-secondary">
         {points.length} stored observation{points.length === 1 ? '' : 's'}, from{' '}
         {formatDayKeyLong(oldest.resultOn)} to {formatDayKeyLong(latest.resultOn)}

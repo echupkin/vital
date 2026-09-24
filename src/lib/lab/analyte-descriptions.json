@@ -1,0 +1,563 @@
+{
+  "total_cholesterol": {
+    "whatItIs": "Measures the total amount of cholesterol in your blood. It includes both LDL (\"bad\") and HDL (\"good\") cholesterol.",
+    "ifHigh": "Higher total cholesterol is linked to a greater risk of heart disease. For adults, the healthy level is less than 200 mg/dL.",
+    "sourceTitle": "MedlinePlus — Cholesterol Levels",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/cholesterol-levels/"
+  },
+  "ldl_c": {
+    "whatItIs": "LDL (low-density lipoprotein) is called \"bad\" cholesterol because it is the main source of the cholesterol buildup that narrows or blocks arteries.",
+    "ifHigh": "Higher LDL is linked to a higher risk of heart disease; for adults, the healthy level is less than 100 mg/dL.",
+    "sourceTitle": "MedlinePlus — Cholesterol Levels",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/cholesterol-levels/"
+  },
+  "hdl_c": {
+    "whatItIs": "HDL (high-density lipoprotein) is called \"good\" cholesterol because it helps get rid of \"bad\" LDL cholesterol.",
+    "ifLow": "A low HDL is considered less than 40 mg/dL in men and less than 50 mg/dL in women.",
+    "sourceTitle": "MedlinePlus — Cholesterol Levels",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/cholesterol-levels/"
+  },
+  "triglycerides": {
+    "whatItIs": "Triglycerides are a type of fat in your blood. Your body uses some for energy, but high levels can raise the risk of heart disease.",
+    "ifHigh": "Higher triglycerides are linked to an increased risk of heart disease; 150-199 mg/dL is often called borderline high and 200 mg/dL or more high.",
+    "sourceTitle": "MedlinePlus — Cholesterol Levels: What You Need to Know",
+    "sourceUrl": "https://medlineplus.gov/cholesterollevelswhatyouneedtoknow.html"
+  },
+  "non_hdl_cholesterol": {
+    "whatItIs": "Your total cholesterol minus your HDL. It includes LDL and other types of cholesterol such as VLDL, so it is a calculated number rather than a directly measured one.",
+    "ifHigh": "A higher non-HDL is linked to a greater risk of heart disease; for adults, the healthy level is less than 130 mg/dL.",
+    "sourceTitle": "MedlinePlus — Cholesterol Levels: What You Need to Know",
+    "sourceUrl": "https://medlineplus.gov/cholesterollevelswhatyouneedtoknow.html"
+  },
+  "cholesterol_hdl_ratio": {
+    "whatItIs": "The ratio of your total cholesterol to your HDL cholesterol, reported as part of a lipid panel.",
+    "ifHigh": "Laboratories report this ratio as an index to coronary artery disease.",
+    "sourceTitle": "Labcorp — Lipid Panel With Total Cholesterol:HDL Ratio",
+    "sourceUrl": "https://www.labcorp.com/tests/221010/lipid-panel-with-total-cholesterol-hdl-ratio"
+  },
+  "ldl_hdl_ratio": {
+    "whatItIs": "The ratio of LDL (\"bad\") cholesterol to HDL (\"good\") cholesterol, reported as part of a lipid panel.",
+    "ifHigh": "Labcorp says LDL:HDL ratios are useful because a person with low LDL cholesterol but very low HDL cholesterol may still be in jeopardy.",
+    "sourceTitle": "Labcorp — Lipid Panel With LDL:HDL Ratio",
+    "sourceUrl": "https://www.labcorp.com/tests/235010/lipid-panel-with-ldl-hdl-ratio"
+  },
+  "apob": {
+    "whatItIs": "Apolipoprotein B is the main protein on LDL particles. It plays an essential role in carrying cholesterol through the blood.",
+    "ifHigh": "Higher ApoB is associated with the development of atherosclerosis; Labcorp lists below 90 mg/dL as desirable, 90–99 as borderline high, and 100 mg/dL or more as high.",
+    "sourceTitle": "Labcorp — Apolipoprotein B",
+    "sourceUrl": "https://www.labcorp.com/tests/167015/apolipoprotein-b"
+  },
+  "lpa": {
+    "whatItIs": "Lipoprotein (a) is a type of LDL particle. It is stickier than other LDL particles, so it may be more likely to cause blockages and clots in the arteries.",
+    "ifHigh": "A higher level may mean a higher risk of heart disease and stroke, even if other cholesterol results are in range. It is largely inherited.",
+    "sourceTitle": "MedlinePlus — Lipoprotein (a) Blood Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/lipoprotein-a-blood-test/"
+  },
+
+  "glucose_fasting": {
+    "whatItIs": "Measures the amount of glucose (blood sugar) in your blood. Glucose comes from food and is your body's main source of energy.",
+    "ifHigh": "Higher blood glucose may be a sign of prediabetes or diabetes.",
+    "ifLow": "Low blood glucose is much less common in people without diabetes and may be caused by certain medicines or conditions.",
+    "sourceTitle": "MedlinePlus — Blood Glucose Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-glucose-test/"
+  },
+  "hba1c": {
+    "whatItIs": "Shows your average blood glucose over the past two to three months, by measuring the share of your red blood cells that have glucose attached to their hemoglobin.",
+    "ifHigh": "Higher A1C levels are a sign of higher average blood glucose and are used to screen for or monitor prediabetes and diabetes.",
+    "sourceTitle": "MedlinePlus — Hemoglobin A1C (HbA1c) Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/hemoglobin-a1c-hba1c-test/"
+  },
+  "insulin": {
+    "whatItIs": "Measures the amount of insulin in your blood. Insulin is a hormone your pancreas makes that helps move glucose from your blood into your cells for energy.",
+    "ifHigh": "Higher insulin may be seen with insulin resistance, where cells respond poorly to insulin and the pancreas makes more to compensate.",
+    "ifLow": "A low insulin level means the pancreas is making too little, which can let blood glucose rise.",
+    "sourceTitle": "MedlinePlus — Insulin in Blood",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/insulin-in-blood/"
+  },
+  "c_peptide": {
+    "whatItIs": "Measures C-peptide, a fragment released by the pancreas when it makes insulin. Because it lasts longer and is not in insulin medicines, it reflects how much insulin your body makes itself.",
+    "ifHigh": "A high C-peptide usually means your body is making more insulin than it needs; it may be seen with type 2 diabetes or a pancreatic tumour.",
+    "ifLow": "A low C-peptide may mean your body is not making enough insulin, which can be seen with type 1 diabetes.",
+    "sourceTitle": "MedlinePlus — C-Peptide Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/c-peptide-test/"
+  },
+
+  "wbc": {
+    "whatItIs": "Measures the number of white blood cells in your blood. They are part of your immune system and help fight infection and disease.",
+    "ifHigh": "A high white cell count may be seen with an infection, an inflammatory disease, an allergy, or a reaction to a medicine.",
+    "ifLow": "A low white cell count may be seen with bone-marrow damage, certain cancers, chemotherapy, or an autoimmune disorder.",
+    "sourceTitle": "MedlinePlus — White Blood Count (WBC)",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/white-blood-count-wbc/"
+  },
+  "rbc": {
+    "whatItIs": "Measures the number of red blood cells in your blood. They contain hemoglobin and carry oxygen from your lungs to every cell in your body.",
+    "ifHigh": "A high red cell count may be seen with dehydration, heart or lung disease, or sleep apnea.",
+    "ifLow": "A low red cell count may be seen with anemia, blood loss, kidney failure, or malnutrition.",
+    "sourceTitle": "MedlinePlus — Red Blood Cell (RBC) Count",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/red-blood-cell-rbc-count/"
+  },
+  "hemoglobin": {
+    "whatItIs": "Measures the level of hemoglobin in your blood. Hemoglobin is the iron-rich protein in red blood cells that carries oxygen around your body.",
+    "ifHigh": "A high hemoglobin may be seen with lung disease, heart disease, sleep apnea, or polycythemia vera.",
+    "ifLow": "A low hemoglobin may be seen with different types of anemia, blood loss, or a lack of iron or vitamin B12.",
+    "sourceTitle": "MedlinePlus — Hemoglobin Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/hemoglobin-test/"
+  },
+  "hematocrit": {
+    "whatItIs": "Measures the percentage of your blood that is made up of red blood cells. The rest is white cells, platelets, and plasma.",
+    "ifHigh": "A high hematocrit may be seen with dehydration, lung disease, heart failure, or polycythemia.",
+    "ifLow": "A low hematocrit may be seen with blood loss or anemia.",
+    "sourceTitle": "MedlinePlus — Hematocrit Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/hematocrit-test/"
+  },
+  "mcv": {
+    "whatItIs": "Measures the average size of your red blood cells. It is one of the red blood cell indices in a complete blood count.",
+    "ifHigh": "Larger-than-usual red cells may be seen with a lack of vitamin B12 or folate, or with liver disease.",
+    "ifLow": "Smaller-than-usual red cells may be seen with iron deficiency anemia or thalassemia.",
+    "sourceTitle": "MedlinePlus — MCV (Mean Corpuscular Volume)",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/mcv-mean-corpuscular-volume/"
+  },
+  "mch": {
+    "whatItIs": "Measures the average amount of hemoglobin inside a single red blood cell. It is one of the red blood cell indices in a complete blood count.",
+    "sourceTitle": "MedlinePlus — Red Blood Cell (RBC) Indices",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/red-blood-cell-rbc-indices/"
+  },
+  "mchc": {
+    "whatItIs": "Measures how concentrated the hemoglobin is in your red blood cells. It is one of the red blood cell indices in a complete blood count.",
+    "sourceTitle": "MedlinePlus — Red Blood Cell (RBC) Indices",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/red-blood-cell-rbc-indices/"
+  },
+  "rdw": {
+    "whatItIs": "Measures the differences in the size of your red blood cells. Healthy red blood cells are usually about the same size.",
+    "sourceTitle": "MedlinePlus — Red Blood Cell (RBC) Indices",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/red-blood-cell-rbc-indices/"
+  },
+  "platelets": {
+    "whatItIs": "Measures the number of platelets in your blood. Platelets are small blood cells that help form clots to stop bleeding.",
+    "ifHigh": "A higher-than-usual platelet count is called thrombocytosis and can make your blood clot more than it needs to.",
+    "ifLow": "A lower-than-usual platelet count is called thrombocytopenia and can cause you to bleed more after an injury.",
+    "sourceTitle": "MedlinePlus — Platelet Tests",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/platelet-tests/"
+  },
+  "mpv": {
+    "whatItIs": "Measures the average size of your platelets. Newly made platelets are larger, so size can give information about platelet production.",
+    "ifHigh": "Larger-than-usual platelets may be seen with a fast turnover of platelets, as in thrombocytopenia or certain bone-marrow diseases.",
+    "ifLow": "Smaller-than-usual platelets may mean the bone marrow is not making enough new platelets.",
+    "sourceTitle": "MedlinePlus — MPV Blood Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/mpv-blood-test/"
+  },
+  "neutrophils": {
+    "whatItIs": "Measures the percentage of white blood cells that are neutrophils. Neutrophils are the most common type and are the body's main defence against infection.",
+    "sourceTitle": "MedlinePlus — Blood Differential",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
+  },
+  "lymphocytes": {
+    "whatItIs": "Measures the percentage of white blood cells that are lymphocytes. They include B cells and T cells that fight infection and disease.",
+    "sourceTitle": "MedlinePlus — Blood Differential",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
+  },
+  "monocytes": {
+    "whatItIs": "Measures the percentage of white blood cells that are monocytes. They kill germs, boost the immune response, and clear away dead cells.",
+    "sourceTitle": "MedlinePlus — Blood Differential",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
+  },
+  "eosinophils": {
+    "whatItIs": "Measures the percentage of white blood cells that are eosinophils. They defend against parasites and are involved in allergies and inflammation.",
+    "sourceTitle": "MedlinePlus — Blood Differential",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
+  },
+  "basophils": {
+    "whatItIs": "Measures the percentage of white blood cells that are basophils. They release enzymes during allergic reactions and asthma attacks.",
+    "sourceTitle": "MedlinePlus — Blood Differential",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
+  },
+  "neutrophils_abs": {
+    "whatItIs": "Measures the amount of neutrophils in your blood, rather than only their percentage of the white cells.",
+    "sourceTitle": "MedlinePlus — Blood Differential",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
+  },
+  "lymphocytes_abs": {
+    "whatItIs": "Measures the amount of lymphocytes in your blood, rather than only their percentage of the white cells.",
+    "sourceTitle": "MedlinePlus — Blood Differential",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
+  },
+  "monocytes_abs": {
+    "whatItIs": "Measures the amount of monocytes in your blood, rather than only their percentage of the white cells.",
+    "sourceTitle": "MedlinePlus — Blood Differential",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
+  },
+  "eosinophils_abs": {
+    "whatItIs": "Measures the amount of eosinophils in your blood, rather than only their percentage of the white cells.",
+    "sourceTitle": "MedlinePlus — Blood Differential",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
+  },
+  "basophils_abs": {
+    "whatItIs": "Measures the amount of basophils in your blood, rather than only their percentage of the white cells.",
+    "sourceTitle": "MedlinePlus — Blood Differential",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
+  },
+
+  "alt": {
+    "whatItIs": "Measures the amount of ALT in your blood. ALT is an enzyme found mainly in the liver; when liver cells are damaged, they release it into the blood.",
+    "ifHigh": "High ALT in the blood may be a sign of a liver injury or disease, and can rise before symptoms appear.",
+    "sourceTitle": "MedlinePlus — ALT Blood Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/alt-blood-test/"
+  },
+  "ast": {
+    "whatItIs": "Measures the amount of AST in your blood. AST is an enzyme found mainly in the liver but also in the heart, muscles, and other tissues.",
+    "ifHigh": "High AST can occur when the liver or other cells that contain AST are damaged.",
+    "sourceTitle": "MedlinePlus — AST Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/ast-test/"
+  },
+  "alp": {
+    "whatItIs": "Measures the amount of alkaline phosphatase (ALP) in your blood. ALP is an enzyme found in many tissues, with higher amounts in the liver, bile ducts, and bones.",
+    "ifHigh": "Abnormal ALP may be a sign of a range of conditions, including liver disease, bone disorders, and chronic kidney disease.",
+    "sourceTitle": "MedlinePlus — Alkaline Phosphatase",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/alkaline-phosphatase/"
+  },
+  "ggt": {
+    "whatItIs": "Measures the amount of GGT in your blood. GGT is an enzyme found throughout the body but mainly in the liver.",
+    "ifHigh": "High GGT may be a sign of liver disease or damage to the bile ducts. Drinking alcohol raises GGT levels.",
+    "sourceTitle": "MedlinePlus — Gamma-glutamyl Transferase (GGT) Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/gamma-glutamyl-transferase-ggt-test/"
+  },
+  "total_bilirubin": {
+    "whatItIs": "Measures the level of bilirubin in your blood. Bilirubin is a yellowish waste product made when your body breaks down old red blood cells.",
+    "ifHigh": "High bilirubin may mean your liver isn't working right, and can cause jaundice, a yellowing of the skin and eyes.",
+    "sourceTitle": "MedlinePlus — Bilirubin Blood Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/bilirubin-blood-test/"
+  },
+  "direct_bilirubin": {
+    "whatItIs": "Direct bilirubin is one of the forms of bilirubin a bilirubin blood test can measure; it is also called conjugated bilirubin.",
+    "sourceTitle": "MedlinePlus — Bilirubin Blood Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/bilirubin-blood-test/"
+  },
+  "albumin": {
+    "whatItIs": "Measures the amount of albumin in your blood. Albumin is a protein made by your liver that keeps fluid from leaking out of your blood vessels.",
+    "ifHigh": "High albumin may be a sign of dehydration.",
+    "ifLow": "Low albumin can be a sign of liver or kidney disease, or another medical condition.",
+    "sourceTitle": "MedlinePlus — Albumin Blood Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/albumin-blood-test/"
+  },
+  "total_protein": {
+    "whatItIs": "Measures the total amount of protein in your blood. It includes albumin and globulins, the two major types of protein in the blood.",
+    "ifLow": "A low total protein may be a sign of liver disease, kidney disease, or malnutrition.",
+    "sourceTitle": "MedlinePlus — Total Protein and Albumin/Globulin (A/G) Ratio",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/total-protein-and-albumin-globulin-a-g-ratio/"
+  },
+  "globulin": {
+    "whatItIs": "Measures the globulins, the proteins in your blood other than albumin. Globulins help fight infection and move nutrients around the body.",
+    "sourceTitle": "MedlinePlus — Total Protein and Albumin/Globulin (A/G) Ratio",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/total-protein-and-albumin-globulin-a-g-ratio/"
+  },
+  "albumin_globulin_ratio": {
+    "whatItIs": "The albumin/globulin (A/G) ratio compares the amount of albumin in your blood to the amount of globulin.",
+    "ifHigh": "An A/G ratio outside the normal range can be a sign of a serious health problem.",
+    "sourceTitle": "MedlinePlus — Total Protein and Albumin/Globulin (A/G) Ratio",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/total-protein-and-albumin-globulin-a-g-ratio/"
+  },
+
+  "creatinine": {
+    "whatItIs": "Measures the level of creatinine in your blood. Creatinine is a normal waste product from muscle use that healthy kidneys filter out.",
+    "ifHigh": "A high blood creatinine may mean the kidneys are not filtering well; it can be a sign of kidney disease.",
+    "sourceTitle": "MedlinePlus — Creatinine Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/creatinine-test/"
+  },
+  "egfr": {
+    "whatItIs": "An estimate of how much blood your kidneys filter each minute. It is calculated from creatinine, age, weight, height, and sex.",
+    "ifLow": "A lower eGFR may mean reduced kidney function; it is used to help gauge how serious kidney disease may be.",
+    "sourceTitle": "MedlinePlus — Glomerular Filtration Rate (GFR) Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/glomerular-filtration-rate-gfr-test/"
+  },
+  "bun": {
+    "whatItIs": "Measures the amount of urea nitrogen in your blood. Urea nitrogen is a waste product formed as your body breaks down proteins.",
+    "ifHigh": "A higher-than-usual BUN may be a sign your kidneys aren't working well; BUN also tends to rise with age and can vary by sex.",
+    "sourceTitle": "MedlinePlus — BUN (Blood Urea Nitrogen)",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/bun-blood-urea-nitrogen/"
+  },
+  "bun_creatinine_ratio": {
+    "whatItIs": "Compares your blood urea nitrogen (BUN) with your creatinine. When the two are measured in the same test, comparing them can help find out the cause of a kidney problem.",
+    "sourceTitle": "MedlinePlus — Creatinine Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/creatinine-test/"
+  },
+  "uric_acid": {
+    "whatItIs": "Measures the amount of uric acid in your blood. Uric acid is a normal waste product your body makes when it breaks down purines.",
+    "ifHigh": "High uric acid can build up in the blood and form crystals in and around the joints, a condition called gout.",
+    "ifLow": "Low uric acid is uncommon and is usually not the main concern; the test is mostly used to look at high levels.",
+    "sourceTitle": "MedlinePlus — Uric Acid Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/uric-acid-test/"
+  },
+  "sodium": {
+    "whatItIs": "Measures the level of sodium, an electrolyte that helps control the amount of fluid in your body and helps your nerves and muscles work.",
+    "ifHigh": "An abnormal sodium level may be a sign of a fluid or acid-base imbalance or another serious health problem.",
+    "sourceTitle": "MedlinePlus — Electrolyte Panel",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/electrolyte-panel/"
+  },
+  "potassium": {
+    "whatItIs": "Measures the level of potassium, an electrolyte that helps your cells, heart, and muscles work properly.",
+    "ifHigh": "Abnormal potassium levels may be a sign of a serious health problem, including kidney disease or a dangerous irregular heartbeat.",
+    "sourceTitle": "MedlinePlus — Electrolyte Panel",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/electrolyte-panel/"
+  },
+  "chloride": {
+    "whatItIs": "Measures the level of chloride, an electrolyte that helps control the amount of fluid in your body and helps maintain healthy blood volume and pressure.",
+    "ifHigh": "An abnormal chloride level may be a sign of a fluid or acid-base imbalance in the body.",
+    "sourceTitle": "MedlinePlus — Electrolyte Panel",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/electrolyte-panel/"
+  },
+  "co2_bicarbonate": {
+    "whatItIs": "Measures bicarbonate, an electrolyte that helps maintain your body's acid-base (pH) balance and helps move carbon dioxide through the blood.",
+    "ifHigh": "An abnormal bicarbonate level may be a sign of an acid-base imbalance or another serious health problem.",
+    "sourceTitle": "MedlinePlus — Electrolyte Panel",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/electrolyte-panel/"
+  },
+  "calcium": {
+    "whatItIs": "Measures the level of calcium in your blood. Having the right amount is needed for your nerves, muscles, and heart to work properly.",
+    "ifHigh": "An abnormal blood calcium level may be a sign of a health problem affecting the bones, kidneys, or other organs.",
+    "sourceTitle": "MedlinePlus — Calcium Blood Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/calcium-blood-test/"
+  },
+  "magnesium": {
+    "whatItIs": "Measures the amount of magnesium in your blood. Magnesium is a mineral that helps your muscles, nerves, and heart work properly.",
+    "ifHigh": "A high magnesium level is uncommon and most cases occur in people who have kidney failure.",
+    "ifLow": "A low magnesium level is called magnesium deficiency and is more common than a high level.",
+    "sourceTitle": "MedlinePlus — Magnesium Blood Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/magnesium-blood-test/"
+  },
+  "phosphorus": {
+    "whatItIs": "Measures the level of phosphate in your blood. Phosphate works together with calcium to build strong bones and teeth.",
+    "ifHigh": "An abnormal phosphate level may be a sign of a health problem, often related to the kidneys, bones, or calcium balance.",
+    "sourceTitle": "MedlinePlus — Phosphate in Blood",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/phosphate-in-blood/"
+  },
+  "anion_gap": {
+    "whatItIs": "A calculated value showing the gap between negatively and positively charged electrolytes in your blood, reflecting your acid-base balance.",
+    "ifHigh": "A high anion gap may mean your blood is more acidic than usual.",
+    "ifLow": "A low anion gap may mean your blood isn't acidic enough; it is uncommon and is often linked to a low albumin level.",
+    "sourceTitle": "MedlinePlus — Anion Gap Blood Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/anion-gap-blood-test/"
+  },
+
+  "tsh": {
+    "whatItIs": "Measures thyroid-stimulating hormone, which your pituitary gland makes to tell your thyroid how much thyroid hormone to produce.",
+    "ifHigh": "A high TSH may be a sign of an underactive thyroid (hypothyroidism).",
+    "ifLow": "A low TSH may be a sign of an overactive thyroid (hyperthyroidism).",
+    "sourceTitle": "MedlinePlus — TSH (Thyroid-stimulating hormone) Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/tsh-thyroid-stimulating-hormone-test/"
+  },
+  "free_t4": {
+    "whatItIs": "Measures free T4, the active form of thyroxine that enters your body tissues. It is usually done with a TSH test.",
+    "ifHigh": "A high T4 may be a sign of an overactive thyroid (hyperthyroidism).",
+    "ifLow": "A low T4 may be a sign of an underactive thyroid (hypothyroidism).",
+    "sourceTitle": "MedlinePlus — Thyroxine (T4) Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/thyroxine-t4-test/"
+  },
+  "free_t3": {
+    "whatItIs": "Measures free T3, the active form of triiodothyronine that enters your tissues. It is used to help diagnose thyroid disease.",
+    "ifHigh": "A high T3 may be a sign of an overactive thyroid (hyperthyroidism).",
+    "sourceTitle": "MedlinePlus — Triiodothyronine (T3) Tests",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/triiodothyronine-t3-tests/"
+  },
+  "total_t4": {
+    "whatItIs": "Measures total T4, which is both the free and the protein-bound thyroxine in your blood added together.",
+    "ifHigh": "A high T4 may be a sign of an overactive thyroid (hyperthyroidism).",
+    "ifLow": "A low T4 may be a sign of an underactive thyroid (hypothyroidism).",
+    "sourceTitle": "MedlinePlus — Thyroxine (T4) Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/thyroxine-t4-test/"
+  },
+  "total_t3": {
+    "whatItIs": "Measures total T3, which is both the free and the protein-bound triiodothyronine in your blood added together.",
+    "ifHigh": "A high T3 may be a sign of an overactive thyroid (hyperthyroidism).",
+    "sourceTitle": "MedlinePlus — Triiodothyronine (T3) Tests",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/triiodothyronine-t3-tests/"
+  },
+
+  "ferritin": {
+    "whatItIs": "Measures the level of ferritin in your blood. Ferritin is a protein that binds to iron and stores it in your body.",
+    "ifHigh": "A high ferritin can be seen with too much iron in the body (iron overload), with liver disease, or with inflammation.",
+    "ifLow": "A low ferritin suggests your body's iron stores are low, which can lead to iron deficiency anemia.",
+    "sourceTitle": "MedlinePlus — Ferritin Blood Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/ferritin-blood-test/"
+  },
+  "iron": {
+    "whatItIs": "Measures the amount of iron in your blood. Iron is a mineral your body needs for growth and to make hemoglobin in red blood cells.",
+    "ifHigh": "A high blood iron may be a sign of iron overload (hemochromatosis).",
+    "ifLow": "A low blood iron may be a sign of anemia; not everyone with low iron has anemia.",
+    "sourceTitle": "MedlinePlus — Iron Tests",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/iron-tests/"
+  },
+  "tibc": {
+    "whatItIs": "Measures how well iron attaches to transferrin and other proteins in the blood; this is called the total iron-binding capacity.",
+    "sourceTitle": "MedlinePlus — Iron Tests",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/iron-tests/"
+  },
+  "transferrin_saturation": {
+    "whatItIs": "The percentage of your iron-carrying capacity that is filled with iron (transferrin saturation). It is reported with your serum iron and total iron-binding capacity (TIBC) results.",
+    "sourceTitle": "Labcorp — Iron and Total Iron-binding Capacity (TIBC)",
+    "sourceUrl": "https://www.labcorp.com/tests/001321/iron-and-total-iron-binding-capacity-tibc"
+  },
+  "vitamin_b12": {
+    "whatItIs": "Measures the amount of vitamin B12 (cobalamin) in your blood. B12 gives your body energy and helps keep your nerves and blood cells healthy.",
+    "ifLow": "A low B12 can cause serious problems, including nerve disorders and some types of anemia.",
+    "sourceTitle": "MedlinePlus — Vitamin B Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/vitamin-b-test/"
+  },
+  "folate": {
+    "whatItIs": "Measures the amount of folate (folic acid, vitamin B9) in your blood. Folate helps form red blood cells and make DNA.",
+    "ifLow": "A lower-than-usual folate level may be seen with a poor diet, malnutrition, or malabsorption, and can contribute to a type of anemia.",
+    "sourceTitle": "MedlinePlus — Folic acid - test",
+    "sourceUrl": "https://medlineplus.gov/ency/article/003686.htm"
+  },
+  "vitamin_d_25oh": {
+    "whatItIs": "Measures 25-hydroxyvitamin D, the form of vitamin D that most vitamin D blood tests measure to check your vitamin D status.",
+    "ifHigh": "Very high vitamin D is uncommon and is usually related to taking large doses of supplements.",
+    "ifLow": "A low level is associated with vitamin D deficiency, which can cause soft, weak bones.",
+    "sourceTitle": "MedlinePlus — Vitamin D Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/vitamin-d-test/"
+  },
+
+  "hs_crp": {
+    "whatItIs": "Measures very tiny increases in C-reactive protein, a protein your liver makes in response to inflammation. This version is used to estimate heart-disease risk.",
+    "ifHigh": "A higher hs-CRP is associated with a higher estimated risk of heart disease.",
+    "sourceTitle": "MedlinePlus — C-Reactive Protein (CRP) Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/c-reactive-protein-crp-test/"
+  },
+  "crp": {
+    "whatItIs": "Measures the level of C-reactive protein, which your liver makes in response to inflammation. It rises and falls with how much inflammation is present.",
+    "ifHigh": "A high CRP may be seen with an acute or chronic condition, such as an infection or an inflammatory or autoimmune disorder.",
+    "sourceTitle": "MedlinePlus — C-Reactive Protein (CRP) Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/c-reactive-protein-crp-test/"
+  },
+  "esr": {
+    "whatItIs": "Measures how quickly your red blood cells settle to the bottom of a test tube. Inflammation makes them stick together and sink faster.",
+    "ifHigh": "A high ESR means the cells sank faster than usual and may point to a condition causing inflammation.",
+    "sourceTitle": "MedlinePlus — Erythrocyte Sedimentation Rate (ESR)",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/erythrocyte-sedimentation-rate-esr/"
+  },
+  "homocysteine": {
+    "whatItIs": "Measures the amount of homocysteine in your blood. Homocysteine is an amino acid your body normally breaks down using vitamins B12, B6, and folate.",
+    "ifHigh": "A high homocysteine may be a sign that this breakdown isn't working right or that you lack certain B vitamins.",
+    "sourceTitle": "MedlinePlus — Homocysteine Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/homocysteine-test/"
+  },
+
+  "total_testosterone": {
+    "whatItIs": "Measures the amount of testosterone in your blood, counting both the free and the protein-bound form. This is the most common testosterone test.",
+    "ifLow": "Low testosterone in men may be linked to symptoms such as a low sex drive; the test is mostly used for this in men past puberty.",
+    "sourceTitle": "MedlinePlus — Testosterone Levels Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/testosterone-levels-test/"
+  },
+  "free_testosterone": {
+    "whatItIs": "Measures only the unattached (free) form of testosterone, which is the part your body can use most easily. Most testosterone is bound to proteins.",
+    "ifLow": "A lower free testosterone may be linked to symptoms of low testosterone, such as a low sex drive in men.",
+    "sourceTitle": "MedlinePlus — Testosterone Levels Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/testosterone-levels-test/"
+  },
+  "estradiol": {
+    "whatItIs": "Measures estradiol (E2), the main estrogen in non-pregnant females of childbearing age. Males make small amounts in the testicles.",
+    "ifHigh": "Estrogen levels that stay too high may be a sign of a health problem.",
+    "ifLow": "Estrogen levels that stay too low may be a sign of a health problem.",
+    "sourceTitle": "MedlinePlus — Estrogen Levels Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/estrogen-levels-test/"
+  },
+  "shbg": {
+    "whatItIs": "Measures sex hormone-binding globulin, the blood protein that carries testosterone and estradiol. SHBG is made mainly by the liver.",
+    "ifHigh": "Elevated SHBG can be seen in older men and in people with an overactive thyroid or cirrhosis of the liver.",
+    "sourceTitle": "Labcorp — Sex Hormone-binding Globulin",
+    "sourceUrl": "https://www.labcorp.com/tests/082016/sex-hormone-binding-globulin"
+  },
+  "psa": {
+    "whatItIs": "Measures the level of prostate-specific antigen, a protein made by the prostate gland. Having a low level is usual.",
+    "ifHigh": "A high PSA may be caused by prostate cancer, an enlarged prostate, prostatitis, or other prostate problems; the test cannot show which cause it is.",
+    "sourceTitle": "MedlinePlus — Prostate-Specific Antigen (PSA) Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/prostate-specific-antigen-psa-test/"
+  },
+  "lh": {
+    "whatItIs": "Measures luteinizing hormone. In women it helps control the menstrual cycle and triggers ovulation; in men it signals the testicles to make testosterone.",
+    "ifHigh": "Abnormal LH levels may be a sign of a problem with the pituitary gland, the hypothalamus, or the reproductive glands.",
+    "sourceTitle": "MedlinePlus — Luteinizing Hormone (LH) Levels Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/luteinizing-hormone-lh-levels-test/"
+  },
+  "fsh": {
+    "whatItIs": "Measures follicle-stimulating hormone. In women it helps control the menstrual cycle; in men it helps control sperm production.",
+    "ifHigh": "Abnormal FSH levels may be a sign of a problem with the pituitary gland, the hypothalamus, or the reproductive glands.",
+    "sourceTitle": "MedlinePlus — Follicle-Stimulating Hormone (FSH) Levels Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/follicle-stimulating-hormone-fsh-levels-test/"
+  },
+  "dhea_s": {
+    "whatItIs": "Measures DHEA sulfate, a steroid hormone mostly made by the adrenal glands. Levels peak around puberty and fall as you age.",
+    "ifHigh": "Abnormal DHEAS may mean a problem with the adrenal glands or with the sex hormones.",
+    "sourceTitle": "MedlinePlus — DHEA Sulfate Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/dhea-sulfate-test/"
+  },
+  "cortisol_am": {
+    "whatItIs": "Measures the level of cortisol, a hormone your adrenal glands make. Cortisol helps your body respond to stress and control blood sugar and blood pressure.",
+    "ifHigh": "High cortisol may be seen with Cushing's syndrome, which can be caused by steroid medicines or certain tumours.",
+    "ifLow": "Low cortisol may be seen with Addison disease or another problem with the adrenal or pituitary glands.",
+    "sourceTitle": "MedlinePlus — Cortisol Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/cortisol-test/"
+  },
+  "igf_1": {
+    "whatItIs": "Measures IGF-1, a hormone that manages the effects of growth hormone. IGF-1 levels are steadier than growth-hormone levels through the day.",
+    "ifHigh": "A high IGF-1 may be seen with conditions that cause too much growth hormone, such as acromegaly in adults.",
+    "ifLow": "A low IGF-1 may be seen with growth-hormone deficiency.",
+    "sourceTitle": "MedlinePlus — IGF-1 (Insulin-like Growth Factor 1) Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/igf-1-insulin-like-growth-factor-1-test/"
+  },
+
+  "inr": {
+    "whatItIs": "A standardized ratio derived from the prothrombin time so that clotting results can be compared between labs and test methods.",
+    "ifHigh": "A higher INR means the blood is taking longer to clot; the test is used to check medicines that prevent clots.",
+    "sourceTitle": "MedlinePlus — Prothrombin Time Test and INR (PT/INR)",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/prothrombin-time-test-and-inr-ptinr/"
+  },
+  "pt": {
+    "whatItIs": "Measures how many seconds it takes for a clot to form in a blood sample, as a check of how well your blood clots.",
+    "ifHigh": "A longer prothrombin time may point to a bleeding or clotting problem, or to the effect of a blood-thinning medicine.",
+    "sourceTitle": "MedlinePlus — Prothrombin Time Test and INR (PT/INR)",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/prothrombin-time-test-and-inr-ptinr/"
+  },
+  "aptt": {
+    "whatItIs": "Measures the number of seconds it takes for your blood to clot, checking a specific group of clotting factors.",
+    "ifHigh": "If the sample takes longer than usual to clot, it may mean your body isn't making enough of those clotting factors.",
+    "sourceTitle": "MedlinePlus — Partial Thromboplastin Time (PTT) Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/partial-thromboplastin-time-ptt-test/"
+  },
+  "fibrinogen": {
+    "whatItIs": "Measures the amount of fibrinogen in your blood. Fibrinogen is a protein made by the liver that helps blood clots form.",
+    "ifLow": "A low fibrinogen may be due to the body using it up too fast or to a fibrinogen deficiency.",
+    "sourceTitle": "MedlinePlus — Fibrinogen blood test",
+    "sourceUrl": "https://medlineplus.gov/ency/article/003650.htm"
+  },
+  "d_dimer": {
+    "whatItIs": "Looks for D-dimer, a protein fragment made when a blood clot dissolves. It is not usually found unless your body is making or breaking up clots.",
+    "ifHigh": "A higher D-dimer may suggest a blood clot is present and that more tests are needed.",
+    "sourceTitle": "MedlinePlus — D-Dimer Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/d-dimer-test/"
+  },
+
+  "troponin_hs": {
+    "whatItIs": "Measures troponin, a protein found in heart-muscle cells. Normally levels are very low; if heart muscle is damaged, troponin leaks into the blood.",
+    "ifHigh": "A higher troponin may confirm damage to heart muscle, such as from a heart attack.",
+    "sourceTitle": "MedlinePlus — Troponin Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/troponin-test/"
+  },
+  "bnp": {
+    "whatItIs": "Measures BNP, a protein your heart releases when it is working harder than usual to pump blood. It helps confirm or rule out heart failure.",
+    "ifHigh": "A higher-than-usual BNP for your age and sex may be a sign of heart failure.",
+    "sourceTitle": "MedlinePlus — Natriuretic Peptide Tests (BNP, NT-proBNP)",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/natriuretic-peptide-tests-bnp-nt-probnp/"
+  },
+  "nt_probnp": {
+    "whatItIs": "Measures NT-proBNP, a protein that is an ingredient for making the BNP hormone. Your heart makes more of it when it has to work harder.",
+    "ifHigh": "A higher-than-usual NT-proBNP for your age and sex may be a sign of heart failure.",
+    "sourceTitle": "MedlinePlus — Natriuretic Peptide Tests (BNP, NT-proBNP)",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/natriuretic-peptide-tests-bnp-nt-probnp/"
+  },
+  "ck": {
+    "whatItIs": "Measures the amount of creatine kinase in your blood. CK is an enzyme that helps make energy, found mostly in your skeletal muscles.",
+    "ifHigh": "A high CK may be seen when muscles, the heart, or the brain are damaged, leaking CK into the blood.",
+    "sourceTitle": "MedlinePlus — Creatine Kinase",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/creatine-kinase/"
+  }
+}

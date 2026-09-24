@@ -25,3 +25,11 @@ export const LAB_INTERVAL_NOTICE =
 /** Where an imported value came from, stated wherever one is shown. */
 export const LAB_SOURCE_NOTICE =
   'Every value here was imported from a PDF you uploaded and is shown exactly as the document printed it. Vital does not measure these values and does not convert them.';
+
+/**
+ * The disclosure that sits with an analyte's description: the description is
+ * general information about the analyte itself, and the interval shown beside a
+ * value is the document's own print — never a personal target.
+ */
+export const LAB_DESCRIPTION_NOTICE =
+  'General information about the analyte itself, not medical advice and not a diagnosis. The reference interval shown with a value is the one the document printed.';

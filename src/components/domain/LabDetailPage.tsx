@@ -56,7 +56,7 @@ import {
   SegmentedControl,
 } from '@/components/ui/primitives';
 import { LabChart, LabChartFacts, LabObservationTable } from '@/components/charts';
-import { LabNotices, LabStatusBadge, needsSexNotice, observationRows } from './LabShared';
+import { LabNotices, LabStatusBadge, LabAnalyteDescription, needsSexNotice, observationRows } from './LabShared';
 
 const RANGE_OPTIONS = [
   { value: 'all', label: 'All' },
@@ -194,6 +194,11 @@ function LabDetailContent({ analyteKey, data }: { analyteKey: string; data: Load
           {registry?.unit ? ` Registry unit: ${registry.unit}.` : ''}
         </p>
       </header>
+
+      {/* What the analyte is, and what a high or low value may mean. Rendered
+          only when a description entry exists — an absent description is absent,
+          never an empty box. */}
+      <LabAnalyteDescription analyteKey={analyteKey} />
 
       {!summary.available && (
         <Card className="p-5">

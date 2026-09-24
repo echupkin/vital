@@ -111,6 +111,33 @@ export function isNumericPoint(point: Pick<LabPoint, 'value'>): boolean {
   return point.value !== null && Number.isFinite(point.value);
 }
 
+// ── The description, trimmed for the card ───────────────────────────────────
+
+/**
+ * The character budget a Lab card's description line gets: about two lines at
+ * the card's width, so the card stays scannable and the chart keeps its space.
+ */
+export const CARD_DESCRIPTION_CHARS = 180;
+
+/**
+ * A description trimmed to the card's budget, or returned unchanged when it
+ * already fits — an ellipsis appears ONLY when something was actually cut.
+ *
+ * The cut is made at a word boundary, so a sentence is never cut mid-word and
+ * therefore never mid-number: `150-199 mg/dL` can never become `150-19…`. When
+ * there is no word boundary inside the budget (a single very long token) the
+ * text is returned whole rather than cut through it.
+ */
+export function cardDescription(text: string, maxChars: number = CARD_DESCRIPTION_CHARS): string {
+  const flat = (text ?? '').replace(/\s+/g, ' ').trim();
+  if (flat.length <= maxChars) return flat;
+  const window = flat.slice(0, maxChars + 1);
+  const lastSpace = window.lastIndexOf(' ');
+  if (lastSpace <= 0) return flat;
+  const cut = window.slice(0, lastSpace).replace(/[\s,;:.]+$/, '');
+  return cut.length > 0 ? `${cut}…` : flat;
+}
+
 /** Whole days between two ISO dates, or null when either is unparseable. */
 export function daysBetween(fromIso: string, toIso: string): number | null {
   const from = parseIsoDate(fromIso);

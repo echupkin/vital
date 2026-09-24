@@ -9,9 +9,12 @@
 import { describe, it, expect } from 'vitest';
 import type { LabBand } from './analytes';
 import { scoreResult } from './status';
+import rawDescriptions from './analyte-descriptions.json';
 import {
   BUCKET_LABEL,
+  CARD_DESCRIPTION_CHARS,
   CATEGORY_ORDER,
+  cardDescription,
   changeFromPrevious,
   chartDescription,
   chartDomain,
@@ -721,5 +724,61 @@ describe('the range control', () => {
 
   it('returns every point for "all"', () => {
     expect(filterByRange(points, null)).toHaveLength(3);
+  });
+});
+
+// ── The card's description line ─────────────────────────────────────────────
+
+describe('the description line a Lab card shows', () => {
+  it('returns copy that already fits completely unchanged — no stray ellipsis', () => {
+    const short = 'Measures the number of white blood cells in your blood.';
+    expect(cardDescription(short)).toBe(short);
+    // Exactly at the budget is still "fits".
+    const exact = 'x'.repeat(CARD_DESCRIPTION_CHARS);
+    expect(cardDescription(exact)).toBe(exact);
+  });
+
+  it('collapses whitespace so the line cannot grow by reflow', () => {
+    expect(cardDescription('  one   two \n three  ')).toBe('one two three');
+  });
+
+  it('cuts at a word boundary when it must, and only then adds an ellipsis', () => {
+    const long = 'alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima';
+    const cut = cardDescription(long, 20);
+    expect(cut.endsWith('…')).toBe(true);
+    const visible = cut.slice(0, -1);
+    expect(visible.length).toBeLessThanOrEqual(20);
+    // The cut is between whole words: the last visible word is one of the
+    // original's words, never a fragment of one.
+    expect(long.split(' ')).toContain(visible.split(' ').pop());
+  });
+
+  it('never cuts a number in half, for every real description', () => {
+    const bare = (token: string) => token.replace(/[.,;:]+$/, '');
+    for (const [key, entry] of Object.entries(rawDescriptions as Record<string, { whatItIs: string }>)) {
+      const cut = cardDescription(entry.whatItIs);
+      if (cut === entry.whatItIs) continue;
+      const visible = cut.slice(0, -1);
+      // The cut is at a space, so the last visible token is a whole token of the
+      // original copy: a number like "150-199" or "200 mg/dL" can never be left
+      // as "150-19…" or "200 m…".
+      const lastToken = bare(visible.split(' ').pop() ?? '');
+      expect(entry.whatItIs.split(' ').map(bare), key).toContain(lastToken);
+      // And the visible text really is an untouched prefix of the copy.
+      expect(entry.whatItIs.startsWith(visible), key).toBe(true);
+    }
+  });
+
+  it('truncates only the copy that genuinely does not fit', () => {
+    const entries = Object.values(rawDescriptions as Record<string, { whatItIs: string }>);
+    const cut = entries.filter(entry => cardDescription(entry.whatItIs) !== entry.whatItIs);
+    // The budget is chosen so that all but the longest few descriptions fit.
+    expect(cut.length).toBeLessThanOrEqual(2);
+    expect(entries.length).toBeGreaterThan(80);
+  });
+
+  it('returns a single very long token whole rather than cutting through it', () => {
+    const token = 'x'.repeat(CARD_DESCRIPTION_CHARS + 40);
+    expect(cardDescription(token)).toBe(token);
   });
 });
