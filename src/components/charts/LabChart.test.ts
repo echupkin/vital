@@ -82,7 +82,8 @@ describe('a single-observation series', () => {
   });
 
   it('shows the one observation date stamp on the axis and the unit on the y axis', () => {
-    expect(html).toContain('Jan 1');
+    // The date on the axis carries its YEAR, not a bare 'Jan 1'.
+    expect(html).toContain('Jan 1, 2024');
     expect(html).toContain('mg/dL');
   });
 
@@ -102,5 +103,10 @@ describe('a multi-observation series', () => {
 
   it('never claims a single observation', () => {
     expect(html).not.toContain('there is no trend to draw');
+  });
+
+  it('labels the axis with full dates, year included', () => {
+    expect(html).toContain('Jan 1, 2024');
+    expect(html).toContain('Mar 1, 2024');
   });
 });

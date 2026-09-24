@@ -40,10 +40,12 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea,
   ReferenceLine, CartesianGrid,
 } from 'recharts';
-import { formatDayKeyLong, formatDayKeyShort } from '@/lib/analytics/windows';
+import { formatDayKeyLong } from '@/lib/analytics/windows';
+import { tooltipDateLabel } from '@/lib/analytics/axis-dates';
 import { TONE_COLOR } from '@/lib/lab/tone';
 import type { LabChartModel, LabPoint } from '@/lib/lab/view';
 import { chartDomain, formatNumber, formatReading, referenceRangeText } from '@/lib/lab/view';
+import { useAxisDatePlan } from './useAxisDatePlan';
 
 const AXIS = {
   tick: { fontSize: 11, fill: 'var(--color-text-secondary)' },
@@ -84,7 +86,9 @@ function LabTooltip({ active, payload, unit }: any) {
   if (!datum) return null;
   return (
     <div className="bg-surface border border-border rounded-lg shadow-lg px-3 py-2 text-xs">
-      <div className="text-text-secondary mb-1">{formatDayKeyShort(datum.date)}</div>
+      {/* ALWAYS the full date, year included — even where the axis had to fall
+          back to a compact form, and even for a single observation. */}
+      <div className="text-text-secondary mb-1">{tooltipDateLabel(datum.date)}</div>
       <div className="tnum text-text-primary font-medium">{datum.reading}</div>
       <div className="text-text-secondary mt-0.5">{datum.statusLabel}</div>
       {unit && <div className="text-[10px] text-text-secondary mt-0.5">unit {unit}</div>}
@@ -134,12 +138,21 @@ function LabTrend({
   const single = data.length === 1;
   const only = single ? data[0]! : null;
 
+  // The axis form is decided from the MEASURED width of the labels at the tick
+  // font, not assumed: the full date when it fits every tick, the compact
+  // year-bearing form when it does not, and — only as a last resort — the year
+  // on the first tick and wherever it changes. `minTickGap` is unchanged.
+  const { ref, plan } = useAxisDatePlan(
+    data.map(datum => datum.date),
+    { minTickGap: 32, reservedWidth: (unit ? 62 : 46) + 4 + 12 }
+  );
+
   return (
-    <div role="img" aria-label={`${analyteName} trend chart. ${describeTrend(model)}`}>
+    <div ref={ref} role="img" aria-label={`${analyteName} trend chart. ${describeTrend(model)}`}>
       <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-          <XAxis {...AXIS} dataKey="date" minTickGap={32} tickFormatter={(v: string) => formatDayKeyShort(v)} />
+          <XAxis {...AXIS} dataKey="date" minTickGap={32} tickFormatter={(v: string) => plan.label(v)} />
           <YAxis
             {...AXIS}
             width={unit ? 62 : 46}

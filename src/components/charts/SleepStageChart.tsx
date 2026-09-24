@@ -13,8 +13,9 @@
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { formatDurationHm } from '@/lib/metrics/format';
-import { formatDayKeyLong, formatDayKeyShort } from '@/lib/analytics/windows';
+import { formatDayKeyLong } from '@/lib/analytics/windows';
 import type { SleepDay } from '@/lib/adapters/dataset';
+import { useAxisDatePlan } from './useAxisDatePlan';
 
 /** Stage → category palette. The legend labels each colour, so nothing is conveyed by colour alone. */
 export const SLEEP_STAGE_META = [
@@ -116,6 +117,13 @@ export function SleepStageChart({
   showBrush?: boolean;
 }) {
   void showBrush;
+  // The x axis labels one bar per NIGHT, and a long window spans years: the
+  // date form is decided from the measured label widths, exactly as on the lab
+  // and metric charts, so the year is on the axis and not only on hover.
+  const { ref, plan } = useAxisDatePlan(
+    nights.map(day => day.key),
+    { minTickGap: 40, reservedWidth: 52 + 0 + 8 }
+  );
   if (nights.length === 0) return null;
   const rows = sleepStageRows(nights);
   const withStages = rows.filter(r => r.hasStages).length;
@@ -143,7 +151,7 @@ export function SleepStageChart({
         )}
       </div>
 
-      <div role="img" aria-label={summary}>
+      <div ref={ref} role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height={height}>
           <BarChart data={rows} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
@@ -153,7 +161,7 @@ export function SleepStageChart({
               tickLine={false}
               axisLine={false}
               minTickGap={40}
-              tickFormatter={(v: string) => formatDayKeyShort(v)}
+              tickFormatter={(v: string) => plan.label(v)}
             />
             <YAxis
               width={52}

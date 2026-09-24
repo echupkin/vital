@@ -8,7 +8,9 @@ import {
 import { getMetric } from '@/lib/metrics';
 import { formatMetricTick, formatMetricWithUnit, metricUnit, formatMetricValue } from '@/lib/metrics/format';
 import type { UnitSystem } from '@/lib/prefs';
-import { formatDayKeyLong, formatDayKeyShort } from '@/lib/analytics/windows';
+import { formatDayKeyLong } from '@/lib/analytics/windows';
+import { tooltipDateLabel } from '@/lib/analytics/axis-dates';
+import { useAxisDatePlan } from './useAxisDatePlan';
 
 export interface ChartDataPoint {
   date: string;
@@ -40,7 +42,8 @@ function TooltipBox({ metricId, units, label, value }: {
   const meta = getMetric(metricId);
   return (
     <div className="bg-surface border border-border rounded-lg shadow-lg px-3 py-2 text-sm">
-      <div className="text-text-secondary text-xs mb-1">{formatDayKeyShort(label)}</div>
+      {/* ALWAYS the full date, year included. */}
+      <div className="text-text-secondary text-xs mb-1">{tooltipDateLabel(label)}</div>
       <div className="font-medium tnum text-text-primary">
         {formatMetricWithUnit(metricId, value, units)}
       </div>
@@ -73,6 +76,14 @@ export function MetricChart({
   const meta = getMetric(metricId);
   const isCount = meta?.aggregationStrategy === 'sum';
   const unit = metricUnit(metricId, units);
+
+  // The axis form is decided from the MEASURED width of the labels at the tick
+  // font, so a multi-year range keeps its year on the chart and never relies on
+  // the tooltip alone. `minTickGap` is unchanged.
+  const { ref, plan } = useAxisDatePlan(
+    data.map(point => point.date),
+    { minTickGap: 40, reservedWidth: (unit ? 62 : 48) + 10 }
+  );
 
   if (data.length === 0) return null;
 
@@ -107,7 +118,7 @@ export function MetricChart({
       {...axisCommon}
       dataKey="date"
       minTickGap={40}
-      tickFormatter={(v: string) => formatDayKeyShort(v)}
+      tickFormatter={(v: string) => plan.label(v)}
     />
   );
 
@@ -119,14 +130,14 @@ export function MetricChart({
       gap={1}
       stroke="var(--color-accent)"
       fill="var(--color-surface-muted)"
-      tickFormatter={(v: string) => formatDayKeyShort(v)}
+      tickFormatter={(v: string) => plan.label(v)}
     />
   ) : null;
 
   const summary = meta
-    ? `${meta.displayName} chart${unit ? ` in ${unit}` : ''}, ${data.length} observations from ${formatDayKeyShort(
+    ? `${meta.displayName} chart${unit ? ` in ${unit}` : ''}, ${data.length} observations from ${formatDayKeyLong(
         data[0].date
-      )} to ${formatDayKeyShort(data[data.length - 1].date)}, ranging ${formatMetricValue(
+      )} to ${formatDayKeyLong(data[data.length - 1].date)}, ranging ${formatMetricValue(
         metricId,
         Math.min(...data.map(d => d.value)),
         units
@@ -139,7 +150,7 @@ export function MetricChart({
         <span className="text-xs font-medium text-text-secondary">{meta?.displayName ?? metricId}</span>
         {unit && <span className="text-[10px] text-text-secondary tnum">y-axis: {unit}</span>}
       </div>
-      <div role="img" aria-label={summary}>
+      <div ref={ref} role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height={height}>
           {isCount ? (
             <BarChart data={data}>
@@ -371,7 +382,7 @@ export function RelationshipScatter({
               const p = payload[0].payload as ScatterPoint;
               return (
                 <div className="bg-surface border border-border rounded-lg shadow-lg px-3 py-2 text-xs">
-                  <div className="text-text-secondary mb-1">{formatDayKeyShort(p.key)}</div>
+                  <div className="text-text-secondary mb-1">{tooltipDateLabel(p.key)}</div>
                   <div className="tnum text-text-primary">
                     {xLabel}: {formatMetricWithUnit(xMetricId, p.x, units)}
                   </div>
