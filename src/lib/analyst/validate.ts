@@ -139,7 +139,14 @@ export function citableMetricIds(bundle: RetrievalBundle): Set<string> {
     ids.add(p.xMetricId);
     ids.add(p.yMetricId);
   }
+  // A lab series is cited by its series id (the key the Lab page links with),
+  // so a lab figure the model states can carry an evidence card too.
+  if (bundle.lab?.available) for (const series of bundle.lab.series) ids.add(series.seriesKey);
   return ids;
+}
+
+function labSeriesIn(bundle: RetrievalBundle, seriesKey: string) {
+  return bundle.lab?.available ? bundle.lab.series.find(series => series.seriesKey === seriesKey) ?? null : null;
 }
 
 function coerceEvidence(raw: unknown, bundle: RetrievalBundle): AnalystEvidence[] {
@@ -152,9 +159,12 @@ function coerceEvidence(raw: unknown, bundle: RetrievalBundle): AnalystEvidence[
     const entry = item as Record<string, unknown>;
     const metricId = coerceText(entry.metricId, 80);
     if (!metricId) continue;
-    // Must be a real registry metric AND must have been in the selected context.
+    // Must have been in the selected context. For a lab series that means its
+    // series id; for a metric it means a real registry metric that was selected.
     const meta = getMetric(metricId);
-    if (!meta || !allowed.has(metricId)) continue;
+    const labSeries = labSeriesIn(bundle, metricId);
+    if (!labSeries && (!meta || !allowed.has(metricId))) continue;
+    if (labSeries && !allowed.has(metricId)) continue;
     if (seen.has(metricId)) continue;
     seen.add(metricId);
 
@@ -164,22 +174,26 @@ function coerceEvidence(raw: unknown, bundle: RetrievalBundle): AnalystEvidence[
       ? `${windowRangeLabel(summary.window)} (${summary.lengthLabel})`
       : pair
         ? windowRangeLabel(pair.window)
-        : 'Selected window';
+        : labSeries
+          ? `latest observation ${labSeries.latest?.on ?? 'date not stated'}`
+          : 'Selected window';
     const fallbackCount = summary
       ? `${summary.counts.evaluated} observations evaluated, ${summary.counts.baseline} in the baseline`
       : pair
         ? `${pair.pairedCount} paired days`
-        : 'Sample counts not stated';
-    const fallbackAggregation = summary?.aggregation ?? 'daily value, paired by calendar day';
+        : labSeries
+          ? `${labSeries.observations} observations; ${labSeries.shownPoints} in this context`
+          : 'Sample counts not stated';
+    const fallbackAggregation = summary?.aggregation ?? (labSeries ? 'latest observation' : 'daily value, paired by calendar day');
 
     out.push({
       metricId,
-      metricName: meta.displayName,
+      metricName: meta?.displayName ?? labSeries?.displayName ?? metricId,
       windowLabel: coerceText(entry.windowLabel, MAX_LINE_CHARS) ?? fallbackWindow,
       aggregation: coerceText(entry.aggregation, MAX_LINE_CHARS) ?? fallbackAggregation,
       sampleCount: coerceText(entry.sampleCount, MAX_LINE_CHARS) ?? fallbackCount,
       // The link is ours, never the model's: it must point at a route that exists.
-      href: `/metric/${metricId}?range=${meta.defaultRange}`,
+      href: meta ? `/metric/${metricId}?range=${meta.defaultRange}` : `/lab/${metricId}`,
     });
     if (out.length >= MAX_EVIDENCE) break;
   }
