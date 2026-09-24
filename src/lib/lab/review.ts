@@ -459,21 +459,32 @@ export function evaluateUploadResponse(status: number, body: unknown): UploadOut
     }
     if (draft.kind === 'unknown') {
       const scan = draft.warnings.some((warning: ExtractionWarning) => warning.code === 'page_without_text');
+      if (scan) {
+        return {
+          outcome: 'problem',
+          problem: {
+            code: 'scan',
+            message:
+              'This document has no text layer, so it looks like a scan; OCR is not implemented, so nothing can be read from it.',
+            retryable: true,
+          },
+        };
+      }
+      // An `unknown` document with readable text is a LAYOUT we do not support,
+      // not a broken file. Say what was actually read, and never imply the file
+      // is corrupt. The retry hint the screen appends carries the "nothing was
+      // imported" sentence, so this message does not repeat it.
+      const pages =
+        draft.pageCount > 0 ? `${draft.pageCount} page${draft.pageCount === 1 ? '' : 's'}` : 'an unreadable page count';
+      const lab = draft.labName ? ` from ${draft.labName}` : '';
       return {
         outcome: 'problem',
-        problem: scan
-          ? {
-              code: 'scan',
-              message:
-                'This document has no text layer, so it looks like a scan; OCR is not implemented, so nothing can be read from it.',
-              retryable: true,
-            }
-          : {
-              code: 'unreadable',
-              message:
-                'No result table could be read from this document. Nothing was imported — no rows are guessed at.',
-              retryable: true,
-            },
+        problem: {
+          code: 'unreadable',
+          message:
+            `This looks like a lab report${lab}, and ${pages} of readable text were found in it, but its layout is not one this importer supports yet — so no result table could be read and no row was guessed at. Please send this document to the maintainer so its layout can be added.`,
+          retryable: true,
+        },
       };
     }
     return { outcome: 'review', draft };

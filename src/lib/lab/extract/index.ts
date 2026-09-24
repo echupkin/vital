@@ -34,6 +34,7 @@ import {
   redact,
 } from './parse';
 import { assistExtraction, type ModelAssistDeps } from './model-assist';
+import { interpretQuest, isQuestResultsLayout, questDocumentDate, QUEST_KIND_REASON } from './quest';
 
 export { PARSER_VERSION } from './parse';
 export type { ModelAssistDeps } from './model-assist';
@@ -106,8 +107,17 @@ export async function extractLabDocument(
   }
 
   const text = layout.lines.map(line => line.text).join('\n');
-  const { kind, reason } = detectDocumentKind(text, layout);
-  const documentDate = detectDocumentDate({ text, filename: options.filename ?? null, creationDate });
+  // A Quest Diagnostics results report prints one row per analyte in two result
+  // columns and no date-header row, so it is routed to its own reader instead of
+  // the trend-matrix one. A document with no Quest header takes the LabCorp path
+  // exactly as before.
+  const quest = isQuestResultsLayout(layout) ? interpretQuest(layout) : null;
+  const { kind, reason } = quest
+    ? { kind: 'results' as const, reason: QUEST_KIND_REASON }
+    : detectDocumentKind(text, layout);
+  const documentDate = quest
+    ? questDocumentDate(layout) ?? detectDocumentDate({ text, filename: options.filename ?? null, creationDate })
+    : detectDocumentDate({ text, filename: options.filename ?? null, creationDate });
   const labName = detectLabName(text);
 
   const columnsByPage = new Map<number, { date: string | null; dateText: string }[]>();
@@ -116,7 +126,7 @@ export async function extractLabDocument(
     columnsByPage.set(header.page, header.columns.map(column => ({ date: column.date, dateText: column.dateText })));
   }
   for (const page of layout.pages) {
-    if (kind === 'results' && page.itemCount > 0 && !columnsByPage.has(page.page)) {
+    if (!quest && kind === 'results' && page.itemCount > 0 && !columnsByPage.has(page.page)) {
       extraWarnings.push({
         code: 'no_column_header',
         message:
@@ -127,9 +137,11 @@ export async function extractLabDocument(
     }
   }
 
-  const interpreted = kind === 'results'
-    ? interpretLayout(layout, columnsByPage)
-    : { observations: [], warnings: layout.warnings, rejections: interpretRejections(layout) };
+  const interpreted = quest
+    ? quest
+    : kind === 'results'
+      ? interpretLayout(layout, columnsByPage)
+      : { observations: [], warnings: layout.warnings, rejections: interpretRejections(layout) };
 
   let observations = interpreted.observations;
   let pass: ExtractionResult['pass'] = observations.length > 0 ? 'deterministic' : 'none';

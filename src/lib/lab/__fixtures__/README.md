@@ -24,7 +24,9 @@ geometry down in a test. Each one reproduces a shape the real documents print:
 | `single-date.pdf` | A one-column table with an explicitly printed `Report Date:` field |
 | `order-form.pdf` | A `Profiles/Tests` list with no values and no intervals — an order, not a result — carrying the identity, address and phone shapes the pipeline must refuse |
 | `scan-like.pdf` | A page with no text layer at all, to prove the "looks like a scan" warning is raised instead of silently returning no rows |
+| `quest-results.pdf` | The **Quest results** layout: one row per analyte with the value in whichever of two result columns applies (`In Range` / `Out Of Range`) and that column's printed wording recorded as the flag; an interval carrying its unit inline (`4.0-12.0 u/L`), a bare interval (`5.0-8.0`) and a calculated one (`1.0-9.0 mg/dL (calc)`); a qualitative result that matches its printed expected text and one that does not; an ALL-CAPS panel label with no value or interval, which must be refused; a name that wraps onto the line its value sits on; and the patient/client block every page of this layout repeats |
 
 Their exact expected observation sets are asserted in `src/lib/lab/extract/extract.test.ts`. If a
 fixture changes, that test must change with it — deliberately, not by pasting new output over the old
-expectations.
+expectations. The Quest layout's grammar is additionally pinned shape by shape, on hand-made geometry,
+in `src/lib/lab/extract/quest.test.ts`.

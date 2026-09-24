@@ -3,7 +3,7 @@
 //
 //   node scripts/make-lab-fixtures.mjs
 //
-// Writes four hand-built PDFs into src/lib/lab/__fixtures__/. They are SYNTHETIC
+// Writes five hand-built PDFs into src/lib/lab/__fixtures__/. They are SYNTHETIC
 // and contain round, obviously-fake numbers, a fake person and a fake address —
 // no real report, value, name or date appears anywhere in them, and they are the
 // only lab documents that may ever be committed.
@@ -261,12 +261,126 @@ function scanLikePage() {
   return buildPdf([content]);
 }
 
+// ── Fixture (e): a Quest-style results report ────────────────────────────────
+
+/**
+ * A Quest Diagnostics results layout: ONE row per analyte, with the value in
+ * whichever of two RESULT COLUMNS applies (`In Range` / `Out Of Range`), the
+ * interval in a third column carried inline with its unit, and ALL-CAPS panel
+ * labels between the rows. Two pages, so the repeated patient block and the
+ * per-page `Collected:` date are both exercised.
+ *
+ * Every value here is round and obviously fake, and the identity fields are
+ * placeholders whose only job is to prove they are refused and never stored.
+ */
+function questResults() {
+  const nameX = 28;
+  const rowX = 40;
+  const subX = 52;
+  const panelX = 28;
+  const inRangeX = 240;
+  const outOfRangeX = 316;
+  const referenceX = 404;
+  const labX = 560;
+
+  /** The block every page of a Quest report repeats above its table. */
+  const block = (out, collected, reported) => {
+    out.push(run(36, 750, 'Sample Quest Diagnostics Report', 12));
+    out.push(run(480, 764, 'Report Status: Final'));
+    out.push(run(480, 732, 'SAMPLE, PERSON'));
+    out.push(run(20, 716, 'Patient Information   Specimen Information   Client Information', 8));
+    out.push(run(20, 700, 'DOB: Jan 1, 1970'));
+    out.push(run(120, 700, 'AGE: 50'));
+    out.push(run(20, 686, 'Gender: M'));
+    out.push(run(120, 686, 'Fasting: Y'));
+    out.push(run(20, 672, 'Phone: (000) 000-0000'));
+    out.push(run(20, 658, 'Patient ID: SAMPLEID'));
+    out.push(run(20, 644, 'Health ID: 0000000000000000'));
+    out.push(run(230, 700, `Specimen: SPEC0000`));
+    out.push(run(230, 686, 'Requisition: 0000000'));
+    out.push(run(230, 672, 'Lab Ref #: 0000000000000000'));
+    out.push(run(230, 658, `Collected: ${collected}`));
+    out.push(run(230, 644, `Reported: ${reported} / 17:00 CDT`));
+    out.push(run(430, 700, 'Client #: 00000000'));
+    out.push(run(430, 686, 'PHYSICIAN, SAMPLE'));
+    out.push(run(430, 672, '000 EXAMPLE ST'));
+    out.push(run(430, 658, 'SAMPLEVILLE, CA 00000-0000'));
+  };
+
+  /** The table header, with one x per column. */
+  const tableHeader = out => {
+    out.push(run(nameX, 592, 'Test Name'));
+    out.push(run(inRangeX, 592, 'In Range'));
+    out.push(run(outOfRangeX, 592, 'Out Of Range'));
+    out.push(run(referenceX, 592, 'Reference Range'));
+    out.push(run(labX, 592, 'Lab'));
+  };
+
+  /** The footer every page carries below the table. */
+  const footer = (out, page) => {
+    out.push(run(20, 40, 'CLIENT SERVICES: (000) 000-0000'));
+    out.push(run(230, 40, 'SPECIMEN: SPEC0000'));
+    out.push(run(20, 26, 'Quest, Quest Diagnostics and the associated logo are the trademarks of Quest Diagnostics.'));
+    out.push(run(520, 26, `Page ${page} of 2`));
+  };
+
+  // ── Page one ───────────────────────────────────────────────────────────────
+  const one = [];
+  block(one, '01/02/2021 / 08:00 CDT', '01/02/2021');
+  tableHeader(one);
+  // A value in the IN RANGE column, and an interval carrying its unit inline.
+  one.push(run(rowX, 572, 'ALPHA ANALYTE'));
+  one.push(run(inRangeX, 572, '12.1'));
+  one.push(run(referenceX, 572, '4.0-12.0 u/L'));
+  one.push(run(labX, 572, 'IG'));
+  // A value in the OUT OF RANGE column: the column itself is the report's marker,
+  // and the trailing token beside the value must not become a unit.
+  one.push(run(rowX, 552, 'BETA ANALYTE'));
+  one.push(run(outOfRangeX, 552, '15.5 H'));
+  one.push(run(referenceX, 552, '4.0-12.0 u/L'));
+  one.push(run(labX, 552, 'IG'));
+  // A QUALITATIVE result that matches the printed expected value textually.
+  one.push(run(rowX, 532, 'GAMMA COLOR'));
+  one.push(run(inRangeX, 532, 'YELLOW'));
+  one.push(run(referenceX, 532, 'YELLOW'));
+  // A QUALITATIVE result that does NOT match it.
+  one.push(run(rowX, 512, 'DELTA KETONES'));
+  one.push(run(outOfRangeX, 512, '1+'));
+  one.push(run(referenceX, 512, 'NEGATIVE'));
+  footer(one, 1);
+
+  // ── Page two ───────────────────────────────────────────────────────────────
+  const two = [];
+  block(two, '01/03/2021 / 09:30 CDT', '01/03/2021');
+  tableHeader(two);
+  // A PANEL label: ALL CAPS, no value and no interval. It must be refused, never
+  // imported as an analyte with an empty value.
+  two.push(run(panelX, 572, 'EPSILON PANEL'));
+  // A calculated interval: `(calc)` is neither a number nor a unit.
+  two.push(run(rowX, 552, 'EPSILON METRIC'));
+  two.push(run(inRangeX, 552, '7.0'));
+  two.push(run(referenceX, 552, '1.0-9.0 mg/dL (calc)'));
+  // A NAME that wraps onto the next line, where its value and interval sit.
+  two.push(run(rowX, 532, 'ZETA LONG'));
+  two.push(run(subX, 512, 'NAME TEST'));
+  two.push(run(inRangeX, 512, '3.0'));
+  two.push(run(referenceX, 512, '1.0-5.0'));
+  // An interval with no unit at all.
+  two.push(run(rowX, 492, 'ETA BARE'));
+  two.push(run(inRangeX, 492, '5.5'));
+  two.push(run(referenceX, 492, '5.0-8.0'));
+  footer(two, 2);
+
+  return buildPdf([one.join(''), two.join('')]);
+}
+
 mkdirSync(OUT, { recursive: true });
 const written = [
   ['trend-matrix.pdf', trendMatrix()],
   ['single-date.pdf', singleDateTable()],
   ['order-form.pdf', orderForm()],
   ['scan-like.pdf', scanLikePage()],
+  ['quest-results.pdf', questResults()],
 ];
 for (const [name, bytes] of written) {
   writeFileSync(join(OUT, name), bytes);

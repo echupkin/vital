@@ -458,6 +458,19 @@ const PROBLEM_TITLE: Record<string, string> = {
   unknown: 'Upload refused',
 };
 
+/**
+ * The retry hint shown after a problem message. A message that already says
+ * nothing was imported does not need to hear it a second time — that repetition
+ * was the worst part of the copy the owner saw. Only the part the message does
+ * not already carry is appended.
+ */
+function retryHint(problem: UploadProblem): string {
+  if (!problem.retryable) return '';
+  return /nothing was imported/i.test(problem.message)
+    ? ' You can choose another file.'
+    : ' Nothing was imported; you can choose another file.';
+}
+
 function ProblemNotice({ problem }: { problem: UploadProblem }) {
   return (
     <div
@@ -468,7 +481,7 @@ function ProblemNotice({ problem }: { problem: UploadProblem }) {
       <p className="text-xs text-text-secondary leading-relaxed">
         <span className="text-text-primary font-medium">{PROBLEM_TITLE[problem.code] ?? 'Upload refused'}.</span>{' '}
         {problem.message}
-        {problem.retryable ? ' Nothing was imported; you can choose another file.' : ''}
+        {retryHint(problem)}
       </p>
     </div>
   );

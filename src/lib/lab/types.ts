@@ -200,6 +200,8 @@ export type ExtractionRejectionReason =
   | 'no_result'
   /** A date, signature, page-number or footer line rather than a result row. */
   | 'not_a_result_line'
+  /** A panel/section group label (ALL-CAPS, no value, no interval) — not an analyte. */
+  | 'panel_header'
   /** Arrived before the date-header row, so it belongs to no table. */
   | 'outside_table_region'
   /** Blank once normalised. */

@@ -34,7 +34,11 @@ export const PARSER_VERSION = 'lab-extract/2';
 /** A decimal number with optional thousands separators. */
 const NUM = String.raw`(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?`;
 const COMPARATOR = String.raw`<=|>=|<|>`;
-const UNIT_TOKEN = String.raw`[A-Za-z%µ][A-Za-z0-9%µ^/.\-]*`;
+/**
+ * A unit token. A leading `/` is allowed because reports print per-field units
+ * that way (`< OR = 5 /HPF`, `NONE SEEN /LPF`).
+ */
+export const UNIT_TOKEN = String.raw`\/?[A-Za-z%µ][A-Za-z0-9%µ^/.\-]*`;
 
 /** A parsed result cell. At least one of `value`/`valueText` is non-null. */
 export interface ParsedValue {
@@ -80,7 +84,7 @@ export function parseValueCell(text: string): ParsedValue | null {
   }
 
   const qualitative =
-    /^(?:negative|non-?reactive|reactive|positive|trace|present|absent|not\s+detected|not\s+done|\bn\.?d\.?\b|clear|cloudy|yellow|amber|straw|none|small|moderate|large|\+{1,4}|tntc|tnp|few|many|occasional)$/i.exec(
+    /^(?:negative|non-?reactive|reactive|positive|trace|present|absent|not\s+detected|not\s+done|see\s+note:?|none\s+seen|none|\bn\.?d\.?\b|clear|cloudy|yellow|amber|straw|small|moderate|large|\d\+{1,2}|\+{1,4}|tntc|tnp|few|many|occasional)$/i.exec(
       raw
     );
   if (qualitative) {
@@ -291,6 +295,9 @@ const PII_PATTERNS: RegExp[] = [
   /date of birth|\bdob\b|\bssn\b|social security|maiden name/i,
   /\bpatient\b|responsible party|\brelation\b|\binsured\b|\bguarantor\b/i,
   /\bphysician\b|\bprovider\b|\bnpi\b|\bcredentials\b|\bmd\b|\bphysician id\b/i,
+  // Specimen, requisition and accession identifiers identify a person's record
+  // just as surely as a name does, so a line carrying one is redacted whole.
+  /\bhealth\s*id\b|\bpatient\s*id\b|\bspecimen\b|\brequisition\b|\blab\s*ref\s*#|\bclient\s*#|\baccession\b/i,
   /(?:^|[^\d(])\(?\d{3}\)?[ .-]\d{3}[ .-]\d{4}(?:[^\d]|$)/, // phone
   /(?:^|\D)\d{3}-\d{2}-\d{4}(?:\D|$)/, // SSN
   /\b\d{1,6}\s+[A-Z][A-Za-z]*(?:\s+[A-Z0-9][A-Za-z0-9]*)*\s+(?:AVE|AVENUE|ST|STREET|RD|ROAD|BLVD|DR|DRIVE|LN|LANE|WAY|CT|COURT|PL|PLACE|CIR|CIRCLE|TRAIL|PKWY|HWY)\b/i,

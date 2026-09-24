@@ -384,6 +384,192 @@ describe('a single-date table', () => {
   });
 });
 
+describe('a Quest Diagnostics results report', () => {
+  it('reads one row per analyte, with the result column as the printed flag', async () => {
+    const result = await extractLabDocument(fixture('quest-results.pdf'), {
+      filename: 'quest-results.pdf',
+      modelAssist: false,
+    });
+
+    expect(result.kind).toBe('results');
+    expect(result.pass).toBe('deterministic');
+    expect(result.pageCount).toBe(2);
+    expect(result.labName).toBe('Quest Diagnostics');
+    // The document's own date, read from the LAST `Reported:` field it printed.
+    expect(result.documentDate).toBe('2021-01-03');
+    expect(result.observations).toHaveLength(7);
+
+    expect(
+      result.observations.map(observation => ({
+        analyteKey: observation.analyteKey,
+        printedName: observation.printedName,
+        resultOn: observation.resultOn,
+        value: observation.value,
+        valueText: observation.valueText,
+        unit: observation.unit,
+        refLow: observation.refLow,
+        refHigh: observation.refHigh,
+        refText: observation.refText,
+        refSource: observation.refSource,
+        printedFlag: observation.printedFlag,
+        extractionMethod: observation.extractionMethod,
+      }))
+    ).toEqual([
+      // A value in the IN RANGE column, with the unit carried inline by the interval.
+      {
+        analyteKey: 'alpha_analyte',
+        printedName: 'ALPHA ANALYTE',
+        resultOn: '2021-01-02',
+        value: 12.1,
+        valueText: null,
+        unit: 'u/L',
+        refLow: 4,
+        refHigh: 12,
+        refText: '4.0-12.0 u/L',
+        refSource: 'report',
+        printedFlag: 'In Range',
+        extractionMethod: 'deterministic',
+      },
+      // The same interval, value in the OUT OF RANGE column: the column is the
+      // report's marker, and the `H` beside the value is not a unit.
+      {
+        analyteKey: 'beta_analyte',
+        printedName: 'BETA ANALYTE',
+        resultOn: '2021-01-02',
+        value: 15.5,
+        valueText: null,
+        unit: 'u/L',
+        refLow: 4,
+        refHigh: 12,
+        refText: '4.0-12.0 u/L',
+        refSource: 'report',
+        printedFlag: 'Out Of Range',
+        extractionMethod: 'deterministic',
+      },
+      // A qualitative result that is the same text as the printed expected value.
+      {
+        analyteKey: 'gamma_color',
+        printedName: 'GAMMA COLOR',
+        resultOn: '2021-01-02',
+        value: null,
+        valueText: 'YELLOW',
+        unit: null,
+        refLow: null,
+        refHigh: null,
+        refText: 'YELLOW',
+        refSource: 'report',
+        printedFlag: 'In Range',
+        extractionMethod: 'deterministic',
+      },
+      // A qualitative result that is NOT.
+      {
+        analyteKey: 'delta_ketones',
+        printedName: 'DELTA KETONES',
+        resultOn: '2021-01-02',
+        value: null,
+        valueText: '1+',
+        unit: null,
+        refLow: null,
+        refHigh: null,
+        refText: 'NEGATIVE',
+        refSource: 'report',
+        printedFlag: 'Out Of Range',
+        extractionMethod: 'deterministic',
+      },
+      // A calculated interval: `(calc)` is neither a bound nor a unit.
+      {
+        analyteKey: 'epsilon_metric',
+        printedName: 'EPSILON METRIC',
+        resultOn: '2021-01-03',
+        value: 7,
+        valueText: null,
+        unit: 'mg/dL',
+        refLow: 1,
+        refHigh: 9,
+        refText: '1.0-9.0 mg/dL (calc)',
+        refSource: 'report',
+        printedFlag: 'In Range',
+        extractionMethod: 'deterministic',
+      },
+      // A name that wrapped onto the line its own value was printed on.
+      {
+        analyteKey: 'zeta_long_name_test',
+        printedName: 'ZETA LONG NAME TEST',
+        resultOn: '2021-01-03',
+        value: 3,
+        valueText: null,
+        unit: null,
+        refLow: 1,
+        refHigh: 5,
+        refText: '1.0-5.0',
+        refSource: 'report',
+        printedFlag: 'In Range',
+        extractionMethod: 'deterministic',
+      },
+      // An interval with no unit at all.
+      {
+        analyteKey: 'eta_bare',
+        printedName: 'ETA BARE',
+        resultOn: '2021-01-03',
+        value: 5.5,
+        valueText: null,
+        unit: null,
+        refLow: 5,
+        refHigh: 8,
+        refText: '5.0-8.0',
+        refSource: 'report',
+        printedFlag: 'In Range',
+        extractionMethod: 'deterministic',
+      },
+    ]);
+  });
+
+  it('records the textual basis for a qualitative match, and why a mismatch is unscored', async () => {
+    const result = await extractLabDocument(fixture('quest-results.pdf'), { filename: 'quest-results.pdf' });
+    const match = result.observations.find(observation => observation.analyteKey === 'gamma_color');
+    const mismatch = result.observations.find(observation => observation.analyteKey === 'delta_ketones');
+    expect(match?.refBasis).toMatch(/TEXTUAL MATCH/);
+    expect(mismatch?.refBasis).toMatch(/different text/);
+
+    // Both are reported to the reader as non-numeric results, with the basis.
+    const messages = result.warnings.filter(warning => warning.code === 'non_numeric_result').map(warning => warning.message);
+    expect(messages.some(message => /TEXTUAL MATCH/.test(message))).toBe(true);
+    expect(messages.some(message => /different text/.test(message))).toBe(true);
+  });
+
+  it('refuses the panel label with its own reason, and imports it as no analyte', async () => {
+    const result = await extractLabDocument(fixture('quest-results.pdf'), { filename: 'quest-results.pdf' });
+    const panel = result.rejections.filter(rejection => rejection.reason === 'panel_header');
+    expect(panel.map(rejection => rejection.text)).toEqual(['EPSILON PANEL']);
+    expect(result.observations.some(observation => observation.printedName.includes('PANEL'))).toBe(false);
+  });
+
+  it('refuses the repeated patient block on every page, and stores no identifier', async () => {
+    const result = await extractLabDocument(fixture('quest-results.pdf'), { filename: 'quest-results.pdf' });
+    const reasons = result.rejections.map(rejection => rejection.reason);
+    expect(reasons.filter(reason => reason === 'identity_line').length).toBeGreaterThanOrEqual(2);
+    expect(reasons.filter(reason => reason === 'letterhead_line').length).toBeGreaterThanOrEqual(2);
+    expect(reasons.filter(reason => reason === 'column_header').length).toBe(2);
+
+    const everything = JSON.stringify(result);
+    for (const secret of [
+      'SAMPLE, PERSON',
+      'Jan 1, 1970',
+      '(000) 000-0000',
+      'SAMPLEID',
+      '0000000000000000',
+      'SPEC0000',
+      'Requisition',
+      'PHYSICIAN, SAMPLE',
+      'EXAMPLE ST',
+      'SAMPLEVILLE',
+      '00000-0000',
+    ]) {
+      expect(everything, secret).not.toContain(secret);
+    }
+  });
+});
+
 describe('an order form', () => {
   it('is recognised as an order, produces no results, and says so', async () => {
     const result = await extractLabDocument(fixture('order-form.pdf'), { filename: 'order-form.pdf' });

@@ -261,7 +261,7 @@ export function groupLines(page: number, items: PdfTextItem[]): Omit<LayoutLine,
 }
 
 /** Join positioned runs into one string, inserting a space across a real gap. */
-function joinedText(items: PdfTextItem[]): string {
+export function joinedText(items: PdfTextItem[]): string {
   let text = '';
   let previousEnd = Number.NEGATIVE_INFINITY;
   let previousSize = 0;

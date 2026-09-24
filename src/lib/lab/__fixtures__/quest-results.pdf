@@ -1,0 +1,125 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 2713 >>
+stream
+BT /F1 12 Tf 1 0 0 1 36.00 750.00 Tm (Sample Quest Diagnostics Report) Tj ET
+BT /F1 9 Tf 1 0 0 1 480.00 764.00 Tm (Report Status: Final) Tj ET
+BT /F1 9 Tf 1 0 0 1 480.00 732.00 Tm (SAMPLE, PERSON) Tj ET
+BT /F1 8 Tf 1 0 0 1 20.00 716.00 Tm (Patient Information   Specimen Information   Client Information) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 700.00 Tm (DOB: Jan 1, 1970) Tj ET
+BT /F1 9 Tf 1 0 0 1 120.00 700.00 Tm (AGE: 50) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 686.00 Tm (Gender: M) Tj ET
+BT /F1 9 Tf 1 0 0 1 120.00 686.00 Tm (Fasting: Y) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 672.00 Tm (Phone: \(000\) 000-0000) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 658.00 Tm (Patient ID: SAMPLEID) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 644.00 Tm (Health ID: 0000000000000000) Tj ET
+BT /F1 9 Tf 1 0 0 1 230.00 700.00 Tm (Specimen: SPEC0000) Tj ET
+BT /F1 9 Tf 1 0 0 1 230.00 686.00 Tm (Requisition: 0000000) Tj ET
+BT /F1 9 Tf 1 0 0 1 230.00 672.00 Tm (Lab Ref #: 0000000000000000) Tj ET
+BT /F1 9 Tf 1 0 0 1 230.00 658.00 Tm (Collected: 01/02/2021 / 08:00 CDT) Tj ET
+BT /F1 9 Tf 1 0 0 1 230.00 644.00 Tm (Reported: 01/02/2021 / 17:00 CDT) Tj ET
+BT /F1 9 Tf 1 0 0 1 430.00 700.00 Tm (Client #: 00000000) Tj ET
+BT /F1 9 Tf 1 0 0 1 430.00 686.00 Tm (PHYSICIAN, SAMPLE) Tj ET
+BT /F1 9 Tf 1 0 0 1 430.00 672.00 Tm (000 EXAMPLE ST) Tj ET
+BT /F1 9 Tf 1 0 0 1 430.00 658.00 Tm (SAMPLEVILLE, CA 00000-0000) Tj ET
+BT /F1 9 Tf 1 0 0 1 28.00 592.00 Tm (Test Name) Tj ET
+BT /F1 9 Tf 1 0 0 1 240.00 592.00 Tm (In Range) Tj ET
+BT /F1 9 Tf 1 0 0 1 316.00 592.00 Tm (Out Of Range) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 592.00 Tm (Reference Range) Tj ET
+BT /F1 9 Tf 1 0 0 1 560.00 592.00 Tm (Lab) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 572.00 Tm (ALPHA ANALYTE) Tj ET
+BT /F1 9 Tf 1 0 0 1 240.00 572.00 Tm (12.1) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 572.00 Tm (4.0-12.0 u/L) Tj ET
+BT /F1 9 Tf 1 0 0 1 560.00 572.00 Tm (IG) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 552.00 Tm (BETA ANALYTE) Tj ET
+BT /F1 9 Tf 1 0 0 1 316.00 552.00 Tm (15.5 H) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 552.00 Tm (4.0-12.0 u/L) Tj ET
+BT /F1 9 Tf 1 0 0 1 560.00 552.00 Tm (IG) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 532.00 Tm (GAMMA COLOR) Tj ET
+BT /F1 9 Tf 1 0 0 1 240.00 532.00 Tm (YELLOW) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 532.00 Tm (YELLOW) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 512.00 Tm (DELTA KETONES) Tj ET
+BT /F1 9 Tf 1 0 0 1 316.00 512.00 Tm (1+) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 512.00 Tm (NEGATIVE) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 40.00 Tm (CLIENT SERVICES: \(000\) 000-0000) Tj ET
+BT /F1 9 Tf 1 0 0 1 230.00 40.00 Tm (SPECIMEN: SPEC0000) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 26.00 Tm (Quest, Quest Diagnostics and the associated logo are the trademarks of Quest Diagnostics.) Tj ET
+BT /F1 9 Tf 1 0 0 1 520.00 26.00 Tm (Page 1 of 2) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 2563 >>
+stream
+BT /F1 12 Tf 1 0 0 1 36.00 750.00 Tm (Sample Quest Diagnostics Report) Tj ET
+BT /F1 9 Tf 1 0 0 1 480.00 764.00 Tm (Report Status: Final) Tj ET
+BT /F1 9 Tf 1 0 0 1 480.00 732.00 Tm (SAMPLE, PERSON) Tj ET
+BT /F1 8 Tf 1 0 0 1 20.00 716.00 Tm (Patient Information   Specimen Information   Client Information) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 700.00 Tm (DOB: Jan 1, 1970) Tj ET
+BT /F1 9 Tf 1 0 0 1 120.00 700.00 Tm (AGE: 50) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 686.00 Tm (Gender: M) Tj ET
+BT /F1 9 Tf 1 0 0 1 120.00 686.00 Tm (Fasting: Y) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 672.00 Tm (Phone: \(000\) 000-0000) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 658.00 Tm (Patient ID: SAMPLEID) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 644.00 Tm (Health ID: 0000000000000000) Tj ET
+BT /F1 9 Tf 1 0 0 1 230.00 700.00 Tm (Specimen: SPEC0000) Tj ET
+BT /F1 9 Tf 1 0 0 1 230.00 686.00 Tm (Requisition: 0000000) Tj ET
+BT /F1 9 Tf 1 0 0 1 230.00 672.00 Tm (Lab Ref #: 0000000000000000) Tj ET
+BT /F1 9 Tf 1 0 0 1 230.00 658.00 Tm (Collected: 01/03/2021 / 09:30 CDT) Tj ET
+BT /F1 9 Tf 1 0 0 1 230.00 644.00 Tm (Reported: 01/03/2021 / 17:00 CDT) Tj ET
+BT /F1 9 Tf 1 0 0 1 430.00 700.00 Tm (Client #: 00000000) Tj ET
+BT /F1 9 Tf 1 0 0 1 430.00 686.00 Tm (PHYSICIAN, SAMPLE) Tj ET
+BT /F1 9 Tf 1 0 0 1 430.00 672.00 Tm (000 EXAMPLE ST) Tj ET
+BT /F1 9 Tf 1 0 0 1 430.00 658.00 Tm (SAMPLEVILLE, CA 00000-0000) Tj ET
+BT /F1 9 Tf 1 0 0 1 28.00 592.00 Tm (Test Name) Tj ET
+BT /F1 9 Tf 1 0 0 1 240.00 592.00 Tm (In Range) Tj ET
+BT /F1 9 Tf 1 0 0 1 316.00 592.00 Tm (Out Of Range) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 592.00 Tm (Reference Range) Tj ET
+BT /F1 9 Tf 1 0 0 1 560.00 592.00 Tm (Lab) Tj ET
+BT /F1 9 Tf 1 0 0 1 28.00 572.00 Tm (EPSILON PANEL) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 552.00 Tm (EPSILON METRIC) Tj ET
+BT /F1 9 Tf 1 0 0 1 240.00 552.00 Tm (7.0) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 552.00 Tm (1.0-9.0 mg/dL \(calc\)) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 532.00 Tm (ZETA LONG) Tj ET
+BT /F1 9 Tf 1 0 0 1 52.00 512.00 Tm (NAME TEST) Tj ET
+BT /F1 9 Tf 1 0 0 1 240.00 512.00 Tm (3.0) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 512.00 Tm (1.0-5.0) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 492.00 Tm (ETA BARE) Tj ET
+BT /F1 9 Tf 1 0 0 1 240.00 492.00 Tm (5.5) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 492.00 Tm (5.0-8.0) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 40.00 Tm (CLIENT SERVICES: \(000\) 000-0000) Tj ET
+BT /F1 9 Tf 1 0 0 1 230.00 40.00 Tm (SPECIMEN: SPEC0000) Tj ET
+BT /F1 9 Tf 1 0 0 1 20.00 26.00 Tm (Quest, Quest Diagnostics and the associated logo are the trademarks of Quest Diagnostics.) Tj ET
+BT /F1 9 Tf 1 0 0 1 520.00 26.00 Tm (Page 2 of 2) Tj ET
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f
+0000000015 00000 n
+0000000064 00000 n
+0000000127 00000 n
+0000000224 00000 n
+0000000350 00000 n
+0000003114 00000 n
+0000003240 00000 n
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+5854
+%%EOF
