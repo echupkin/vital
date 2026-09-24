@@ -111,3 +111,55 @@ Date all sources opened: 2026-09-23
 | `bnp` | MedlinePlus — Natriuretic Peptide Tests (BNP, NT-proBNP) | https://medlineplus.gov/lab-tests/natriuretic-peptide-tests-bnp-nt-probnp/ | 2026-09-23 | checked |
 | `nt_probnp` | MedlinePlus — Natriuretic Peptide Tests (BNP, NT-proBNP) | https://medlineplus.gov/lab-tests/natriuretic-peptide-tests-bnp-nt-probnp/ | 2026-09-23 | checked |
 | `ck` | MedlinePlus — Creatine Kinase | https://medlineplus.gov/lab-tests/creatine-kinase/ | 2026-09-23 | checked |
+| `glucose` | MedlinePlus — Blood Glucose Test | https://medlineplus.gov/lab-tests/blood-glucose-test/ | 2026-09-23 | checked, reworded |
+| `ph` | MedlinePlus — Urine pH test | https://medlineplus.gov/ency/article/003583.htm | 2026-09-23 | checked, reworded |
+| `specific_gravity` | MedlinePlus — Urine specific gravity test | https://medlineplus.gov/ency/article/003587.htm | 2026-09-23 | checked, reworded |
+| `ketones` | MedlinePlus — Ketones urine test | https://medlineplus.gov/ency/article/003585.htm | 2026-09-23 | checked, reworded |
+| `protein` | MedlinePlus — Urine protein dipstick test | https://medlineplus.gov/ency/article/003580.htm | 2026-09-23 | checked, reworded |
+| `color` | MedlinePlus — Urine: abnormal color | https://medlineplus.gov/ency/article/003139.htm | 2026-09-23 | checked, reworded |
+| `appearance` | MedlinePlus — Urinalysis | https://medlineplus.gov/ency/article/003579.htm | 2026-09-23 | checked, reworded |
+| `nitrite` | MedlinePlus — Nitrites in Urine | https://medlineplus.gov/lab-tests/nitrites-in-urine/ | 2026-09-23 | checked, reworded |
+| `occult_blood` | MedlinePlus — Blood in Urine | https://medlineplus.gov/lab-tests/blood-in-urine/ | 2026-09-23 | checked, reworded |
+| `leukocyte_esterase` | MedlinePlus — Leukocyte esterase urine test | https://medlineplus.gov/ency/article/003584.htm | 2026-09-23 | checked, reworded |
+| `bacteria` | MedlinePlus — Urinalysis | https://medlineplus.gov/ency/article/003579.htm | 2026-09-23 | checked, reworded |
+| `squamous_epithelial_cells` | MedlinePlus — Epithelial Cells in Urine | https://medlineplus.gov/lab-tests/epithelial-cells-in-urine/ | 2026-09-23 | checked, reworded |
+| `hyaline_cast` | MedlinePlus — Urinary casts | https://medlineplus.gov/ency/article/003586.htm | 2026-09-23 | checked, reworded |
+| `bilirubin` | MedlinePlus — Bilirubin in Urine | https://medlineplus.gov/lab-tests/bilirubin-in-urine/ | 2026-09-23 | checked, reworded |
+| `bilirubin_indirect` | MedlinePlus — Bilirubin Blood Test | https://medlineplus.gov/lab-tests/bilirubin-blood-test/ | 2026-09-23 | checked, reworded |
+| `adiponectin` | Labcorp — Adiponectin | https://www.labcorp.com/tests/004650/adiponectin | 2026-09-23 | checked, reworded |
+| `leptin` | Labcorp — Leptin Blood Test | https://www.ondemand.labcorp.com/lab-tests/leptin-test | 2026-09-23 | checked, reworded |
+| `fructosamine` | Labcorp — Fructosamine | https://www.labcorp.com/tests/100800/fructosamine | 2026-09-23 | checked, reworded |
+| `t3_uptake` | Labcorp — T3 Uptake | https://www.labcorp.com/tests/001156/t3-uptake | 2026-09-23 | checked, reworded |
+| `testosterone_bioavailable` | MedlinePlus — Testosterone Levels Test | https://medlineplus.gov/lab-tests/testosterone-levels-test/ | 2026-09-23 | checked, reworded |
+
+## Analytes deliberately left undescribed
+
+These stored keys have no entry in `analyte-descriptions.json`, and each is left bare on
+purpose rather than padded with invented copy.
+
+### Computed or derived values
+
+No patient-facing page states these as an analyte of their own, so none is described:
+`absolute_basophils`, `absolute_eosinophils`, `absolute_lymphocytes`, `absolute_monocytes`,
+`absolute_neutrophils` (absolute differential counts), `estimated_average_glucose`,
+`eag_mg_dl`, `eag_mmol_l` (derived from HbA1c), and `free_t4_index_t7` (the derived T7 index).
+
+### Stored spellings of an analyte that already has an entry
+
+Each of these IS the same analyte as an existing entry, so no second entry was written (the
+rule for this gate is "do not duplicate it under a second key"). They still render bare
+because the registry in `analytes.ts` has no alias for the stored spelling, and this gate is
+not allowed to touch that file — a one-line alias per key there would close them.
+
+| stored key | printed name | existing entry that describes it |
+| --- | --- | --- |
+| `bilirubin_direct` | BILIRUBIN, DIRECT | `direct_bilirubin` |
+| `carbon_dioxide` | CARBON DIOXIDE | `co2_bicarbonate` |
+| `chol_hdlc_ratio` | CHOL/HDLC RATIO | `cholesterol_hdl_ratio` |
+| `cortisol_total` | CORTISOL, TOTAL | `cortisol_am` |
+| `hemoglobin_a1c` | HEMOGLOBIN A1c | `hba1c` (its display name is spelled "Haemoglobin") |
+| `iron_total` | IRON, TOTAL | `iron` |
+| `saturation` | % SATURATION | `transferrin_saturation` |
+| `t4_thyroxine_total` | T4 (THYROXINE), TOTAL | `total_t4` |
+| `urea_nitrogen_bun` | UREA NITROGEN (BUN) | `bun` |
+| `vitamin_d_25_oh_total_ia` | VITAMIN D,25-OH,TOTAL,IA | `vitamin_d_25oh` |

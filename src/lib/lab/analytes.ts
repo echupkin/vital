@@ -40,6 +40,7 @@ export type AnalyteCategory =
   | 'Hormones'
   | 'Coagulation'
   | 'Cardiac/Muscle'
+  | 'Urinalysis'
   | 'Other';
 
 /** Which population a band applies to. `any` is the sex-pooled band. */
@@ -380,6 +381,7 @@ export const ANALYTES: LabAnalyte[] = [
       'Glycohemoglobin (GHb),Total',
       'Glycohemoglobin',
       'hba1c',
+      'hemoglobin_a1c',
     ],
     bands: [
       {
@@ -1072,7 +1074,7 @@ export const ANALYTES: LabAnalyte[] = [
     displayName: 'Direct (conjugated) bilirubin',
     category: 'Liver',
     unit: 'mg/dL',
-    aliases: ['Direct Bilirubin', 'D. Bili', 'Conjugated bilirubin'],
+    aliases: ['Direct Bilirubin', 'D. Bili', 'Conjugated bilirubin', 'bilirubin_direct'],
     bands: [
       {
         sex: 'any',
@@ -1224,7 +1226,7 @@ export const ANALYTES: LabAnalyte[] = [
     displayName: 'Blood urea nitrogen',
     category: 'Kidney/Electrolytes',
     unit: 'mg/dL',
-    aliases: ['BUN', 'Urea Nitrogen', 'Urea'],
+    aliases: ['BUN', 'Urea Nitrogen', 'Urea', 'urea_nitrogen_bun'],
     bands: [
       {
         sex: 'any',
@@ -1381,7 +1383,7 @@ export const ANALYTES: LabAnalyte[] = [
     displayName: 'Carbon dioxide / bicarbonate',
     category: 'Kidney/Electrolytes',
     unit: 'mEq/L (mmol/L)',
-    aliases: ['CO2', 'Bicarbonate', 'HCO3', 'Total CO2', 'ECO2', 'co2'],
+    aliases: ['CO2', 'Bicarbonate', 'HCO3', 'Total CO2', 'ECO2', 'co2', 'carbon_dioxide'],
     bands: [
       {
         sex: 'any',
@@ -1557,7 +1559,7 @@ export const ANALYTES: LabAnalyte[] = [
     displayName: 'Total thyroxine',
     category: 'Thyroid',
     unit: 'µg/dL',
-    aliases: ['Total T4', 'T4', 'Thyroxine'],
+    aliases: ['Total T4', 'T4', 'Thyroxine', 't4_thyroxine_total'],
     bands: [
       {
         sex: 'any',
@@ -1678,7 +1680,7 @@ export const ANALYTES: LabAnalyte[] = [
     displayName: 'Iron, serum',
     category: 'Iron/Vitamins',
     unit: 'µg/dL',
-    aliases: ['Iron', 'Serum Iron', 'Fe'],
+    aliases: ['Iron', 'Serum Iron', 'Fe', 'iron_total'],
     bands: [
       {
         sex: 'any',
@@ -1768,7 +1770,7 @@ export const ANALYTES: LabAnalyte[] = [
     displayName: 'Transferrin saturation',
     category: 'Iron/Vitamins',
     unit: '%',
-    aliases: ['Transferrin Saturation', 'TSAT', '% Sat', 'Iron Saturation'],
+    aliases: ['Transferrin Saturation', 'TSAT', '% Sat', 'Iron Saturation', 'saturation'],
     bands: [
       {
         sex: 'any',
@@ -1849,7 +1851,7 @@ export const ANALYTES: LabAnalyte[] = [
     displayName: '25-hydroxy vitamin D',
     category: 'Iron/Vitamins',
     unit: 'ng/mL',
-    aliases: ['25-OH Vitamin D', '25(OH)D', 'Vitamin D, 25-Hydroxy'],
+    aliases: ['25-OH Vitamin D', '25(OH)D', 'Vitamin D, 25-Hydroxy', 'vitamin_d_25_oh_total_ia'],
     bands: [
       {
         sex: 'any',
@@ -2315,7 +2317,7 @@ export const ANALYTES: LabAnalyte[] = [
     displayName: 'Cortisol, morning (AM)',
     category: 'Hormones',
     unit: 'µg/dL',
-    aliases: ['Cortisol', 'AM Cortisol', '8 AM Cortisol'],
+    aliases: ['Cortisol', 'AM Cortisol', '8 AM Cortisol', 'cortisol_total'],
     bands: [
       {
         sex: 'any',
@@ -2662,7 +2664,7 @@ export const ANALYTES: LabAnalyte[] = [
     displayName: 'Cholesterol/HDL ratio',
     category: 'Lipids',
     unit: 'ratio',
-    aliases: ['CHD', 'Cholesterol/HDL Ratio', 'cholesterol/hdlratio'],
+    aliases: ['CHD', 'Cholesterol/HDL Ratio', 'cholesterol/hdlratio', 'chol_hdlc_ratio'],
     bands: [],
     note: 'Derived ratio; the cited document gives no interval — left unscored.',
   },
@@ -2677,6 +2679,310 @@ export const ANALYTES: LabAnalyte[] = [
     bands: [],
     note: 'Derived ratio; the cited document gives no interval — left unscored.',
   },
+
+  // ── Urinalysis ────────────────────────────────────────────────────────────
+  //
+  // The urine-only analytes a dipstick, a visual check and a sediment count
+  // print. EVERY ONE IS A QUALITATIVE RESULT: a pad reports a colour or a grade
+  // and a microscope reports `NONE SEEN`, so none of them has a numeric interval
+  // this registry could band — each has NO bands, and its row is scored against
+  // the expected value the report itself printed (see ../status.ts and the closed
+  // vocabulary in ../qualitative.ts). `unit` is null for the same reason: the
+  // per-field units the reports print (`/HPF`, `/LPF`) belong to the row.
+  //
+  // WHY A CATEGORY OF THEIR OWN. `protein`, `bilirubin`, `ketones` and `glucose`
+  // here are URINE readings; the serum analytes of the same names are separate
+  // entries. The series read model keeps a urinalysis series apart from the blood
+  // series of the same key (see ../panel.ts), and this category is where those
+  // urine rows are laid out.
+  {
+    key: 'appearance',
+    displayName: 'Appearance',
+    category: 'Urinalysis',
+    unit: null,
+    aliases: [],
+    bands: [],
+    note: 'A visual check of the sample, reported as a word (CLEAR, SLIGHTLY CLOUDY). No interval exists to score it against.',
+  },
+  {
+    key: 'color',
+    displayName: 'Color',
+    category: 'Urinalysis',
+    unit: null,
+    aliases: ['Colour'],
+    bands: [],
+    note: 'A visual check of the sample colour, reported as a word (YELLOW, AMBER). No interval exists to score it against.',
+  },
+  {
+    key: 'ph',
+    displayName: 'pH',
+    category: 'Urinalysis',
+    unit: null,
+    aliases: ['Urine pH'],
+    bands: [],
+    note: 'The acidity of the urine, read from a dipstick pad. The cited document gives no interval for it — left unscored, and the report’s own printed interval is used when it prints one.',
+  },
+  {
+    key: 'specific_gravity',
+    displayName: 'Specific gravity',
+    category: 'Urinalysis',
+    unit: null,
+    aliases: ['S.G.', 'Urine specific gravity'],
+    bands: [],
+    note: 'How concentrated the urine is. Concentration depends on when the sample was taken and how much was drunk, so the cited document gives no interval — left unscored, and the report’s own printed interval is used when it prints one.',
+  },
+  {
+    key: 'ketones',
+    displayName: 'Ketones',
+    category: 'Urinalysis',
+    unit: null,
+    aliases: ['Ketones, urine', 'Urine ketones'],
+    bands: [],
+    note: 'A urine dipstick pad for ketones, reported as NEGATIVE or as a grade (TRACE, 1+). No interval exists to score it against.',
+  },
+  {
+    key: 'nitrite',
+    displayName: 'Nitrite',
+    category: 'Urinalysis',
+    unit: null,
+    aliases: ['Nitrites'],
+    bands: [],
+    note: 'A urine dipstick pad for nitrites, reported as NEGATIVE or POSITIVE. No interval exists to score it against.',
+  },
+  {
+    key: 'occult_blood',
+    displayName: 'Occult blood',
+    category: 'Urinalysis',
+    unit: null,
+    aliases: ['Blood, urine', 'Urine blood', 'Blood (urine)'],
+    bands: [],
+    note: 'A urine dipstick pad for blood too small to see, reported as NEGATIVE or as a grade. No interval exists to score it against.',
+  },
+  {
+    key: 'leukocyte_esterase',
+    displayName: 'Leukocyte esterase',
+    category: 'Urinalysis',
+    unit: null,
+    aliases: ['LE', 'Leukocytes, urine'],
+    bands: [],
+    note: 'A urine dipstick pad for white blood cells, reported as NEGATIVE or as a grade. No interval exists to score it against.',
+  },
+  {
+    key: 'protein',
+    displayName: 'Protein',
+    category: 'Urinalysis',
+    unit: null,
+    // The SERUM protein is `total_protein`; this entry is the urine pad only, and
+    // the extractor's own key for that row is the slug `protein`, which is this
+    // entry's canonical key — no stored key is renamed to reach it.
+    aliases: ['Protein, urine', 'Urine protein'],
+    bands: [],
+    note: 'A urine dipstick pad for protein, reported as NEGATIVE or as a grade. No interval exists to score it against.',
+  },
+  {
+    key: 'bacteria',
+    displayName: 'Bacteria',
+    category: 'Urinalysis',
+    unit: null,
+    aliases: ['Bacteria, urine'],
+    bands: [],
+    note: 'A microscopic check of the urine sediment, reported as NONE SEEN or as a count per field. No interval exists to score it against.',
+  },
+  {
+    key: 'squamous_epithelial_cells',
+    displayName: 'Squamous epithelial cells',
+    category: 'Urinalysis',
+    unit: null,
+    aliases: ['Epithelial cells, squamous', 'Squamous cells'],
+    bands: [],
+    note: 'A microscopic count of the flat cells that line the urinary tract, per high-power field. No interval exists to score it against.',
+  },
+  {
+    key: 'hyaline_cast',
+    displayName: 'Hyaline casts',
+    category: 'Urinalysis',
+    unit: null,
+    aliases: ['Hyaline casts', 'Casts, hyaline'],
+    bands: [],
+    note: 'A microscopic count of hyaline casts, per low-power field. No interval exists to score it against.',
+  },
+  {
+    key: 'bilirubin',
+    displayName: 'Bilirubin',
+    category: 'Urinalysis',
+    unit: null,
+    // The SERUM rows are `total_bilirubin` / `direct_bilirubin` /
+    // `bilirubin_indirect`; this entry is the urine pad, whose stored key is the
+    // slug `bilirubin`.
+    aliases: ['Bilirubin, urine', 'Urine bilirubin'],
+    bands: [],
+    note: 'A urine dipstick pad for bilirubin, reported as NEGATIVE or POSITIVE. No interval exists to score it against.',
+  },
+
+  // ── Analytes the reports print that the cited table does not band ─────────
+  //
+  // Each of these has patient-facing copy (see ../descriptions) but no interval
+  // to fall back on, so `bands` is empty and the row is scored — where it is
+  // scored at all — against the interval the report printed for it.
+  {
+    key: 'adiponectin',
+    displayName: 'Adiponectin',
+    category: 'Hormones',
+    unit: null,
+    aliases: [],
+    bands: [],
+    note: 'The cited document gives no interval for adiponectin — left unscored, and the report’s own printed interval is used when it prints one.',
+  },
+  {
+    key: 'bilirubin_indirect',
+    displayName: 'Bilirubin, indirect',
+    category: 'Liver',
+    unit: 'mg/dL',
+    aliases: ['Indirect Bilirubin', 'Unconjugated bilirubin'],
+    bands: [],
+    note: 'Indirect bilirubin is derived from the total and the direct measurement, so the cited document quotes no interval of its own — left unscored, and the report’s own printed interval is used when it prints one.',
+  },
+  {
+    key: 'fructosamine',
+    displayName: 'Fructosamine',
+    category: 'Metabolic',
+    unit: null,
+    aliases: [],
+    bands: [],
+    note: 'The cited document gives no interval for fructosamine — left unscored, and the report’s own printed interval is used when it prints one.',
+  },
+  {
+    key: 'leptin',
+    displayName: 'Leptin',
+    category: 'Hormones',
+    unit: null,
+    aliases: [],
+    bands: [],
+    note: 'The cited document gives no interval for leptin — left unscored, and the report’s own printed interval is used when it prints one.',
+  },
+  {
+    key: 't3_uptake',
+    displayName: 'T3 uptake',
+    category: 'Thyroid',
+    unit: null,
+    aliases: ['T3 Uptake', 'T3 Resin Uptake'],
+    bands: [],
+    note: 'An indirect measure of the thyroid hormone carrier protein, and method-dependent; the cited document gives no interval — left unscored, and the report’s own printed interval is used when it prints one.',
+  },
+  {
+    key: 'testosterone_bioavailable',
+    displayName: 'Testosterone, bioavailable',
+    category: 'Hormones',
+    unit: null,
+    aliases: ['Bioavailable Testosterone'],
+    bands: [],
+    note: 'The cited document gives no interval for bioavailable testosterone — left unscored, and the report’s own printed interval is used when it prints one.',
+  },
+
+  // ── Derived rows a report prints as their own line ────────────────────────
+  //
+  // A report prints these as a row of their own, computed from other rows on the
+  // same page (the differential percentages and the WBC, the A1c, the T4 and its
+  // uptake). They are NOT described in the patient-facing copy (see
+  // `UNDESCRIBED_BY_DESIGN` below) and carry no fallback interval: the report's
+  // own printed interval is the only one they are scored against.
+  {
+    key: 'absolute_neutrophils',
+    displayName: 'Absolute neutrophils',
+    category: 'CBC',
+    unit: 'cells/uL',
+    aliases: [],
+    bands: [],
+    note: 'A computed row: the report derives the absolute count from the percentage and the white cell count. No interval is quoted for it here — the report’s own printed interval is used.',
+  },
+  {
+    key: 'absolute_lymphocytes',
+    displayName: 'Absolute lymphocytes',
+    category: 'CBC',
+    unit: 'cells/uL',
+    aliases: [],
+    bands: [],
+    note: 'A computed row: the report derives the absolute count from the percentage and the white cell count. No interval is quoted for it here — the report’s own printed interval is used.',
+  },
+  {
+    key: 'absolute_monocytes',
+    displayName: 'Absolute monocytes',
+    category: 'CBC',
+    unit: 'cells/uL',
+    aliases: [],
+    bands: [],
+    note: 'A computed row: the report derives the absolute count from the percentage and the white cell count. No interval is quoted for it here — the report’s own printed interval is used.',
+  },
+  {
+    key: 'absolute_eosinophils',
+    displayName: 'Absolute eosinophils',
+    category: 'CBC',
+    unit: 'cells/uL',
+    aliases: [],
+    bands: [],
+    note: 'A computed row: the report derives the absolute count from the percentage and the white cell count. No interval is quoted for it here — the report’s own printed interval is used.',
+  },
+  {
+    key: 'absolute_basophils',
+    displayName: 'Absolute basophils',
+    category: 'CBC',
+    unit: 'cells/uL',
+    aliases: [],
+    bands: [],
+    note: 'A computed row: the report derives the absolute count from the percentage and the white cell count. No interval is quoted for it here — the report’s own printed interval is used.',
+  },
+  {
+    key: 'eag_mg_dl',
+    displayName: 'Estimated average glucose (mg/dL)',
+    category: 'Metabolic',
+    unit: 'mg/dL',
+    aliases: ['eAG (mg/dL)', 'Estimated Average Glucose (mg/dL)'],
+    bands: [],
+    note: 'A computed row derived from the A1c; the cited document gives no interval of its own. The A1c is the row that carries an interval.',
+  },
+  {
+    key: 'eag_mmol_l',
+    displayName: 'Estimated average glucose (mmol/L)',
+    category: 'Metabolic',
+    unit: 'mmol/L',
+    aliases: ['eAG (mmol/L)', 'Estimated Average Glucose (mmol/L)'],
+    bands: [],
+    note: 'A computed row derived from the A1c, in SI units; the cited document gives no interval of its own. The A1c is the row that carries an interval.',
+  },
+  {
+    key: 'free_t4_index_t7',
+    displayName: 'Free T4 index (T7)',
+    category: 'Thyroid',
+    unit: null,
+    aliases: ['Free T4 Index', 'FTI', 'T7'],
+    bands: [],
+    note: 'A computed index derived from the total T4 and the T3 uptake. No interval is quoted for it here — the report’s own printed interval is used.',
+  },
+];
+
+/**
+ * Registry entries that deliberately carry NO patient-facing description.
+ *
+ * Every one is a DERIVED row (a report computes it from another row on the same
+ * page: an absolute differential count, the estimated average glucose, the free
+ * T4 index, HOMA-IR) or a DUPLICATE spelling whose real analyte is described
+ * under its own entry. Declared here so a test can hold the line: a registry
+ * entry without copy is a decision that was made, never an oversight. The
+ * research pass's own source table is `analyte-descriptions SOURCES.md`.
+ */
+export const UNDESCRIBED_BY_DESIGN: string[] = [
+  'absolute_basophils',
+  'absolute_eosinophils',
+  'absolute_lymphocytes',
+  'absolute_monocytes',
+  'absolute_neutrophils',
+  'differential_absolute',
+  'differential_percent',
+  'eag_mg_dl',
+  'eag_mmol_l',
+  'estimated_average_glucose',
+  'free_t4_index_t7',
+  'homa_ir',
 ];
 
 // ── Resolution ──────────────────────────────────────────────────────────────

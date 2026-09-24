@@ -559,5 +559,115 @@
     "ifHigh": "A high CK may be seen when muscles, the heart, or the brain are damaged, leaking CK into the blood.",
     "sourceTitle": "MedlinePlus — Creatine Kinase",
     "sourceUrl": "https://medlineplus.gov/lab-tests/creatine-kinase/"
+  },
+  "glucose": {
+    "whatItIs": "Measures the amount of glucose (blood sugar) in your blood. Glucose is your body's main source of energy and comes from the food you eat.",
+    "ifHigh": "High blood glucose may be a sign of prediabetes or diabetes.",
+    "ifLow": "Low blood glucose is much less common in people without diabetes and may be caused by certain medicines or conditions.",
+    "sourceTitle": "MedlinePlus — Blood Glucose Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-glucose-test/"
+  },
+  "ph": {
+    "whatItIs": "Measures how acidic or alkaline your urine is, using a dipstick pad that changes colour with the level of acid.",
+    "ifHigh": "A high urine pH may be seen with a urinary tract infection, kidney failure, or vomiting.",
+    "ifLow": "A low urine pH may be seen with diarrhea, starvation, or a build-up of acid in the body.",
+    "sourceTitle": "MedlinePlus — Urine pH test",
+    "sourceUrl": "https://medlineplus.gov/ency/article/003583.htm"
+  },
+  "specific_gravity": {
+    "whatItIs": "Measures the concentration of all the chemical particles in your urine. It is used to check your body's water balance and how concentrated the urine is.",
+    "sourceTitle": "MedlinePlus — Urine specific gravity test",
+    "sourceUrl": "https://medlineplus.gov/ency/article/003587.htm"
+  },
+  "ketones": {
+    "whatItIs": "Measures whether ketones are present in your urine. Ketones are made when your body breaks down fat for energy instead of glucose.",
+    "sourceTitle": "MedlinePlus — Ketones urine test",
+    "sourceUrl": "https://medlineplus.gov/ency/article/003585.htm"
+  },
+  "protein": {
+    "whatItIs": "Measures the presence of proteins, including albumin, in a urine sample, using a dipstick pad that changes colour with the level of protein.",
+    "ifHigh": "Protein in the urine may be seen with kidney disease; the test is often used to screen for kidney problems.",
+    "sourceTitle": "MedlinePlus — Urine protein dipstick test",
+    "sourceUrl": "https://medlineplus.gov/ency/article/003580.htm"
+  },
+  "color": {
+    "whatItIs": "A visual check of the colour of your urine. The usual colour is straw-yellow; food, medicines, or illness can change it.",
+    "sourceTitle": "MedlinePlus — Urine: abnormal color",
+    "sourceUrl": "https://medlineplus.gov/ency/article/003139.htm"
+  },
+  "appearance": {
+    "whatItIs": "A visual check of how the urine sample looks to the naked eye, such as whether it is clear or cloudy.",
+    "sourceTitle": "MedlinePlus — Urinalysis",
+    "sourceUrl": "https://medlineplus.gov/ency/article/003579.htm"
+  },
+  "nitrite": {
+    "whatItIs": "Looks for nitrites in the urine. Many bacteria that cause urinary tract infections change a normal chemical in urine, nitrate, into nitrite.",
+    "ifHigh": "Nitrites are not normally found in urine; their presence may be a sign of a urinary tract infection.",
+    "sourceTitle": "MedlinePlus — Nitrites in Urine",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/nitrites-in-urine/"
+  },
+  "occult_blood": {
+    "whatItIs": "Looks for blood in the urine, including amounts too small to see. Blood in the urine is called hematuria.",
+    "ifHigh": "Blood in the urine may be seen with a urinary tract infection, kidney disease, or liver disease.",
+    "sourceTitle": "MedlinePlus — Blood in Urine",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/blood-in-urine/"
+  },
+  "leukocyte_esterase": {
+    "whatItIs": "A urine dipstick test that looks for white blood cells by detecting a substance they release, as a screening test for infection.",
+    "ifHigh": "A positive test may be a sign of a urinary tract infection.",
+    "sourceTitle": "MedlinePlus — Leukocyte esterase urine test",
+    "sourceUrl": "https://medlineplus.gov/ency/article/003584.htm"
+  },
+  "bacteria": {
+    "whatItIs": "A microscopic check of the urine sample for bacteria or other germs.",
+    "sourceTitle": "MedlinePlus — Urinalysis",
+    "sourceUrl": "https://medlineplus.gov/ency/article/003579.htm"
+  },
+  "squamous_epithelial_cells": {
+    "whatItIs": "Flat cells that line the lower urinary tract and the genital area. A large number in a urine sample may mean the sample was contaminated.",
+    "sourceTitle": "MedlinePlus — Epithelial Cells in Urine",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/epithelial-cells-in-urine/"
+  },
+  "hyaline_cast": {
+    "whatItIs": "Hyaline casts are the most common type of urinary cast: tiny tube-shaped particles seen when urine is examined under a microscope.",
+    "ifHigh": "A few hyaline casts are normal; more may be seen with dehydration, strenuous exercise, or kidney disease.",
+    "sourceTitle": "MedlinePlus — Urinary casts",
+    "sourceUrl": "https://medlineplus.gov/ency/article/003586.htm"
+  },
+  "bilirubin": {
+    "whatItIs": "Measures the level of bilirubin in your urine. Bilirubin is not normally found in urine; if it is present it may be an early sign of a liver problem.",
+    "ifHigh": "Bilirubin in the urine may be seen with a liver or bile-duct problem.",
+    "sourceTitle": "MedlinePlus — Bilirubin in Urine",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/bilirubin-in-urine/"
+  },
+  "bilirubin_indirect": {
+    "whatItIs": "Indirect bilirubin is one of the forms of bilirubin a bilirubin blood test can measure; it is also called unconjugated bilirubin.",
+    "sourceTitle": "MedlinePlus — Bilirubin Blood Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/bilirubin-blood-test/"
+  },
+  "adiponectin": {
+    "whatItIs": "Measures the level of adiponectin in serum or plasma. Adiponectin is a hormone made mainly by fat cells and is involved in glucose regulation.",
+    "sourceTitle": "Labcorp — Adiponectin",
+    "sourceUrl": "https://www.labcorp.com/tests/004650/adiponectin"
+  },
+  "leptin": {
+    "whatItIs": "Measures the level of leptin in your blood. Leptin is a hormone made mainly by fat cells that helps regulate appetite, hunger, metabolism, and body weight.",
+    "sourceTitle": "Labcorp — Leptin Blood Test",
+    "sourceUrl": "https://www.ondemand.labcorp.com/lab-tests/leptin-test"
+  },
+  "fructosamine": {
+    "whatItIs": "Measures fructosamine, the proteins in your blood that have glucose attached to them; it reflects blood glucose control over about one to three weeks.",
+    "sourceTitle": "Labcorp — Fructosamine",
+    "sourceUrl": "https://www.labcorp.com/tests/100800/fructosamine"
+  },
+  "t3_uptake": {
+    "whatItIs": "An indirect measure of the protein that carries thyroid hormone in the blood; it reflects the available binding sites rather than the level of T3.",
+    "sourceTitle": "Labcorp — T3 Uptake",
+    "sourceUrl": "https://www.labcorp.com/tests/001156/t3-uptake"
+  },
+  "testosterone_bioavailable": {
+    "whatItIs": "Measures free testosterone together with the testosterone attached to proteins other than sex hormone-binding globulin (SHBG).",
+    "sourceTitle": "MedlinePlus — Testosterone Levels Test",
+    "sourceUrl": "https://medlineplus.gov/lab-tests/testosterone-levels-test/"
   }
 }
