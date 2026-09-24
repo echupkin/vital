@@ -407,3 +407,64 @@ describe('sex-specific bands are used only when sex is set', () => {
     );
   });
 });
+
+// ── The closed qualitative vocabulary, at read time ─────────────────────────
+//
+// The same three words, scored against the expected value the report printed.
+// A qualitative row is never a measurement: no value is produced for it, and the
+// basis of every call is carried in the row's own notes.
+
+describe('scoring a qualitative result', () => {
+  it('calls a NEGATIVE that matches the printed expectation in range, on the printed basis', () => {
+    const result = score({ valueText: 'NEGATIVE', refText: 'NEGATIVE' });
+    expect(result.status).toBe('in_range');
+    expect(result.tone).toBe('good');
+    expect(result.label).toBe('In range');
+    expect(result.notes.join(' ')).toMatch(/matches the expected value the report printed/i);
+    expect(isScored(result.status)).toBe(true);
+  });
+
+  it('calls a POSITIVE where the report prints NEGATIVE out of range, as a convention and not a diagnosis', () => {
+    const result = score({ valueText: 'POSITIVE', refText: 'NEGATIVE' });
+    expect(result.status).toBe('out_of_expected');
+    expect(result.label).toBe('Out of range');
+    expect(result.tone).toBe('attention');
+    expect(result.notes.join(' ')).toMatch(/not a diagnosis/i);
+  });
+
+  it('lets NONE SEEN satisfy an upper limit the report printed', () => {
+    const result = score({ valueText: 'NONE SEEN', refText: '< OR = 5 /HPF', refHigh: 5 });
+    expect(result.status).toBe('in_range');
+    expect(result.notes.join(' ')).toMatch(/upper limit/i);
+    expect(result.notes.join(' ')).toMatch(/Nothing was seen/i);
+  });
+
+  it('matches an expectation that carries a per-field suffix', () => {
+    expect(score({ valueText: 'NONE SEEN', refText: 'NONE SEEN /LPF' }).status).toBe('in_range');
+    expect(score({ valueText: 'none seen', refText: 'NONE SEEN /HPF' }).status).toBe('in_range');
+  });
+
+  it('leaves a word outside the vocabulary unscored, naming the vocabulary', () => {
+    const result = score({ valueText: 'YELLOW', refText: 'YELLOW', refLow: 0, refHigh: 1 });
+    expect(result.status).toBe('unscored_non_numeric');
+    expect(result.tone).toBe('neutral');
+    expect(isScored(result.status)).toBe(false);
+    expect(result.notes.join(' ')).toMatch(/POSITIVE, NEGATIVE, NONE SEEN/);
+  });
+
+  it('says so when the vocabulary cannot resolve the row', () => {
+    // A word from the vocabulary, but an expectation that is not one of the
+    // three: the row is left unscored rather than guessed at.
+    const result = score({ valueText: 'NEGATIVE', refText: '<5', refHigh: 5 });
+    expect(result.status).toBe('unscored_non_numeric');
+    expect(result.notes.join(' ')).toMatch(/left unscored rather than guessed at/i);
+  });
+
+  it('invents no number: the row carries no measured value and says the basis instead', () => {
+    const result = score({ value: null, valueText: 'POSITIVE', refText: 'POSITIVE' });
+    expect(result.status).toBe('in_range');
+    expect(result.interval.low).toBeNull();
+    expect(result.interval.high).toBeNull();
+    expect(result.notes.join(' ')).toMatch(/No number is involved and nothing was measured/i);
+  });
+});

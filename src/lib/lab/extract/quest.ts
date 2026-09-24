@@ -65,6 +65,12 @@ import { joinedText } from './layout';
 import type { PdfTextItem } from './pdf-items';
 import { analyteKeyFor, confidenceOf, parseBoundedCell, parseRangeText, parseValueCell, redact, UNIT_TOKEN } from './parse';
 import type { ParsedValue } from './parse';
+import {
+  qualitativeWord,
+  resolveQualitative,
+  uninterpretedNote,
+  unresolvedNote,
+} from '../qualitative';
 
 /** The header labels, exactly as the reports print them. */
 const TEST_NAME_HEADER = /^test\s*name$/i;
@@ -314,47 +320,63 @@ export function parseQuestReference(text: string): QuestReference | null {
 
 // ── Qualitative results ──────────────────────────────────────────────────────
 
-/** The verdict a textual result can be given, and the basis for it. */
+/**
+ * The verdict a textual result can be given, and the basis for it.
+ *
+ * The vocabulary is CLOSED (`POSITIVE` / `NEGATIVE` / `NONE SEEN`) and lives in
+ * ../qualitative.ts, which the status engine uses too — so the importer and the
+ * read-time verdict cannot disagree about a row. `out_of_expected` is a
+ * qualitative result that is the opposite of the value the report printed as its
+ * expected one; it is never a number and never a diagnosis.
+ */
 export interface QualitativeBasis {
-  status: 'in_range' | 'unscored_non_numeric';
+  status: 'in_range' | 'out_of_expected' | 'unscored_non_numeric';
   /** Says what the judgement rests on. Never a clinical claim. */
   note: string;
-}
-
-/** Compare two printed texts as this report's own spelling allows. */
-function sameText(a: string, b: string): boolean {
-  const clean = (value: string) => value.trim().replace(/\s+/g, ' ').replace(/:$/, '').toUpperCase();
-  return clean(a) === clean(b) && clean(a) !== '';
 }
 
 /**
  * Decide what a QUALITATIVE result can be said to be, given the reference cell.
  *
  * A non-numeric result cannot be charted against a numeric interval, so the only
- * thing it can be scored against is the text the report itself printed as the
- * expected value. When the two are the same text the row is counted `in_range`,
- * and the note says so — the basis is a textual match, not a measurement. When
- * they differ, or no expected value was printed, the row is `unscored_non_numeric`
- * with the reason recorded. Returns null for a numeric result: nothing to decide.
+ * thing it can be scored against is what the report itself printed beside it:
+ * the closed vocabulary above for the result, and the printed expected value for
+ * the comparison. The row is counted `in_range` (the result matches the expected
+ * value, or "none seen" — zero — satisfies an upper limit) or `out_of_expected`
+ * (POSITIVE where the report prints NEGATIVE, or the reverse), and the note says
+ * which. Everything else is `unscored_non_numeric` with the reason recorded.
+ * Returns null for an empty result: there is nothing to decide.
  */
-export function qualitativeBasisFor(valueText: string, referenceText: string | null): QualitativeBasis | null {
+export function qualitativeBasisFor(
+  valueText: string,
+  referenceText: string | null,
+  expected: { upperLimit?: boolean; upperLimitValue?: number | null } = {}
+): QualitativeBasis | null {
   if (valueText.trim() === '') return null;
-  if (referenceText === null || referenceText.trim() === '') {
-    return {
-      status: 'unscored_non_numeric',
-      note: `The result was printed as text ("${valueText}") and the report printed no expected value to compare it with, so it is not scored.`,
-    };
-  }
-  if (sameText(valueText, referenceText)) {
-    return {
-      status: 'in_range',
-      note: `The basis for calling this row in range is a TEXTUAL MATCH: the result ("${valueText}") is the same text the report printed as the expected value ("${referenceText}"). No number is involved and nothing was measured.`,
-    };
-  }
+
+  const resolution = resolveQualitative({
+    valueText,
+    expectedText: referenceText,
+    upperLimit: expected.upperLimit,
+    upperLimitValue: expected.upperLimitValue ?? null,
+  });
+  if (resolution) return { status: resolution.status, note: resolution.note };
+
   return {
     status: 'unscored_non_numeric',
-    note: `The result was printed as text ("${valueText}") and the expected value the report printed ("${referenceText}") is different text, so the row cannot be scored and no number is invented for it.`,
+    note:
+      qualitativeWord(valueText) === null
+        ? uninterpretedNote(valueText, referenceText)
+        : unresolvedNote(valueText, referenceText),
   };
+}
+
+/** The one summary line a document carries for the qualitative rows it resolved. */
+export function qualitativeSummary(count: number): string | null {
+  if (count <= 0) return null;
+  return `${count} qualitative result${count === 1 ? '' : 's'} ${
+    count === 1 ? 'was' : 'were'
+  } read from the values the report printed: negatives match negatives and “none seen” satisfies an upper limit.`;
 }
 
 // ── Furniture and the patient block ──────────────────────────────────────────
@@ -571,6 +593,14 @@ export interface QuestInterpretation {
   panelHeaders: number;
   /** Pages on which the results header was found. */
   tablePages: number[];
+  /**
+   * How many rows were QUALITATIVE results read against the closed vocabulary.
+   * Reported to the reader as ONE document-level line (`qualitativeSummary`)
+   * instead of one warning per row.
+   */
+  qualitativeRead: number;
+  /** The one summary line for those rows, or null when the document had none. */
+  qualitativeNote: string | null;
 }
 
 interface Fragment {
@@ -590,6 +620,7 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
   const rejections: ExtractionRejection[] = [];
   const tablePages: number[] = [];
   let panelHeaders = 0;
+  let qualitativeRead = 0;
 
   const headers = new Map(questHeaders(layout).map(header => [header.page, header]));
   const collected = questCollectedDates(layout);
@@ -756,15 +787,34 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
       const intervalReference = annotationOnly ? null : reference;
 
       const qualitative = parsedValue.value === null
-        ? qualitativeBasisFor(parsedValue.valueText ?? '', intervalReference ? intervalReference.refText : null)
+        ? qualitativeBasisFor(
+            parsedValue.valueText ?? '',
+            intervalReference ? intervalReference.refText : null,
+            {
+              // A reference cell printed as `<5` / `< OR = 5 /HPF` is an UPPER
+              // limit; "NONE SEEN" — nothing was seen, i.e. zero — satisfies it.
+              upperLimit:
+                intervalReference !== null &&
+                intervalReference.form === 'range' &&
+                intervalReference.refHigh !== null &&
+                intervalReference.refLow === null,
+              upperLimitValue: intervalReference ? intervalReference.refHigh : null,
+            }
+          )
         : null;
-      if (qualitative) {
+      if (qualitative !== null && qualitative.status === 'unscored_non_numeric') {
+        // A row the vocabulary does NOT resolve keeps its warning: it genuinely
+        // cannot be scored and the reader is told so, per row.
         warnings.push({
           code: 'non_numeric_result',
           message: `"${printedName}" printed a non-numeric result ("${parsedValue.valueText}"). ${qualitative.note}`,
           page: line.page,
           line: line.lineNo,
         });
+      } else if (qualitative !== null) {
+        // Resolved by the vocabulary: NO per-row warning. The rows are reported
+        // once for the whole document, by `qualitativeSummary` below.
+        qualitativeRead += 1;
       }
 
       // The COLUMN the value was printed in is the report's own marker. A single
@@ -819,5 +869,13 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
     observations.push(candidate.observation);
   });
 
-  return { observations, warnings, rejections, panelHeaders, tablePages };
+  return {
+    observations,
+    warnings,
+    rejections,
+    panelHeaders,
+    tablePages,
+    qualitativeRead,
+    qualitativeNote: qualitativeSummary(qualitativeRead),
+  };
 }

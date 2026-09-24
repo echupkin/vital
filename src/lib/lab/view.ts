@@ -2,9 +2,9 @@
 //
 // Everything the Lab page and the analyte detail page DECIDE, as pure functions
 // of the series read model: grouping and ordering, status counts, the change
-// from the previous observation, the interval's provenance, the cross-document
-// comparison and the chart's shape. No I/O, no clock, no React, so all of it is
-// unit-tested in view.test.ts rather than through the DOM.
+// from the previous observation, the interval's provenance and the chart's
+// shape. No I/O, no clock, no React, so all of it is unit-tested in view.test.ts
+// rather than through the DOM.
 //
 // THE RULES ENCODED HERE, none of which is negotiable:
 //   * a missing value is NEVER rendered as 0 — every formatter returns a word;
@@ -144,6 +144,7 @@ export function statusBucket(status: ResultStatus): StatusBucket {
       return 'slightly_out';
     case 'out_low':
     case 'out_high':
+    case 'out_of_expected':
       return 'out';
     default:
       return 'unscored';
@@ -473,115 +474,6 @@ export function summariseDocuments(reports: LabReportDocument[]): DocumentSummar
   };
 }
 
-/** A document's own label: its filename, when it printed no name of its own. */
-export function documentLabel(report: LabReportDocument): string {
-  return report.sourceFilename || 'unnamed document';
-}
-
-// ── Cross-document comparison ───────────────────────────────────────────────
-
-export type ComparisonState = 'both' | 'then_only' | 'now_only';
-
-export interface ComparisonRow {
-  analyteKey: string;
-  displayName: string;
-  category: AnalyteCategory;
-  unit: string | null;
-  then: LabPoint | null;
-  now: LabPoint | null;
-  state: ComparisonState;
-  /** now - then, only when BOTH sides carry a number. */
-  delta: number | null;
-  deltaText: string | null;
-  /** The status change in words, or a sentence saying why there is none. */
-  statusText: string;
-  /** True when the status changed between the two documents. */
-  statusChanged: boolean;
-  /** How many observations this document holds for the analyte, when more than one. */
-  thenCount: number;
-  nowCount: number;
-  /** A plain sentence for the "present in only one" case, else null. */
-  note: string | null;
-}
-
-/** The observation a document contributes: its latest, by date then row id. */
-function pointFrom(analyte: LabAnalyte, reportId: string): { point: LabPoint | null; count: number } {
-  const inDocument = orderedPoints(analyte).filter(point => point.reportId === reportId);
-  return {
-    point: inDocument.length > 0 ? inDocument[inDocument.length - 1]! : null,
-    count: inDocument.length,
-  };
-}
-
-/**
- * Compare two imported documents, analyte by analyte: the value in each, the
- * difference, the status change, and an explicit state for an analyte that only
- * one of the two documents contains.
- *
- * A trend-matrix document holds SEVERAL dates for one analyte. The comparison
- * therefore uses that document's LATEST observation of the analyte, says so, and
- * reports how many observations it held — no silent averaging, no merging.
- */
-export function compareDocuments(
-  analytes: LabAnalyte[],
-  thenReportId: string,
-  nowReportId: string
-): ComparisonRow[] {
-  const rows: ComparisonRow[] = [];
-  for (const analyte of orderAnalytes(analytes)) {
-    const then = pointFrom(analyte, thenReportId);
-    const now = pointFrom(analyte, nowReportId);
-    if (!then.point && !now.point) continue;
-
-    const state: ComparisonState =
-      then.point && now.point ? 'both' : then.point ? 'then_only' : 'now_only';
-
-    const bothNumeric =
-      then.point !== null && now.point !== null && isNumericPoint(then.point) && isNumericPoint(now.point);
-    const delta = bothNumeric ? (now.point!.value as number) - (then.point!.value as number) : null;
-    const unit = now.point?.unit ?? then.point?.unit ?? null;
-    const deltaText =
-      delta === null
-        ? null
-        : `${delta > 0 ? '+' : ''}${formatNumber(delta)}${unit && unit.trim().length > 0 ? ` ${unit}` : ''}`;
-
-    const thenStatus = then.point ? then.point.statusLabel : null;
-    const nowStatus = now.point ? now.point.statusLabel : null;
-    const statusChanged = Boolean(then.point && now.point && then.point.status !== now.point.status);
-    const statusText =
-      state === 'then_only'
-        ? `Not present in the later document; its status there is unknown.`
-        : state === 'now_only'
-          ? 'Not present in the earlier document.'
-          : statusChanged
-            ? `${thenStatus} → ${nowStatus}`
-            : `Unchanged (${nowStatus})`;
-
-    rows.push({
-      analyteKey: analyte.analyteKey,
-      displayName: analyte.displayName,
-      category: analyte.category,
-      unit,
-      then: then.point,
-      now: now.point,
-      state,
-      delta,
-      deltaText,
-      statusText,
-      statusChanged,
-      thenCount: then.count,
-      nowCount: now.count,
-      note:
-        state === 'then_only'
-          ? 'Present in only one of the two documents — the earlier one.'
-          : state === 'now_only'
-            ? 'Present in only one of the two documents — the later one.'
-            : null,
-    });
-  }
-  return rows;
-}
-
 // ── Chart model ─────────────────────────────────────────────────────────────
 
 export type LabChartMode = 'trend' | 'range' | 'readings';
@@ -594,6 +486,26 @@ export interface ChartBand {
   origin: ResolvedInterval['origin'];
   /** The band's provenance in words. */
   provenance: string;
+  /**
+   * The source in the short words the chart must state beside the band, because
+   * that is what makes the band trustworthy: `printed on the report` or
+   * `general reference interval`. Null when no interval applies at all.
+   */
+  source: string | null;
+}
+
+/** The interval's origin in the words the chart and the range card use. */
+export function intervalSourceWords(origin: ResolvedInterval['origin']): string | null {
+  switch (origin) {
+    case 'report':
+      return 'printed on the report';
+    case 'reference_table':
+      return 'general reference interval';
+    case 'manual':
+      return 'entered by hand';
+    default:
+      return null;
+  }
 }
 
 export interface LabChartModel {
@@ -621,15 +533,21 @@ export function chartModel(analyte: LabAnalyte): LabChartModel {
   const mode: LabChartMode = numeric.length >= 2 ? 'trend' : numeric.length === 1 ? 'range' : 'readings';
 
   const last = numeric.length > 0 ? numeric[numeric.length - 1]! : null;
-  const band: ChartBand | null = last
-    ? {
-        low: last.interval.low,
-        high: last.interval.high,
-        text: intervalProvenance(last.interval).refText,
-        origin: last.interval.origin,
-        provenance: intervalProvenance(last.interval).text,
-      }
-    : null;
+  // A BAND IS DRAWN ONLY WHEN THE INTERVAL HAS A LIMIT. An interval that is only
+  // a unit, or no interval at all, leaves `band` null: the chart draws nothing
+  // and the card says so, rather than shading an invented range.
+  const hasLimits = last !== null && (last.interval.low !== null || last.interval.high !== null);
+  const band: ChartBand | null =
+    last && hasLimits
+      ? {
+          low: last.interval.low,
+          high: last.interval.high,
+          text: intervalProvenance(last.interval).refText,
+          origin: last.interval.origin,
+          provenance: intervalProvenance(last.interval).text,
+          source: intervalSourceWords(last.interval.origin),
+        }
+      : null;
 
   const bandVaries =
     numeric.length > 1 &&
@@ -659,6 +577,21 @@ export function chartDomain(model: LabChartModel): [number, number] | null {
   return [min - pad, max + pad];
 }
 
+/**
+ * The reference range as the range card shows it: the two printed limits with
+ * the unit, or the single limit the interval actually has. Never invents an end
+ * the report did not print.
+ */
+export function referenceRangeText(band: ChartBand, unit: string | null): string {
+  const suffix = unit && unit.trim().length > 0 ? ` ${unit.trim()}` : '';
+  if (band.low !== null && band.high !== null) {
+    return `${formatNumber(band.low)} – ${formatNumber(band.high)}${suffix}`;
+  }
+  if (band.high !== null) return `up to ${formatNumber(band.high)}${suffix}`;
+  if (band.low !== null) return `${formatNumber(band.low)}${suffix} or more`;
+  return 'no numeric limit printed';
+}
+
 /** A sentence a screen reader can read in place of the chart. */
 export function chartDescription(analyteName: string, model: LabChartModel): string {
   const unit = model.unit && model.unit.trim().length > 0 ? ` ${model.unit}` : '';
@@ -677,16 +610,20 @@ export function chartDescription(analyteName: string, model: LabChartModel): str
         : 'position unknown against';
     return `${analyteName}: one observation, ${formatReading(point)}, recorded ${point.resultOn}, ${inside} the interval ${
       band?.text ?? 'none'
-    } (${band?.provenance ?? 'no interval'}). Status: ${point.statusLabel}.`;
+    }${band?.source ? ` (${band.source})` : ''}.${
+      band ? '' : ' No reference interval with numeric limits applies, so no band is drawn.'
+    } Status: ${point.statusLabel}.`;
   }
   const first = model.numeric[0]!;
   const last = model.numeric[model.numeric.length - 1]!;
   const values = model.numeric.map(point => point.value as number);
   return `${analyteName}: ${model.numeric.length} observations from ${first.resultOn} to ${last.resultOn}, ranging ${formatNumber(
     Math.min(...values)
-  )} to ${formatNumber(Math.max(...values))}${unit}. Interval band ${model.band?.text ?? 'none'} (${
-    model.band?.provenance ?? 'no interval'
-  }). Latest ${formatReading(last)} on ${last.resultOn}: ${last.statusLabel}.`;
+  )} to ${formatNumber(Math.max(...values))}${unit}. Interval band ${model.band?.text ?? 'none'}${
+    model.band?.source ? `, ${model.band.source}` : ''
+  }${model.band ? '' : ' — no reference interval with numeric limits applies, so no band is drawn'}. Latest ${formatReading(
+    last
+  )} on ${last.resultOn}: ${last.statusLabel}.`;
 }
 
 // ── The page as a whole ─────────────────────────────────────────────────────

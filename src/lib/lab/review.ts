@@ -199,6 +199,7 @@ export function statusForRow(row: ReviewRow, profile: ReviewProfile): RowStatus 
     valueText: parseText(row.valueText),
     refLow: parseNumber(row.refLow),
     refHigh: parseNumber(row.refHigh),
+    refText: parseText(row.refText),
     printedFlag: row.printedFlag,
     band: selection.band,
   });

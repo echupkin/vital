@@ -606,6 +606,9 @@ export async function getSeries(
         valueText: row.valueText,
         refLow: row.refLow,
         refHigh: row.refHigh,
+        // The reference cell EXACTLY as printed: it is what a qualitative
+        // result (POSITIVE / NEGATIVE / NONE SEEN) is interpreted against.
+        refText: row.refText,
         printedFlag: row.printedFlag,
         band: selection.band,
       });

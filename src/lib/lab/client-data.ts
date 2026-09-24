@@ -20,11 +20,17 @@ import type {
   LabExtractionMethod,
 } from './view';
 
-/** One stored row's provenance, keyed by its `resultId`. */
+/**
+ * One stored row's provenance, keyed by its `resultId`.
+ *
+ * NO DOCUMENT NAME IS CARRIED HERE. The Lab surfaces name no source document —
+ * the observation date is what a reader needs, and the documents themselves are
+ * listed in Settings → Data & coverage. What is kept is what belongs to the ROW:
+ * the name the document printed for it, the pass that read it, the report's own
+ * flag and the interval exactly as printed.
+ */
 export interface RowProvenance {
   reportId: string;
-  documentDate: string | null;
-  sourceFilename: string;
   printedName: string;
   extractionMethod: LabExtractionMethod;
   /** The interval exactly as the document printed it, e.g. ">40 mg/dL". */
@@ -124,8 +130,6 @@ export async function fetchProvenance(reportIds: string[]): Promise<Map<string, 
     for (const result of read.results ?? []) {
       map.set(result.id, {
         reportId: read.report.id,
-        documentDate: read.report.documentDate,
-        sourceFilename: read.report.sourceFilename,
         printedName: result.printedName,
         extractionMethod: result.extractionMethod,
         refText: result.refText,

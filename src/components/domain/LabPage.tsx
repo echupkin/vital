@@ -15,13 +15,18 @@
 // missing value is never rendered as 0, and two observations sharing a date are
 // never merged into one point.
 //
+// NO SOURCE DOCUMENT IS NAMED HERE. Each card shows the observation's own date —
+// the date the owner cares about — and the documents are listed in
+// Settings → Data & coverage. There is no cross-document comparison section:
+// the date-stamped history per analyte is the aggregate that matters.
+//
 // THE EMPTY STATE IS THE HONEST DEFAULT TODAY: with no document imported the
 // page says so and offers the way to add one, rather than showing a wall of
 // zeroes.
 //
-// The decisions (grouping, ordering, counts, deltas, the comparison and the
-// chart shape) live in `@/lib/lab/view` as pure functions with their own tests;
-// this file is the presentation over them.
+// The decisions (grouping, ordering, counts, deltas and the chart shape) live in
+// `@/lib/lab/view` as pure functions with their own tests; this file is the
+// presentation over them.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -37,15 +42,13 @@ import {
   BUCKET_LABEL,
   changeFromPrevious,
   chartModel,
-  compareDocuments,
   countStatuses,
-  documentLabel,
-  formatReading,
   groupAnalytes,
   hasDocumentsWithoutResults,
   hasNoDocuments,
   intervalProvenance,
   latestPoint,
+  orderedPoints,
   summariseDocuments,
   unscoredReason,
   type LabAnalyte,
@@ -55,15 +58,13 @@ import {
 } from '@/lib/lab/view';
 import {
   Badge,
-  Button,
   Card,
   DataStateNote,
   EmptyState,
   ErrorState,
   LoadingState,
-  Select,
 } from '@/components/ui/primitives';
-import { LabChart, LabObservationTable } from '@/components/charts';
+import { LabChart, LabChartFacts, LabObservationTable } from '@/components/charts';
 import { DomainHeader, SectionTitle } from './DomainShared';
 import { LabNotices, LabStatusBadge, observationRows, needsSexNotice } from './LabShared';
 
@@ -90,8 +91,9 @@ export function LabPage() {
     setState(current => ({ ...current, loading: true, error: null }));
     try {
       const [summary, documents] = await Promise.all([fetchLabSummary(), fetchLabDocuments()]);
-      // Provenance for every stored row: the source filename, the printed name
-      // and the extraction pass the series read model does not carry.
+      // Provenance for every stored row: the printed name, the flag and the
+      // extraction pass the series read model does not carry. NO document name
+      // is read here — the Lab surfaces name no source document.
       const provenance = await fetchProvenance(documents.documents.map(document => document.id));
       setState({
         loading: false,
@@ -145,12 +147,12 @@ export function LabPage() {
     );
   }
 
-  return <LabContent data={state.data} onReload={() => void load()} />;
+  return <LabContent data={state.data} />;
 }
 
 // ── The page ────────────────────────────────────────────────────────────────
 
-function LabContent({ data, onReload }: { data: LoadedLab; onReload: () => void }) {
+function LabContent({ data }: { data: LoadedLab }) {
   const { summary, documents, provenance } = data;
   const profile: LabProfileFacts = summary.profile;
   const analytes = summary.analytes;
@@ -308,14 +310,6 @@ function LabContent({ data, onReload }: { data: LoadedLab; onReload: () => void 
             )}
           </section>
 
-          {/* ── Comparison across documents ───────────── */}
-          <DocumentComparison
-            analytes={analytes}
-            documents={documents}
-            provenance={provenance}
-            onReload={onReload}
-          />
-
           {/* ── Per-analyte cards, by category ───────── */}
           {groups.map(group => (
             <section key={group.category} aria-label={`${group.category} analytes`}>
@@ -388,6 +382,8 @@ function AnalyteCard({
   const rows = useMemo(() => observationRows(analyte, provenance, profile), [analyte, provenance, profile]);
   if (!latest) return null;
 
+  const points = orderedPoints(analyte);
+  const oldest = points[0] ?? latest;
   const interval = intervalProvenance(latest.interval);
   const reason = unscoredReason(analyte, latest, profile);
 
@@ -397,23 +393,20 @@ function AnalyteCard({
         <h3 className="text-sm font-semibold text-text-primary">{analyte.displayName}</h3>
         <LabStatusBadge label={latest.statusLabel} tone={latest.tone} />
       </div>
-
-      <div className="text-[28px] font-semibold tnum text-text-primary leading-none mt-1">
-        {formatReading(latest)}
-      </div>
-      <p className="text-xs text-text-secondary mt-1">
-        Latest observation · {formatDayKeyLong(latest.resultOn)} · {analyte.points.length} observation
-        {analyte.points.length === 1 ? '' : 's'} in {new Set(analyte.points.map(p => p.reportId)).size} document
-        {new Set(analyte.points.map(p => p.reportId)).size === 1 ? '' : 's'}
+      <p className="text-xs text-text-secondary">
+        {points.length} stored observation{points.length === 1 ? '' : 's'}, from{' '}
+        {formatDayKeyLong(oldest.resultOn)} to {formatDayKeyLong(latest.resultOn)}
       </p>
 
+      <div className="mt-4">
+        <LabChart analyteName={analyte.displayName} model={model} height={180} />
+      </div>
+
+      {/* The two compact cards the owner asked for: the latest result with its
+          OBSERVATION DATE, and the reference range with its source in words. */}
+      <LabChartFacts model={model} latest={latest} className="mt-3" />
+
       <dl className="mt-3 space-y-1.5 text-xs">
-        <div className="flex flex-wrap gap-x-2">
-          <dt className="text-text-secondary">Interval scored against:</dt>
-          <dd className="text-text-primary tnum">
-            {interval.refText ?? 'none'} <span className="text-text-secondary">— {interval.text}</span>
-          </dd>
-        </div>
         {interval.note && (
           <dd className="text-[11px] text-text-secondary leading-relaxed">{interval.note}</dd>
         )}
@@ -437,10 +430,6 @@ function AnalyteCard({
         )}
       </dl>
 
-      <div className="mt-4">
-        <LabChart analyteName={analyte.displayName} model={model} height={180} />
-      </div>
-
       <details className="mt-3">
         <summary className="text-xs text-primary cursor-pointer min-h-[44px] flex items-center">
           Show {rows.length} observation{rows.length === 1 ? '' : 's'} as a table
@@ -463,220 +452,5 @@ function AnalyteCard({
         </Link>
       </div>
     </Card>
-  );
-}
-
-// ── Comparison across documents ─────────────────────────────────────────────
-
-/** Documents oldest first, by their own date and falling back to when they were imported. */
-function chronological(documents: LabReportDocument[]): LabReportDocument[] {
-  return [...documents].sort((a, b) => {
-    const keyA = a.documentDate ?? a.createdAt ?? '';
-    const keyB = b.documentDate ?? b.createdAt ?? '';
-    return keyA === keyB ? a.id.localeCompare(b.id) : keyA < keyB ? -1 : 1;
-  });
-}
-
-function DocumentComparison({
-  analytes,
-  documents,
-  provenance,
-  onReload,
-}: {
-  analytes: LabAnalyte[];
-  documents: LabReportDocument[];
-  provenance: Map<string, RowProvenance>;
-  onReload: () => void;
-}) {
-  const ordered = useMemo(() => chronological(documents), [documents]);
-  const [thenId, setThenId] = useState<string>(() => ordered.length >= 2 ? ordered[ordered.length - 2]!.id : '');
-  const [nowId, setNowId] = useState<string>(() => (ordered.length >= 1 ? ordered[ordered.length - 1]!.id : ''));
-
-  // A document deleted in Settings while this page is open must not leave a
-  // picker pointing at a row that no longer exists.
-  useEffect(() => {
-    if (ordered.length === 0) return;
-    if (!ordered.some(document => document.id === nowId)) setNowId(ordered[ordered.length - 1]!.id);
-    if (ordered.length >= 2 && !ordered.some(document => document.id === thenId)) {
-      setThenId(ordered[ordered.length - 2]!.id);
-    }
-  }, [ordered, nowId, thenId]);
-
-  const rows = useMemo(
-    () => (thenId && nowId && thenId !== nowId ? compareDocuments(analytes, thenId, nowId) : []),
-    [analytes, thenId, nowId]
-  );
-
-  const thenDoc = ordered.find(document => document.id === thenId) ?? null;
-  const nowDoc = ordered.find(document => document.id === nowId) ?? null;
-  const options = ordered.map(document => ({
-    value: document.id,
-    label: `${documentLabel(document)}${document.documentDate ? ` · ${document.documentDate}` : ' · no date printed'}`,
-  }));
-
-  return (
-    <section aria-label="Comparison across documents">
-      <SectionTitle hint="value then, value now, the difference and the status change">
-        Comparison across documents
-      </SectionTitle>
-
-      {documents.length < 2 && (
-        <Card className="p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-1">
-            {documents.length === 1 ? 'Only one document imported' : 'No documents imported'}
-          </h3>
-          <DataStateNote>
-            {documents.length === 1
-              ? 'A comparison needs two documents. Import a second lab report and each analyte will be compared across both here — including the analytes that appear in only one of them.'
-              : 'There is nothing to compare yet.'}
-          </DataStateNote>
-          <div className="mt-3">
-            <Button variant="secondary" onClick={onReload}>
-              Check for new documents
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {documents.length >= 2 && thenDoc && nowDoc && (
-        <Card className="p-5">
-          {documents.length > 2 && (
-            <div className="flex flex-wrap items-end gap-4 mb-4">
-              <div>
-                <label htmlFor="lab-compare-then" className="block text-xs font-medium text-text-primary mb-1">
-                  Earlier document
-                </label>
-                <Select
-                  value={thenId}
-                  onChange={setThenId}
-                  options={options}
-                  aria-label="Earlier document to compare"
-                />
-              </div>
-              <div>
-                <label htmlFor="lab-compare-now" className="block text-xs font-medium text-text-primary mb-1">
-                  Later document
-                </label>
-                <Select
-                  value={nowId}
-                  onChange={setNowId}
-                  options={options}
-                  aria-label="Later document to compare"
-                />
-              </div>
-              {thenId === nowId && (
-                <DataStateNote tone="attention">
-                  The two pickers point at the same document, so no comparison can be made. Choose a different one.
-                </DataStateNote>
-              )}
-            </div>
-          )}
-
-          {documents.length === 2 && (
-            <p className="text-xs text-text-secondary mb-4">
-              Comparing {documentLabel(thenDoc)}
-              {thenDoc.documentDate ? ` (${thenDoc.documentDate})` : ''} with {documentLabel(nowDoc)}
-              {nowDoc.documentDate ? ` (${nowDoc.documentDate})` : ''}. With more than two documents imported you
-              choose which pair to compare.
-            </p>
-          )}
-
-          {rows.length === 0 ? (
-            <DataStateNote>
-              These two documents share no analyte, so there is nothing to compare.
-            </DataStateNote>
-          ) : (
-            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Comparison of two lab documents">
-              <table className="w-full text-sm text-left min-w-[860px]">
-                <caption className="text-left text-xs text-text-secondary mb-2">
-                  {rows.length} analyte{rows.length === 1 ? '' : 's'} in either document, out of range first. A
-                  document holding several dates for one analyte contributes its latest observation, dated below.
-                </caption>
-                <thead>
-                  <tr className="border-b border-border text-xs text-text-secondary">
-                    <th scope="col" className="py-2 pr-4 font-medium">Analyte</th>
-                    <th scope="col" className="py-2 pr-4 font-medium">Then</th>
-                    <th scope="col" className="py-2 pr-4 font-medium">Now</th>
-                    <th scope="col" className="py-2 pr-4 font-medium">Difference</th>
-                    <th scope="col" className="py-2 font-medium">Status change</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map(row => (
-                    <tr key={row.analyteKey} className="border-b border-border/50 align-top">
-                      <td className="py-2.5 pr-4">
-                        <Link href={`/lab/${row.analyteKey}`} className="text-text-primary hover:underline">
-                          {row.displayName}
-                        </Link>
-                        <span className="block text-[10px] text-text-secondary">{row.category}</span>
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        <ComparisonSide
-                          point={row.then}
-                          count={row.thenCount}
-                          provenance={provenance}
-                          fallback="not in this document"
-                        />
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        <ComparisonSide
-                          point={row.now}
-                          count={row.nowCount}
-                          provenance={provenance}
-                          fallback="not in this document"
-                        />
-                      </td>
-                      <td className="py-2.5 pr-4 tnum text-text-primary">{row.deltaText ?? 'not comparable'}</td>
-                      <td className="py-2.5 text-text-secondary text-xs">
-                        {row.statusText}
-                        {row.note && <span className="block text-[11px] mt-0.5">{row.note}</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <div className="mt-4">
-            <DataStateNote>
-              “Then” and “now” are the two documents above, in the order you chose. A difference is shown only when
-              both sides printed a number; a status change is shown only when both sides were scored. Neither is a
-              verdict about your health — each is a comparison of two imported records.
-            </DataStateNote>
-          </div>
-        </Card>
-      )}
-    </section>
-  );
-}
-
-function ComparisonSide({
-  point,
-  count,
-  provenance,
-  fallback,
-}: {
-  point: LabAnalyte['points'][number] | null;
-  count: number;
-  provenance: Map<string, RowProvenance>;
-  fallback: string;
-}) {
-  if (!point) return <span className="text-text-secondary text-xs">{fallback}</span>;
-  const row = provenance.get(point.resultId);
-  return (
-    <div>
-      <span className="text-text-primary font-medium tnum">{formatReading(point)}</span>
-      <span className="block text-[10px] text-text-secondary">{formatDayKeyLong(point.resultOn)}</span>
-      <span className="block text-[10px] text-text-secondary">{point.statusLabel}</span>
-      <span className="block text-[10px] text-text-secondary break-all">
-        {row ? row.sourceFilename : 'source not readable'}
-      </span>
-      {count > 1 && (
-        <span className="block text-[10px] text-text-secondary">
-          latest of {count} observations in this document
-        </span>
-      )}
-    </div>
   );
 }

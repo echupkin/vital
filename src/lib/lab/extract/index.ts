@@ -146,7 +146,10 @@ export async function extractLabDocument(
   let observations = interpreted.observations;
   let pass: ExtractionResult['pass'] = observations.length > 0 ? 'deterministic' : 'none';
   const warnings: ExtractionWarning[] = [...interpreted.warnings, ...extraWarnings];
-  let notes = kind === 'results' ? null : reason;
+  // A results document carries no note of its own, EXCEPT the one line that
+  // reports the qualitative rows the closed vocabulary resolved — reported once
+  // for the document rather than as a warning per row.
+  let notes = kind === 'results' ? quest?.qualitativeNote ?? null : reason;
 
   if (kind === 'results' && observations.length === 0 && options.modelAssist !== false) {
     warnings.push({

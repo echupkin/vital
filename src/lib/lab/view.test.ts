@@ -16,7 +16,6 @@ import {
   chartDescription,
   chartDomain,
   chartModel,
-  compareDocuments,
   countStatuses,
   daysBetween,
   filterByRange,
@@ -26,15 +25,18 @@ import {
   hasDocumentsWithoutResults,
   hasNoDocuments,
   intervalProvenance,
+  intervalSourceWords,
   latestPoint,
   orderAnalytes,
   orderedPoints,
   previousPoint,
+  referenceRangeText,
   severityRank,
   statusBucket,
   summariseDocuments,
   unscoredReason,
   type LabAnalyte,
+  type LabChartModel,
   type LabPoint,
   type LabReportDocument,
 } from './view';
@@ -50,6 +52,7 @@ function makePoint(input: {
   reportId?: string;
   refLow?: number | null;
   refHigh?: number | null;
+  refText?: string | null;
   band?: LabBand | null;
 }): LabPoint {
   const scored = scoreResult({
@@ -57,6 +60,7 @@ function makePoint(input: {
     valueText: input.valueText ?? null,
     refLow: input.refLow ?? null,
     refHigh: input.refHigh ?? null,
+    refText: input.refText ?? null,
     printedFlag: null,
     band: input.band ?? null,
   });
@@ -118,6 +122,10 @@ describe('counting observations by status', () => {
     expect(statusBucket('slightly_out_high')).toBe('slightly_out');
     expect(statusBucket('out_low')).toBe('out');
     expect(statusBucket('out_high')).toBe('out');
+    // A qualitative result that is the opposite of the printed expectation is
+    // OUT of range, exactly like a numeric one above or below the interval.
+    expect(statusBucket('out_of_expected')).toBe('out');
+    expect(severityRank('out_of_expected')).toBe(0);
     expect(statusBucket('unscored_no_range')).toBe('unscored');
     expect(statusBucket('unscored_non_numeric')).toBe('unscored');
   });
@@ -496,110 +504,6 @@ describe('the stored documents', () => {
   });
 });
 
-// ── Comparison across documents ─────────────────────────────────────────────
-
-describe('comparing two documents', () => {
-  const then = document({ id: 'then-doc', documentDate: '2023-01-01', sourceFilename: 'earlier.pdf' });
-  const now = document({ id: 'now-doc', documentDate: '2024-01-01', sourceFilename: 'later.pdf' });
-  expect(then.id).not.toBe(now.id);
-
-  it('gives the value in each document, the difference and the status change', () => {
-    const analyte = makeAnalyte({
-      analyteKey: 'alt',
-      displayName: 'ALT',
-      points: [
-        makePoint({ id: 't1', on: '2022-12-20', value: 20, reportId: 'then-doc', ...printed }),
-        makePoint({ id: 'n1', on: '2023-12-20', value: 62, reportId: 'now-doc', ...printed }),
-      ],
-    });
-    const rows = compareDocuments([analyte], 'then-doc', 'now-doc');
-    expect(rows).toHaveLength(1);
-    const row = rows[0]!;
-    expect(row.state).toBe('both');
-    expect(row.then!.value).toBe(20);
-    expect(row.now!.value).toBe(62);
-    expect(row.delta).toBe(42);
-    expect(row.deltaText).toBe('+42 U/L');
-    expect(row.statusChanged).toBe(true);
-    expect(row.statusText).toBe('In range → Above range');
-    expect(row.note).toBeNull();
-  });
-
-  it('states an unchanged status explicitly', () => {
-    const analyte = makeAnalyte({
-      points: [
-        makePoint({ id: 't1', on: '2022-12-20', value: 20, reportId: 'then-doc', ...printed }),
-        makePoint({ id: 'n1', on: '2023-12-20', value: 24, reportId: 'now-doc', ...printed }),
-      ],
-    });
-    const row = compareDocuments([analyte], 'then-doc', 'now-doc')[0]!;
-    expect(row.statusChanged).toBe(false);
-    expect(row.statusText).toBe('Unchanged (In range)');
-  });
-
-  it('marks an analyte present in only one of the two documents', () => {
-    const removed = makeAnalyte({
-      analyteKey: 'removed',
-      displayName: 'Removed',
-      points: [makePoint({ id: 't1', on: '2022-12-20', value: 20, reportId: 'then-doc', ...printed })],
-    });
-    const added = makeAnalyte({
-      analyteKey: 'added',
-      displayName: 'Added',
-      points: [makePoint({ id: 'n1', on: '2023-12-20', value: 30, reportId: 'now-doc', ...printed })],
-    });
-    const rows = compareDocuments([removed, added], 'then-doc', 'now-doc');
-    const removedRow = rows.find(row => row.analyteKey === 'removed')!;
-    const addedRow = rows.find(row => row.analyteKey === 'added')!;
-
-    expect(removedRow.state).toBe('then_only');
-    expect(removedRow.now).toBeNull();
-    expect(removedRow.deltaText).toBeNull();
-    expect(removedRow.note).toContain('only one of the two documents');
-    expect(removedRow.note).toContain('earlier');
-
-    expect(addedRow.state).toBe('now_only');
-    expect(addedRow.then).toBeNull();
-    expect(addedRow.deltaText).toBeNull();
-    expect(addedRow.note).toContain('later');
-  });
-
-  it('drops an analyte neither document contains', () => {
-    const elsewhere = makeAnalyte({
-      analyteKey: 'elsewhere',
-      points: [makePoint({ id: 'x', on: '2022-01-01', value: 20, reportId: 'third-doc', ...printed })],
-    });
-    expect(compareDocuments([elsewhere], 'then-doc', 'now-doc')).toEqual([]);
-  });
-
-  it('uses a document\u2019s latest observation of an analyte and says how many it held', () => {
-    const analyte = makeAnalyte({
-      points: [
-        makePoint({ id: 't1', on: '2022-03-01', value: 20, reportId: 'then-doc', ...printed }),
-        makePoint({ id: 't2', on: '2022-09-01', value: 30, reportId: 'then-doc', ...printed }),
-        makePoint({ id: 'n1', on: '2023-09-01', value: 40, reportId: 'now-doc', ...printed }),
-      ],
-    });
-    const row = compareDocuments([analyte], 'then-doc', 'now-doc')[0]!;
-    expect(row.then!.resultId).toBe('t2');
-    expect(row.thenCount).toBe(2);
-    expect(row.nowCount).toBe(1);
-    expect(row.delta).toBe(10);
-  });
-
-  it('refuses a difference when one side is not a number', () => {
-    const analyte = makeAnalyte({
-      points: [
-        makePoint({ id: 't1', on: '2022-12-20', value: 20, reportId: 'then-doc', ...printed }),
-        makePoint({ id: 'n1', on: '2023-12-20', value: null, valueText: 'TRACE', reportId: 'now-doc' }),
-      ],
-    });
-    const row = compareDocuments([analyte], 'then-doc', 'now-doc')[0]!;
-    expect(row.delta).toBeNull();
-    expect(row.deltaText).toBeNull();
-  });
-});
-
 // ── Chart model ─────────────────────────────────────────────────────────────
 
 describe('what the chart can honestly draw', () => {
@@ -693,6 +597,111 @@ describe('what the chart can honestly draw', () => {
     expect(model.mode).toBe('readings');
     expect(model.numeric).toHaveLength(0);
     expect(chartDomain(model)).toBeNull();
+  });
+});
+
+// ── The reference band the chart draws ──────────────────────────────────────
+
+describe('the reference band', () => {
+  it('names the source of the interval in the words the chart states', () => {
+    expect(intervalSourceWords('report')).toBe('printed on the report');
+    expect(intervalSourceWords('reference_table')).toBe('general reference interval');
+    expect(intervalSourceWords('manual')).toBe('entered by hand');
+    expect(intervalSourceWords('none')).toBeNull();
+  });
+
+  it('carries that source on the chart band, with both printed limits', () => {
+    const analyte = makeAnalyte({
+      points: [makePoint({ id: 'p1', on: '2024-01-01', value: 20, ...printed })],
+    });
+    const model = chartModel(analyte);
+    expect(model.band!.source).toBe('printed on the report');
+    expect(chartDescription('ALT', model)).toContain('printed on the report');
+  });
+
+  it('names the general interval when no interval was printed', () => {
+    const band: LabBand = {
+      sex: 'any',
+      low: 10,
+      high: 40,
+      refText: '10-40 U/L',
+      source: 'textbook',
+      sourceUrl: 'https://example.test',
+    };
+    const analyte = makeAnalyte({
+      points: [makePoint({ id: 'p1', on: '2024-01-01', value: 20, unit: 'U/L', band })],
+    });
+    expect(chartModel(analyte).band!.source).toBe('general reference interval');
+  });
+
+  it('draws NO band at all when the interval has no numeric limit', () => {
+    const analyte = makeAnalyte({
+      points: [makePoint({ id: 'p1', on: '2024-01-01', value: 20, unit: 'U/L' })],
+    });
+    const model = chartModel(analyte);
+    expect(model.band).toBeNull();
+    expect(chartDescription('ALT', model)).toContain('position unknown against the interval none');
+    expect(chartDescription('ALT', model)).toContain('No reference interval with numeric limits applies');
+  });
+
+  it('says plainly, in the description, that no band is drawn', () => {
+    const analyte = makeAnalyte({
+      points: [
+        makePoint({ id: 'p1', on: '2024-01-01', value: 20 }),
+        makePoint({ id: 'p2', on: '2024-02-01', value: 24 }),
+      ],
+    });
+    const model = chartModel(analyte);
+    expect(model.mode).toBe('trend');
+    expect(model.band).toBeNull();
+    expect(chartDescription('ALT', model)).toContain('Interval band none');
+  });
+
+  it('writes the range as low–high with the unit, or as the one limit there is', () => {
+    const two: LabChartModel['band'] = {
+      low: 40,
+      high: 80,
+      text: '40-80 mg/dL',
+      origin: 'report',
+      provenance: 'printed on your report',
+      source: 'printed on the report',
+    };
+    expect(referenceRangeText(two!, 'mg/dL')).toBe('40 – 80 mg/dL');
+    expect(referenceRangeText({ ...two!, low: null }, 'mg/dL')).toBe('up to 80 mg/dL');
+    expect(referenceRangeText({ ...two!, high: null }, 'mg/dL')).toBe('40 mg/dL or more');
+    expect(referenceRangeText(two!, null)).toBe('40 – 80');
+  });
+
+  it('keeps a band of a QUALITATIVE result off the chart entirely', () => {
+    // `NONE SEEN` is scored in range against an upper limit, but it is still not
+    // a number: nothing is plotted, and no invented point is added.
+    const analyte = makeAnalyte({
+      points: [
+        makePoint({
+          id: 'p1',
+          on: '2024-01-01',
+          value: null,
+          valueText: 'NONE SEEN',
+          refHigh: 5,
+          refText: '< OR = 5 /HPF',
+        }),
+      ],
+    });
+    const model = chartModel(analyte);
+    expect(model.mode).toBe('readings');
+    expect(model.numeric).toHaveLength(0);
+    expect(model.band).toBeNull();
+  });
+});
+
+// ── The comparison section is gone, not orphaned ────────────────────────────
+
+describe('the removed cross-document comparison', () => {
+  it('leaves no helper behind in the view model', async () => {
+    const view = await import('./view');
+    expect('compareDocuments' in view).toBe(false);
+    expect('documentLabel' in view).toBe(false);
+    expect('pointFrom' in view).toBe(false);
   });
 });
 

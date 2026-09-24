@@ -7,11 +7,13 @@
 // over the view, a chart, and the accessible table alternative behind a
 // chart/table switch.
 //
-// WHAT IS DIFFERENT, and must be: every row here is an IMPORTED RECORD. Each row
-// names its source document and that document's date, the name the document
-// printed, the pass that read it, and the interval exactly as printed. When a
-// row carries no status, the row says why — including the case where a
-// sex-specific interval would be needed and Sex is unset.
+// WHAT IS DIFFERENT, and must be: every row here is an IMPORTED RECORD, and it
+// says so — the name the document printed for it, the pass that read it, the
+// interval exactly as printed and the basis of its verdict. NO SOURCE DOCUMENT
+// IS NAMED: the observation's own date is the date a reader needs, and the
+// uploaded documents are listed in Settings → Data & coverage. When a row
+// carries no status, the row says why — including the case where a sex-specific
+// interval would be needed and Sex is unset.
 //
 // An unknown key is an honest not-found state with real advice, never a crash.
 
@@ -33,7 +35,6 @@ import {
   chartDomain,
   chartModel,
   filterByRange,
-  formatReading,
   intervalProvenance,
   latestPoint,
   orderedPoints,
@@ -54,7 +55,7 @@ import {
   LoadingState,
   SegmentedControl,
 } from '@/components/ui/primitives';
-import { LabChart, LabObservationTable } from '@/components/charts';
+import { LabChart, LabChartFacts, LabObservationTable } from '@/components/charts';
 import { LabNotices, LabStatusBadge, needsSexNotice, observationRows } from './LabShared';
 
 const RANGE_OPTIONS = [
@@ -275,17 +276,6 @@ function AnalyteHistory({
   );
   const docSummary = useMemo(() => summariseDocuments(documents), [documents]);
 
-  // Which imported documents hold this analyte, and how many observations each
-  // contributed — the history across documents, stated rather than implied.
-  const perDocument = useMemo(() => {
-    return documents
-      .map(document => ({
-        document,
-        count: allPoints.filter(point => point.reportId === document.id).length,
-      }))
-      .filter(entry => entry.count > 0);
-  }, [documents, allPoints]);
-
   if (!latest) {
     return (
       <Card className="p-5">
@@ -302,25 +292,13 @@ function AnalyteHistory({
     <>
       {/* ── Header facts ───────────────────────────────── */}
       <section aria-label="Latest observation">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card className="p-4">
-            <div className="text-[10px] uppercase tracking-wider text-text-secondary mb-1">Latest value</div>
-            <div className="text-2xl font-semibold tnum text-text-primary leading-none">
-              {formatReading(latest)}
-            </div>
-            <div className="text-[10px] text-text-secondary mt-1">{formatDayKeyLong(latest.resultOn)}</div>
-          </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Card className="p-4">
             <div className="text-[10px] uppercase tracking-wider text-text-secondary mb-1">Status</div>
             <LabStatusBadge label={latest.statusLabel} tone={latest.tone} />
             <div className="text-[10px] text-text-secondary mt-1">
               {points.length} observation{points.length === 1 ? '' : 's'} in this range
             </div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-[10px] uppercase tracking-wider text-text-secondary mb-1">Interval</div>
-            <div className="text-sm font-medium tnum text-text-primary">{interval.refText ?? 'none'}</div>
-            <div className="text-[10px] text-text-secondary mt-1">{interval.text}</div>
           </Card>
           <Card className="p-4">
             <div className="text-[10px] uppercase tracking-wider text-text-secondary mb-1">Change</div>
@@ -367,10 +345,8 @@ function AnalyteHistory({
             {docSummary.firstOn && docSummary.lastOn
               ? `, covering result dates ${docSummary.firstOn} → ${docSummary.lastOn}`
               : ', with no result dates recorded'}
-            {docSummary.newestDocumentDate
-              ? `. Newest document date ${docSummary.newestDocumentDate}.`
-              : '. No document printed a date of its own.'}{' '}
-            Each row below is one stored observation and keeps its own document date.
+            {' '}— the documents themselves are listed in Settings → Data &amp; coverage. Each row below is one
+            stored observation and keeps its own observation date.
           </DataStateNote>
         </div>
       </section>
@@ -417,6 +393,9 @@ function AnalyteHistory({
               domain={chartDomain(model)}
             />
             <p className="sr-only">{chartDescription(analyte.displayName, model)}</p>
+            {/* Beneath the chart: the latest result with its OBSERVATION DATE,
+                and the reference range with its source in words. */}
+            <LabChartFacts model={model} latest={latest} className="mt-3" />
             <div className="mt-3">
               <LabObservationTable
                 rows={rows}
@@ -427,43 +406,11 @@ function AnalyteHistory({
         ) : (
           <LabObservationTable
             rows={rows}
-            caption={`Every stored observation of ${analyte.displayName}, oldest first, with its provenance`}
+            caption={`Every stored observation of ${analyte.displayName}, oldest first`}
             showProvenance
           />
         )}
       </Card>
-
-      {/* ── History across documents ───────────────────── */}
-      <section aria-label="History across documents">
-        <h2 className="text-sm font-semibold text-text-primary mb-3">History across documents</h2>
-        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Documents holding this analyte">
-          <table className="w-full text-sm text-left min-w-[560px]">
-            <caption className="text-left text-xs text-text-secondary mb-2">
-              Every imported document that contains {analyte.displayName}
-            </caption>
-            <thead>
-              <tr className="border-b border-border text-xs text-text-secondary">
-                <th scope="col" className="py-2 pr-4 font-medium">Document</th>
-                <th scope="col" className="py-2 pr-4 font-medium">Document date</th>
-                <th scope="col" className="py-2 pr-4 font-medium">Laboratory</th>
-                <th scope="col" className="py-2 font-medium">Observations of this analyte</th>
-              </tr>
-            </thead>
-            <tbody>
-              {perDocument.map(entry => (
-                <tr key={entry.document.id} className="border-b border-border/50">
-                  <td className="py-2 pr-4 text-text-primary break-all">{entry.document.sourceFilename}</td>
-                  <td className="py-2 pr-4 text-text-secondary tnum">
-                    {entry.document.documentDate ?? 'none printed'}
-                  </td>
-                  <td className="py-2 pr-4 text-text-secondary">{entry.document.labName ?? 'not named'}</td>
-                  <td className="py-2 text-text-secondary tnum">{entry.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
 
       {/* ── Related analytes ───────────────────────────── */}
       {related.length > 0 && (

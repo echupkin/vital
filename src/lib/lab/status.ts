@@ -26,8 +26,15 @@
 // `in_range` only when that whole region is provably inside the interval, and is
 // otherwise `unscored_bound` — never `out_of_range` (a bound does not say the
 // value is outside anything) and never silently `in_range` by assumption.
+//
+// A QUALITATIVE RESULT IS INTERPRETED ONLY AGAINST THE CLOSED VOCABULARY
+// (POSITIVE / NEGATIVE / NONE SEEN — see ./qualitative.ts), and only against the
+// expected value the report itself printed. It produces no number: `value` stays
+// null, the printed text stays in `valueText`, and every call records its basis.
+// Any other word (`YELLOW`, `TRACE`, `1+`) is left unscored with its reason.
 
 import type { BandSex, LabBand } from './analytes';
+import { qualitativeWord, resolveQualitative, uninterpretedNote, unresolvedNote } from './qualitative';
 
 /**
  * How far beyond an endpoint still counts as "slightly" out, as a fraction of
@@ -45,6 +52,12 @@ export type ResultStatus =
   | 'slightly_out_high'
   | 'out_low'
   | 'out_high'
+  /**
+   * A QUALITATIVE result that is the opposite of the value the report printed as
+   * its expected one (`POSITIVE` where the report expects `NEGATIVE`). It is out
+   * of the report's own expectation — not a measurement, and not a diagnosis.
+   */
+  | 'out_of_expected'
   | 'unscored_no_range'
   | 'unscored_non_numeric'
   /** The result was printed as a bound (`<30`, `>39`, `1+`): the truth is unknown. */
@@ -108,10 +121,22 @@ export interface StatusInput {
   /** The interval printed on the report, when it printed one. */
   refLow: number | null;
   refHigh: number | null;
+  /**
+   * The reference cell EXACTLY as the report printed it (`NEGATIVE`,
+   * `< OR = 5 /HPF`). Used only to interpret a QUALITATIVE result against the
+   * closed vocabulary (see ./qualitative.ts); it is never read as an interval.
+   */
+  refText?: string | null;
   /** The report's own marker as printed: High, H, HH, Low, L, LL, A, … */
   printedFlag: string | null;
   /** The resolved fallback band, when no printed interval was available. */
   band?: LabBand | null;
+}
+
+/** True when the interval or the printed expectation is an UPPER limit. */
+function isUpperLimit(interval: ResolvedInterval, refText: string | null | undefined): boolean {
+  if (interval.low === null && interval.high !== null) return true;
+  return /^</.test((refText ?? '').trim());
 }
 
 export interface StatusResult {
@@ -173,17 +198,41 @@ export function scoreResult(input: StatusInput): StatusResult {
   const notes: string[] = [];
 
   if (input.value === null || !Number.isFinite(input.value)) {
-    // A non-numeric result ("Negative", "<0.5", "TRACE") cannot be charted
-    // against a numeric interval. This is reported even when no interval is
-    // known, because the value's own form is the reason it cannot be scored.
-    const shown = input.valueText ?? 'this result';
+    // A QUALITATIVE result is interpreted only against the closed vocabulary
+    // (POSITIVE / NEGATIVE / NONE SEEN): see ./qualitative.ts. The row is called
+    // in range / out of the report's own expectation with the basis recorded,
+    // and NO number is produced for it — `value` stays null and the printed text
+    // stays in `valueText`.
+    const qualitative = resolveQualitative({
+      valueText: input.valueText,
+      expectedText: input.refText ?? null,
+      // An expectation printed as `<5` or `< OR = 5 /HPF` is an upper limit.
+      upperLimit: isUpperLimit(interval, input.refText),
+      upperLimitValue: interval.high,
+    });
+    if (qualitative) {
+      return {
+        status: qualitative.status,
+        label: labelFor(qualitative.status),
+        tone: toneFor(qualitative.status),
+        interval,
+        notes: [qualitative.note],
+      };
+    }
+
+    // Not in the vocabulary: this is reported even when no interval is known,
+    // because the value's own form is the reason it cannot be scored. A word
+    // OUTSIDE the vocabulary is refused with the vocabulary named; a word inside
+    // it whose pair the vocabulary does not cover says what it compared.
     return {
       status: 'unscored_non_numeric',
       label: 'Not a number',
       tone: 'neutral',
       interval,
       notes: [
-        `This result was printed as a non-numeric value (${shown}), so it cannot be scored against a numeric interval.`,
+        qualitativeWord(input.valueText) === null
+          ? uninterpretedNote(input.valueText, input.refText)
+          : unresolvedNote(input.valueText, input.refText),
       ],
     };
   }
@@ -336,6 +385,10 @@ export function labelFor(status: ResultStatus): string {
       return 'Below range';
     case 'out_high':
       return 'Above range';
+    case 'out_of_expected':
+      // A QUALITATIVE row: outside the value the report printed as its expected
+      // one. The word says "out of range"; the row's note says what it rests on.
+      return 'Out of range';
     case 'unscored_no_range':
       return 'No reference interval';
     case 'unscored_non_numeric':
@@ -355,6 +408,7 @@ export function toneFor(status: ResultStatus): StatusTone {
       return 'caution';
     case 'out_low':
     case 'out_high':
+    case 'out_of_expected':
       return 'attention';
     case 'unscored_no_range':
     case 'unscored_non_numeric':

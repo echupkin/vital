@@ -7,10 +7,24 @@
 // tooltip that gives the date and the value with its unit, the unit named on the
 // axis, and `role="img"` with a sentence a screen reader can read.
 //
+// THE REFERENCE INTERVAL IS DRAWN AS A BAND. The chart shows the good range
+// itself, not just an in/out word: the interval is shaded across the chart, both
+// limits are drawn as DASHED lines and LABELLED with their number and unit, and
+// the source of the interval is named in text beneath the chart (`printed on the
+// report` / `general reference interval`). The shading therefore never carries
+// meaning by colour alone — the labels and the source line do that job — and a
+// metric with NO interval draws no band at all and says so.
+//
+// WHAT IS DELIBERATELY NOT DRAWN, though a mock-up may show it: a dashed segment
+// running to a separate grey dot. That is a PROJECTION, and Vital has no
+// forecast model — only real observations are plotted. The band is never
+// labelled "optimal": it is the reference interval the document printed (or the
+// cited general interval), and that is the only basis anything here may claim.
+//
 // THREE SHAPES, because three different things are true of these numbers:
 //
 //   * TWO OR MORE numeric observations  → a trend line across the observation
-//     dates, with the reference interval shaded behind it;
+//     dates, with the reference interval banded behind it;
 //   * EXACTLY ONE numeric observation   → a compact horizontal range-position
 //     chart: the interval band with the value marked inside or outside it. A
 //     one-point trend line would be a lie about change over time;
@@ -18,7 +32,8 @@
 //     and `<0.5` are shown as labelled readings, never as a number.
 //
 // Every chart is accompanied by `LabObservationTable`, the accessible
-// alternative, which carries the same rows in text.
+// alternative, which carries the same rows in text. No element animates, so
+// `prefers-reduced-motion` is respected by construction.
 
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea,
@@ -26,14 +41,31 @@ import {
 } from 'recharts';
 import { formatDayKeyLong, formatDayKeyShort } from '@/lib/analytics/windows';
 import { TONE_COLOR } from '@/lib/lab/tone';
-import type { LabChartModel } from '@/lib/lab/view';
-import { chartDomain, formatNumber, formatReading } from '@/lib/lab/view';
+import type { LabChartModel, LabPoint } from '@/lib/lab/view';
+import { chartDomain, formatNumber, formatReading, referenceRangeText } from '@/lib/lab/view';
 
 const AXIS = {
   tick: { fontSize: 11, fill: 'var(--color-text-secondary)' },
   tickLine: false as const,
   axisLine: false as const,
 };
+
+/** A band limit labelled with its own number AND unit — never colour alone. */
+function limitLabel(value: number, unit: string | null): string {
+  return unit ? `${formatNumber(value)} ${unit}` : formatNumber(value);
+}
+
+/** The band, in words, for a screen reader and for a reader who cannot see colour. */
+function bandSentence(model: LabChartModel): string {
+  const band = model.band;
+  if (!band) return 'No reference interval with numeric limits applies, so no band is drawn.';
+  const unit = model.unit && model.unit.trim().length > 0 ? ` ${model.unit}` : '';
+  const parts: string[] = [];
+  if (band.low !== null) parts.push(`low ${formatNumber(band.low)}${unit}`);
+  if (band.high !== null) parts.push(`high ${formatNumber(band.high)}${unit}`);
+  const source = band.source ? ` (source: ${band.source})` : '';
+  return `Reference band ${parts.length > 0 ? parts.join(', ') : 'with no printed limit'}${source}.`;
+}
 
 // ── The trend chart (two or more numeric observations) ──────────────────────
 
@@ -120,20 +152,47 @@ function LabTrend({
             tickFormatter={(v: number) => formatNumber(v)}
           />
           <Tooltip content={<LabTooltip unit={unit} />} />
-          {band && (band.low !== null || band.high !== null) && (
+          {band && (
             <>
+              {/* The reference interval itself, shaded behind the trend. The
+                  shading carries NO meaning by colour alone: both limits are
+                  drawn as DASHED lines LABELLED with their number and unit, and
+                  the source is stated in words beneath the chart. */}
               <ReferenceArea
                 y1={band.low ?? domain?.[0]}
                 y2={band.high ?? domain?.[1]}
                 fill="var(--color-accent)"
                 fillOpacity={0.08}
                 stroke="none"
+                isAnimationActive={false}
               />
               {band.low !== null && (
-                <ReferenceLine y={band.low} stroke="var(--color-border)" strokeDasharray="4 4" strokeWidth={1} />
+                <ReferenceLine
+                  y={band.low}
+                  stroke="var(--color-border)"
+                  strokeDasharray="4 4"
+                  strokeWidth={1}
+                  label={{
+                    value: limitLabel(band.low, unit),
+                    position: 'insideTopRight',
+                    fontSize: 10,
+                    fill: 'var(--color-text-secondary)',
+                  }}
+                />
               )}
               {band.high !== null && (
-                <ReferenceLine y={band.high} stroke="var(--color-border)" strokeDasharray="4 4" strokeWidth={1} />
+                <ReferenceLine
+                  y={band.high}
+                  stroke="var(--color-border)"
+                  strokeDasharray="4 4"
+                  strokeWidth={1}
+                  label={{
+                    value: limitLabel(band.high, unit),
+                    position: 'insideBottomRight',
+                    fontSize: 10,
+                    fill: 'var(--color-text-secondary)',
+                  }}
+                />
               )}
             </>
           )}
@@ -161,7 +220,9 @@ function describeTrend(model: LabChartModel): string {
     last.resultOn
   )}, values ${formatNumber(Math.min(...values))} to ${formatNumber(Math.max(...values))}${
     model.unit ? ` ${model.unit}` : ''
-  }. Latest ${formatReading(last)} on ${formatDayKeyLong(last.resultOn)}: ${last.statusLabel}.`;
+  }. ${bandSentence(model)} Latest ${formatReading(last)} on ${formatDayKeyLong(
+    last.resultOn
+  )}: ${last.statusLabel}.`;
 }
 
 // ── The range-position chart (exactly one numeric observation) ──────────────
@@ -169,6 +230,7 @@ function describeTrend(model: LabChartModel): string {
 function LabRangePosition({ model, analyteName }: { model: LabChartModel; analyteName: string }) {
   const point = model.numeric[0]!;
   const band = model.band;
+  const unit = model.unit && model.unit.trim().length > 0 ? model.unit : null;
   const domain = rangeDomain(model);
   const [min, max] = domain;
   const span = max - min || 1;
@@ -187,29 +249,46 @@ function LabRangePosition({ model, analyteName }: { model: LabChartModel; analyt
       <figcaption className="sr-only">
         {`${analyteName} range position. One observation, ${formatReading(point)} on ${formatDayKeyLong(
           point.resultOn
-        )}. ${positionSentence(inside, band?.text ?? null)}`}
+        )}. ${positionSentence(inside, band?.text ?? null)} ${bandSentence(model)}`}
       </figcaption>
       <div
-        className="relative h-16 rounded-control border border-border bg-surface-muted/40 overflow-hidden"
+        className="relative h-20 rounded-control border border-border bg-surface-muted/40 overflow-hidden"
         role="img"
         aria-label={`${analyteName}: one observation, ${formatReading(point)}, recorded ${formatDayKeyLong(
           point.resultOn
-        )}. ${positionSentence(inside, band?.text ?? null)} Status: ${point.statusLabel}.`}
+        )}. ${positionSentence(inside, band?.text ?? null)} ${bandSentence(model)} Status: ${
+          point.statusLabel
+        }.`}
       >
-        {/* The interval band. Drawn only when an interval actually applies. */}
-        {band && (band.low !== null || band.high !== null) && (
+        {/* The interval band, shaded. Drawn only when an interval actually applies. */}
+        {band && (
           <div
-            className="absolute inset-y-3 bg-accent-tint border-l border-r border-border"
+            className="absolute inset-y-3 bg-accent-tint"
             style={{ left: `${bandLeft}%`, width: `${Math.max(2, bandRight - bandLeft)}%` }}
             aria-hidden="true"
           />
         )}
+        {/* Both limits: a DASHED line, each LABELLED with its number and unit. */}
+        {band?.low !== null && band?.low !== undefined && (
+          <div className="absolute inset-y-0" style={{ left: `${bandLeft}%` }} aria-hidden="true">
+            <div className="w-0 h-full border-l border-dashed border-text-secondary" />
+            <span className="absolute -translate-x-1/2 top-0 px-1 text-[10px] tnum text-text-secondary bg-surface">
+              {limitLabel(band.low, unit)}
+            </span>
+          </div>
+        )}
+        {band?.high !== null && band?.high !== undefined && (
+          <div className="absolute inset-y-0" style={{ left: `${bandRight}%` }} aria-hidden="true">
+            <div className="w-0 h-full border-l border-dashed border-text-secondary" />
+            <span className="absolute -translate-x-1/2 bottom-0 px-1 text-[10px] tnum text-text-secondary bg-surface">
+              {limitLabel(band.high, unit)}
+            </span>
+          </div>
+        )}
         {/* The observed value. */}
         <div className="absolute inset-y-0" style={{ left: `${markerPct}%` }} aria-hidden="true">
           <div className="w-px h-full" style={{ backgroundColor: TONE_COLOR[point.tone] }} />
-          <div
-            className="absolute -translate-x-1/2 top-0 px-1.5 py-0.5 rounded text-[10px] tnum whitespace-nowrap bg-surface border border-border text-text-primary"
-          >
+          <div className="absolute -translate-x-1/2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] tnum whitespace-nowrap bg-surface border border-border text-text-primary">
             {formatNumber(point.value as number)}
             {inside === false ? ' · outside' : ''}
           </div>
@@ -218,10 +297,12 @@ function LabRangePosition({ model, analyteName }: { model: LabChartModel; analyt
       <div className="flex flex-wrap items-center justify-between gap-2 mt-1 text-[10px] text-text-secondary tnum">
         <span>{formatNumber(min)}</span>
         <span>
-          interval {band?.text ?? 'none'} · {band?.provenance ?? 'not scored'}
+          reference interval {band?.text ?? 'none'}
+          {band?.source ? ` · ${band.source}` : ''}
         </span>
         <span>{formatNumber(max)}</span>
       </div>
+      <ChartFootnote model={model} />
       <p className="text-xs text-text-secondary mt-1">
         One observation, so there is no trend to draw: the value is shown against the interval it was scored
         against. Recorded {formatDayKeyLong(point.resultOn)} · {point.statusLabel}.
@@ -269,6 +350,7 @@ function LabReadings({ model, analyteName }: { model: LabChartModel; analyteName
           </li>
         ))}
       </ul>
+      <ChartFootnote model={model} />
     </div>
   );
 }
@@ -303,13 +385,78 @@ export function LabChart({
   );
 }
 
-/** The band's provenance, in words, under a chart. Never a colour alone. */
+// ── The two compact cards beneath a chart ───────────────────────────────────
+
+/**
+ * Beneath the chart: the LATEST RESULT (value and unit, with its own observation
+ * date) and the REFERENCE RANGE (low–high with the unit, and the source of the
+ * interval in words). When no interval with numeric limits applies, the range
+ * card says so plainly instead of showing an invented one.
+ */
+export function LabChartFacts({
+  model,
+  latest,
+  className = '',
+}: {
+  model: LabChartModel;
+  latest: LabPoint | null;
+  className?: string;
+}) {
+  const band = model.band;
+  const unit = model.unit && model.unit.trim().length > 0 ? model.unit : null;
+  return (
+    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${className}`}>
+      <div className="rounded-control border border-border p-3">
+        <div className="text-[10px] uppercase tracking-wider text-text-secondary mb-1">Latest result</div>
+        <div className="text-lg font-semibold tnum text-text-primary leading-none">
+          {latest ? formatReading(latest) : 'no observation'}
+        </div>
+        <div className="text-[11px] text-text-secondary mt-1 leading-relaxed">
+          {latest
+            ? `Observation date ${formatDayKeyLong(latest.resultOn)} · ${latest.statusLabel}`
+            : 'No observation is stored for this analyte.'}
+        </div>
+      </div>
+      <div className="rounded-control border border-border p-3">
+        <div className="text-[10px] uppercase tracking-wider text-text-secondary mb-1">Reference range</div>
+        {band ? (
+          <>
+            <div className="text-lg font-semibold tnum text-text-primary leading-none">
+              {referenceRangeText(band, unit)}
+            </div>
+            <div className="text-[11px] text-text-secondary mt-1 leading-relaxed">
+              {band.source ? `Interval ${band.source}.` : 'The interval’s source was not recorded.'}
+              {band.text ? ` The report printed “${band.text}”.` : ''}
+            </div>
+          </>
+        ) : (
+          <div className="text-xs text-text-secondary leading-relaxed">
+            No reference interval with numeric limits applies to this result, so{' '}
+            <strong className="font-medium text-text-primary">no band is drawn</strong> — nothing is invented to
+            fill the gap.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── The band's provenance, in words, under a chart ──────────────────────────
+
+/** Never a colour alone, and never an invented range. */
 function ChartFootnote({ model }: { model: LabChartModel }) {
   const band = model.band;
-  if (!band) return null;
+  if (!band) {
+    return (
+      <p className="text-[10px] text-text-secondary mt-1 leading-relaxed">
+        No reference interval with numeric limits applies here, so no band is drawn.
+      </p>
+    );
+  }
   return (
     <p className="text-[10px] text-text-secondary mt-1 leading-relaxed">
-      Shaded band: {band.text ?? 'no interval'} — {band.provenance}.
+      Shaded band: the reference interval {band.text ?? 'the report printed'} —{' '}
+      {band.source ? `source: ${band.source}` : band.provenance}.
       {model.bandVaries
         ? ' The observations were not all scored against the same interval; the band shown is the one the latest value was scored against, and each row in the table carries its own.'
         : ''}
@@ -317,7 +464,7 @@ function ChartFootnote({ model }: { model: LabChartModel }) {
   );
 }
 
-// ── The accessible alternative: the same rows, in text ─────────────────────
+// ── The accessible alternative: the same rows, in text ──────────────────────
 
 export interface LabTableRow {
   id: string;
@@ -326,12 +473,10 @@ export interface LabTableRow {
   interval: string | null;
   intervalProvenance: string;
   status: string;
-  /** Source document and its date, when known. */
-  source: string;
-  /** Printed name and extraction pass, when known. */
-  provenance: string | null;
-  /** Why the row is unscored, when it is. */
+  /** Why the row carries no status, or the basis of its verdict, when either is known. */
   note: string | null;
+  /** Printed name, extraction pass and report flag, when known. Never a document name. */
+  provenance: string | null;
 }
 
 export function LabObservationTable({
@@ -354,7 +499,7 @@ export function LabObservationTable({
             <th scope="col" className="py-2 pr-4 font-medium">Status</th>
             <th scope="col" className="py-2 pr-4 font-medium">Interval</th>
             <th scope="col" className="py-2 pr-4 font-medium">Interval source</th>
-            <th scope="col" className="py-2 font-medium">Source document</th>
+            <th scope="col" className="py-2 font-medium">Note</th>
             {showProvenance && <th scope="col" className="py-2 pl-4 font-medium">Row provenance</th>}
           </tr>
         </thead>
@@ -366,10 +511,7 @@ export function LabObservationTable({
               <td className="py-2 pr-4 text-text-secondary">{row.status}</td>
               <td className="py-2 pr-4 text-text-secondary tnum">{row.interval ?? 'none'}</td>
               <td className="py-2 pr-4 text-text-secondary">{row.intervalProvenance}</td>
-              <td className="py-2 text-text-secondary">
-                {row.source}
-                {row.note && <span className="block text-[11px] mt-0.5">{row.note}</span>}
-              </td>
+              <td className="py-2 text-text-secondary text-[11px] leading-relaxed">{row.note ?? '—'}</td>
               {showProvenance && (
                 <td className="py-2 pl-4 text-text-secondary text-[11px]">
                   {row.provenance ?? 'no stored row provenance'}

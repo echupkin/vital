@@ -611,6 +611,13 @@ function ReviewPanel({
         </p>
       )}
 
+      {/* ── The document's own note ─────────────────── */}
+      {draft.notes && (
+        <p className="text-xs text-text-secondary leading-relaxed">
+          {draft.notes}
+        </p>
+      )}
+
       {/* ── Rows ────────────────────────────────────── */}
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">

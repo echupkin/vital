@@ -21,6 +21,7 @@ import {
   parseQuestReference,
   parseQuestValueCell,
   qualitativeBasisFor,
+  qualitativeSummary,
   questCollectedDates,
   questDocumentDate,
   questFurnitureReason,
@@ -240,17 +241,66 @@ describe('panel labels', () => {
   });
 });
 
+// ── The closed qualitative vocabulary ────────────────────────────────────────
+//
+// The importer interprets EXACTLY THREE words — POSITIVE, NEGATIVE, NONE SEEN —
+// and only against the expected value the report itself printed. Everything else
+// keeps the honest unscored behaviour, and every call states its basis.
+
 describe('qualitative results', () => {
-  it('counts an exact textual match as in range, and says that is the basis', () => {
-    const basis = qualitativeBasisFor('YELLOW', 'YELLOW');
+  it('counts a match with the printed expected value as in range, and says that is the basis', () => {
+    const basis = qualitativeBasisFor('NEGATIVE', 'NEGATIVE');
     expect(basis?.status).toBe('in_range');
-    expect(basis?.note).toMatch(/TEXTUAL MATCH/);
+    expect(basis?.note).toMatch(/matches the expected value the report printed/i);
+    expect(qualitativeBasisFor('POSITIVE', 'POSITIVE')?.status).toBe('in_range');
   });
 
-  it('leaves a mismatch unscored, with the reason recorded', () => {
-    const basis = qualitativeBasisFor('1+', 'NEGATIVE');
+  it('is case-insensitive: the report’s own spelling never decides the verdict', () => {
+    expect(qualitativeBasisFor('negative', 'Negative')?.status).toBe('in_range');
+    expect(qualitativeBasisFor('None Seen', 'NONE SEEN')?.status).toBe('in_range');
+  });
+
+  it('calls POSITIVE against a printed NEGATIVE out of range, on the report’s own convention', () => {
+    const basis = qualitativeBasisFor('POSITIVE', 'NEGATIVE');
+    expect(basis?.status).toBe('out_of_expected');
+    expect(basis?.note).toMatch(/the report prints NEGATIVE as the expected result/i);
+    expect(basis?.note).toMatch(/not a diagnosis/);
+    // …and the other way round.
+    expect(qualitativeBasisFor('NEGATIVE', 'POSITIVE')?.status).toBe('out_of_expected');
+  });
+
+  it('reads NONE SEEN as zero and lets it satisfy an upper limit', () => {
+    const basis = qualitativeBasisFor('NONE SEEN', '< OR = 5 /HPF', { upperLimit: true, upperLimitValue: 5 });
+    expect(basis?.status).toBe('in_range');
+    expect(basis?.note).toMatch(/Nothing was seen/);
+    expect(basis?.note).toMatch(/upper limit/);
+    expect(basis?.note).toMatch(/No number is invented/);
+  });
+
+  it('ignores the per-field suffix when the expected value carries one', () => {
+    const basis = qualitativeBasisFor('NONE SEEN', 'NONE SEEN /HPF');
+    expect(basis?.status).toBe('in_range');
+    expect(basis?.note).toMatch(/matches the expected value the report printed/i);
+    expect(basis?.note).toMatch(/\/HPF/);
+    expect(basis?.note).toMatch(/suffix .*is ignored/);
+    expect(qualitativeBasisFor('NONE SEEN', 'NONE SEEN /LPF')?.status).toBe('in_range');
+  });
+
+  it('leaves a word outside the vocabulary unscored, naming the vocabulary', () => {
+    for (const word of ['YELLOW', 'TRACE', '1+', 'CLEAR']) {
+      const basis = qualitativeBasisFor(word, 'YELLOW');
+      expect(basis?.status).toBe('unscored_non_numeric');
+      expect(basis?.note).toMatch(/not one of the qualitative values this importer interprets/);
+      expect(basis?.note).toMatch(/POSITIVE, NEGATIVE, NONE SEEN/);
+    }
+  });
+
+  it('never guesses at a combination the vocabulary does not cover', () => {
+    // A word from the vocabulary against an expected value that is not one of
+    // the three, e.g. NEGATIVE where the report expects a count of `<5`.
+    const basis = qualitativeBasisFor('NEGATIVE', '<5');
     expect(basis?.status).toBe('unscored_non_numeric');
-    expect(basis?.note).toMatch(/different text/);
+    expect(basis?.note).toMatch(/left unscored rather than guessed at/);
   });
 
   it('leaves a result with no printed expected value unscored', () => {
@@ -259,8 +309,16 @@ describe('qualitative results', () => {
     expect(basis?.note).toMatch(/no expected value/);
   });
 
-  it('has nothing to decide for a numeric result', () => {
+  it('has nothing to decide for an empty result', () => {
     expect(qualitativeBasisFor('', 'NEGATIVE')).toBeNull();
+  });
+
+  it('writes ONE summary line for a document, not one warning per row', () => {
+    const one = qualitativeSummary(1);
+    expect(one).toMatch(/^1 qualitative result was read/);
+    expect(qualitativeSummary(12)).toMatch(/^12 qualitative results were read/);
+    expect(qualitativeSummary(12)).toMatch(/negatives match negatives/);
+    expect(qualitativeSummary(0)).toBeNull();
   });
 });
 
@@ -407,14 +465,18 @@ describe('reading a page of this layout', () => {
     expect(JSON.stringify(read.observations)).not.toContain('SEE NOTE');
   });
 
-  it('records the textual basis for a qualitative match and says why a mismatch is unscored', () => {
-    const match = read.observations.find(observation => observation.analyteKey === 'gamma_color');
-    expect(match?.refBasis).toMatch(/TEXTUAL MATCH/);
-    expect(qualitativeBasisFor('YELLOW', 'YELLOW')?.status).toBe('in_range');
-
-    const mismatch = read.observations.find(observation => observation.analyteKey === 'color_two');
-    expect(mismatch?.refBasis).toMatch(/different text/);
-    expect(qualitativeBasisFor('YELLOW', 'NEGATIVE')?.status).toBe('unscored_non_numeric');
+  it('leaves a word outside the vocabulary unscored, per row, and warns about each one', () => {
+    const gamma = read.observations.find(observation => observation.analyteKey === 'gamma_color');
+    expect(gamma?.value).toBeNull();
+    expect(gamma?.valueText).toBe('YELLOW');
+    expect(gamma?.refBasis).toMatch(/not one of the qualitative values this importer interprets/);
+    const colorTwo = read.observations.find(observation => observation.analyteKey === 'color_two');
+    expect(colorTwo?.refBasis).toMatch(/not one of the qualitative values this importer interprets/);
+    // Neither can be scored, so each keeps its own warning — and the document
+    // carries no summary line, because no row was resolved by the vocabulary.
+    expect(read.warnings.filter(warning => warning.code === 'non_numeric_result')).toHaveLength(2);
+    expect(read.qualitativeRead).toBe(0);
+    expect(read.qualitativeNote).toBeNull();
   });
 
   it('refuses the panel label as a panel header, never as an empty analyte', () => {
@@ -496,6 +558,80 @@ describe('a page carrying no results table', () => {
     );
     expect(read.observations).toEqual([]);
     expect(read.rejections.map(rejection => rejection.reason)).toEqual(['identity_line', 'not_a_result_line']);
+  });
+});
+
+// ── The closed vocabulary, read end to end ───────────────────────────────────
+
+describe('the closed qualitative vocabulary, over a page', () => {
+  const layout = layoutOf(1, [
+    line(1, 1, 700, [['Collected: 02/03/2021 / 08:00 CDT', 230], ['Reported: 02/03/2021 / 09:00 CDT', 430]]),
+    line(1, 2, 600, HEADER_RUNS),
+    // A negative that matches the printed expectation, and a positive that does
+    // not: the report's own convention, never a diagnosis.
+    line(1, 3, 580, [['ALPHA NEG', 40], ['NEGATIVE', 240], ['NEGATIVE', 404]]),
+    line(1, 4, 560, [['BETA POS', 40], ['POSITIVE', 240], ['NEGATIVE', 404]]),
+    // `NONE SEEN` — zero — against an upper limit, and against an expectation
+    // that is itself the same words with a per-field suffix.
+    line(1, 5, 540, [['GAMMA SEEN', 40], ['NONE SEEN', 240], ['< OR = 5 /HPF', 404]]),
+    line(1, 6, 520, [['DELTA SEEN', 40], ['NONE SEEN', 240], ['NONE SEEN /LPF', 404]]),
+    // A positive that matches, and a word that is NOT in the vocabulary.
+    line(1, 7, 500, [['ZETA POS', 40], ['POSITIVE', 240], ['POSITIVE', 404]]),
+    line(1, 8, 480, [['ETA WORD', 40], ['YELLOW', 240], ['YELLOW', 404]]),
+  ]);
+  const read = interpretQuest(layout);
+  const byKey = (key: string) => read.observations.find(observation => observation.analyteKey === key);
+
+  it('never invents a number: every qualitative row keeps value NULL and its printed text', () => {
+    const qualitative = read.observations.filter(observation => observation.analyteKey !== '');
+    expect(qualitative).toHaveLength(6);
+    for (const observation of qualitative) {
+      expect(observation.value).toBeNull();
+      expect(typeof observation.valueText).toBe('string');
+    }
+    // The one numeric expectation in the page is the printed upper limit itself,
+    // which is stored as the interval — never as the result.
+    expect(byKey('gamma_seen')?.refHigh).toBe(5);
+    expect(byKey('gamma_seen')?.refLow).toBeNull();
+    expect(byKey('gamma_seen')?.value).toBeNull();
+  });
+
+  it('calls a match in range and states that the basis is the printed expectation', () => {
+    expect(byKey('alpha_neg')?.refBasis).toMatch(/matches the expected value the report printed/i);
+    expect(byKey('zeta_pos')?.refBasis).toMatch(/matches the expected value the report printed/i);
+  });
+
+  it('calls POSITIVE where the report prints NEGATIVE out of range, as the report’s convention', () => {
+    const basis = byKey('beta_pos')?.refBasis ?? '';
+    expect(basis).toMatch(/the report prints NEGATIVE as the expected result/i);
+    expect(basis).toMatch(/not a diagnosis/);
+  });
+
+  it('lets NONE SEEN satisfy an upper limit, and ignores the per-field suffix', () => {
+    expect(byKey('gamma_seen')?.refBasis).toMatch(/Nothing was seen/);
+    expect(byKey('gamma_seen')?.refBasis).toMatch(/upper limit/i);
+    expect(byKey('delta_seen')?.refBasis).toMatch(/matches the expected value the report printed/i);
+    expect(byKey('delta_seen')?.refBasis).toMatch(/\/LPF/);
+    // The printed expectation is kept verbatim, suffix and all.
+    expect(byKey('delta_seen')?.refText).toBe('NONE SEEN /LPF');
+  });
+
+  it('keeps the printed field note in the row’s own text', () => {
+    expect(byKey('gamma_seen')?.refText).toBe('< OR = 5 /HPF');
+  });
+
+  it('raises NO per-row warning for the rows the vocabulary resolved', () => {
+    const warned = read.warnings.filter(warning => warning.code === 'non_numeric_result');
+    expect(warned).toHaveLength(1);
+    expect(warned[0]?.message).toContain('ETA WORD');
+    expect(warned[0]?.message).toMatch(/not one of the qualitative values this importer interprets/);
+  });
+
+  it('reports the resolved rows ONCE for the document instead', () => {
+    expect(read.qualitativeRead).toBe(5);
+    expect(read.qualitativeNote).toBe(
+      '5 qualitative results were read from the values the report printed: negatives match negatives and “none seen” satisfies an upper limit.'
+    );
   });
 });
 

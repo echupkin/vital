@@ -628,17 +628,39 @@ describe('a Quest Diagnostics results report', () => {
     expect(result.observations.some(observation => /legend/i.test(observation.printedName))).toBe(false);
   });
 
-  it('records the textual basis for a qualitative match, and why a mismatch is unscored', async () => {
+  it('leaves a word outside the vocabulary unscored, and warns about each such row', async () => {
     const result = await extractLabDocument(fixture('quest-results.pdf'), { filename: 'quest-results.pdf' });
-    const match = result.observations.find(observation => observation.analyteKey === 'gamma_color');
-    const mismatch = result.observations.find(observation => observation.analyteKey === 'delta_ketones');
-    expect(match?.refBasis).toMatch(/TEXTUAL MATCH/);
-    expect(mismatch?.refBasis).toMatch(/different text/);
+    const unresolved = [result.observations.find(o => o.analyteKey === 'gamma_color'), result.observations.find(o => o.analyteKey === 'delta_ketones')];
+    for (const observation of unresolved) {
+      expect(observation?.value).toBeNull();
+      expect(observation?.refBasis).toMatch(/not one of the qualitative values this importer interprets/);
+      expect(observation?.refBasis).toMatch(/POSITIVE, NEGATIVE, NONE SEEN/);
+    }
 
-    // Both are reported to the reader as non-numeric results, with the basis.
-    const messages = result.warnings.filter(warning => warning.code === 'non_numeric_result').map(warning => warning.message);
-    expect(messages.some(message => /TEXTUAL MATCH/.test(message))).toBe(true);
-    expect(messages.some(message => /different text/.test(message))).toBe(true);
+    // Only the rows the vocabulary could NOT resolve carry a warning, one each;
+    // their printed text is named so the reader can find them.
+    const messages = result.warnings
+      .filter(warning => warning.code === 'non_numeric_result')
+      .map(warning => warning.message);
+    expect(messages).toHaveLength(2);
+    expect(messages.some(message => message.includes('YELLOW'))).toBe(true);
+    expect(messages.some(message => message.includes('TRACE'))).toBe(true);
+  });
+
+  it('reads the printed words it does interpret, and reports them once for the document', async () => {
+    const result = await extractLabDocument(fixture('quest-results.pdf'), { filename: 'quest-results.pdf' });
+    // `NONE SEEN` against the printed expectation `NONE SEEN /HPF`: the suffix is
+    // ignored for the comparison, so the row is in range — and no warning fires.
+    const cells = result.observations.find(observation => observation.analyteKey === 'lambda_cells');
+    expect(cells?.value).toBeNull();
+    expect(cells?.valueText).toBe('NONE SEEN');
+    expect(cells?.refBasis).toMatch(/matches the expected value the report printed/i);
+
+    const codes = result.warnings.map(warning => warning.code);
+    expect(codes.filter(code => code === 'non_numeric_result')).toHaveLength(2);
+
+    // ONE document-level line, not one warning per resolved row.
+    expect(result.notes).toContain('1 qualitative result was read from the values the report printed');
   });
 
   it('refuses the panel label with its own reason, and imports it as no analyte', async () => {

@@ -51,14 +51,6 @@ export function LabNotices({ showSource = true }: { showSource?: boolean }) {
   );
 }
 
-/** A source line for one observation: which document, printed when. */
-export function sourceLabel(point: LabPoint, provenance: Map<string, RowProvenance>): string {
-  const row = provenance.get(point.resultId);
-  if (!row) return 'stored document (provenance not readable)';
-  const date = row.documentDate ? `document dated ${row.documentDate}` : 'no document date printed';
-  return `${row.sourceFilename} · ${date}`;
-}
-
 /** The value's interval, exactly as shown with the row. */
 export function intervalLabelFor(point: LabPoint, provenance: Map<string, RowProvenance>): string | null {
   const row = provenance.get(point.resultId);
@@ -81,7 +73,11 @@ export function describeExtraction(method: RowProvenance['extractionMethod']): s
 
 /**
  * Every observation of one analyte as an accessible table row, oldest first,
- * with its provenance and — when it carries no status — the reason why.
+ * with the interval it was scored against, the basis of its verdict — and, when
+ * it carries no status, the reason why.
+ *
+ * NO SOURCE DOCUMENT IS NAMED. The observation date is the date a row shows;
+ * the uploaded documents themselves are listed in Settings → Data & coverage.
  */
 export function observationRows(
   analyte: LabAnalyte,
@@ -97,13 +93,15 @@ export function observationRows(
       interval: intervalLabelFor(point, provenance),
       intervalProvenance: intervalProvenance(point.interval).text,
       status: point.statusLabel,
-      source: sourceLabel(point, provenance),
+      // The reason a row is unscored, or — for a row that carries no number but
+      // does carry a verdict (a qualitative POSITIVE/NEGATIVE/NONE SEEN, or a
+      // bound) — the basis of that verdict.
+      note: unscoredReason(analyte, point, profile) ?? (point.value === null ? point.notes[0] ?? null : null),
       provenance: row
         ? `printed as “${row.printedName}” · ${describeExtraction(row.extractionMethod)}${
             row.printedFlag ? ` · report flag ${row.printedFlag}` : ''
           }`
         : null,
-      note: unscoredReason(analyte, point, profile),
     };
   });
 }
