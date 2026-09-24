@@ -28,6 +28,7 @@ import {
   readBriefing,
   regenerateBriefing,
   warmBriefing,
+  type BriefingView,
 } from '@/lib/briefing';
 import { defaultProfile, type VitalProfile } from '@/lib/profile/types';
 
@@ -184,6 +185,22 @@ const deps = (overrides: Partial<BriefingDepsArg> = {}): BriefingDepsArg => ({
   now: MIDDAY,
   ...overrides,
 });
+
+/**
+ * The prose the reader actually sees.
+ *
+ * A figure the number guard rejected must not appear here — but it must not be
+ * checked against the whole serialized payload either. The payload carries live
+ * clock values (`generatedAt`, `asOf`), and a rejected two-digit figure collides
+ * with those digits by chance: the HRV latest reading is `48`, so
+ * `expect(JSON.stringify(view)).not.toContain('48')` failed whenever the wall
+ * clock's minute, second or milliseconds happened to contain `48` — about one
+ * run in five, in the full suite and alone alike. That is a check against the
+ * clock, not a check on the briefing.
+ */
+function publishedText(view: BriefingView): string {
+  return [view.headline, view.body, ...view.recommendations].join('\n');
+}
 
 beforeEach(() => {
   clearBriefingCache();
@@ -380,7 +397,7 @@ describe("reading today's briefing", () => {
     expect(view.kind).toBe('computed');
     expect(view.attribution).toBe(COMPUTED_ATTRIBUTION);
     expect(view.reason).toMatch(/not in the recorded data/);
-    expect(JSON.stringify(view)).not.toContain('4242');
+    expect(publishedText(view)).not.toContain('4242');
   });
 
   it('re-asks the fallback provider once when the preferred reply fails the guard', async () => {
@@ -424,8 +441,9 @@ describe("reading today's briefing", () => {
     expect(view.kind).toBe('computed');
     expect(view.attribution).toBe(COMPUTED_ATTRIBUTION);
     expect(view.reason).toMatch(/failed the same check/);
-    // The offending figure is never published.
-    expect(JSON.stringify(view)).not.toContain(String(JSON.parse(wrong).body.match(/[\d.]+/)![0]));
+    // The offending figure is never published in the briefing text.
+    const offending = String(JSON.parse(wrong).body.match(/[\d.]+/)![0]);
+    expect(publishedText(view)).not.toContain(offending);
     // One primary attempt + one fallback attempt, and no loop.
     expect(counter.calls()).toBe(2);
   });
