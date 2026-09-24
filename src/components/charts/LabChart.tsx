@@ -152,49 +152,68 @@ function LabTrend({
             tickFormatter={(v: number) => formatNumber(v)}
           />
           <Tooltip content={<LabTooltip unit={unit} />} />
+          {/* The reference range itself, shaded behind the observations. The
+              shading carries NO meaning by colour alone: it is LABELLED
+              "Reference range", both limits are drawn as DASHED lines LABELLED
+              with their number and unit, and the source is stated in words
+              beneath the chart.
+
+              THE FILL READS AS A BAND IN BOTH THEMES. `--color-accent` flips with
+              the theme (dark green on the light surface, light green on the dark
+              one), so one opacity is visible on white and on near-black alike; at
+              the old 0.08 it was imperceptible on the light theme. The dashed
+              limit lines are drawn in the secondary TEXT colour rather than the
+              hairline border colour, so they are legible on the band instead of
+              vanishing into it.
+
+              These three are DIRECT children of the chart on purpose: recharts
+              only enumerates reference elements it finds at the chart's own top
+              level, so wrapping them in a Fragment (as an earlier revision did)
+              dropped the band from the SVG entirely — the chart drew no band at
+              all, in either theme. */}
           {band && (
-            <>
-              {/* The reference interval itself, shaded behind the trend. The
-                  shading carries NO meaning by colour alone: both limits are
-                  drawn as DASHED lines LABELLED with their number and unit, and
-                  the source is stated in words beneath the chart. */}
-              <ReferenceArea
-                y1={band.low ?? domain?.[0]}
-                y2={band.high ?? domain?.[1]}
-                fill="var(--color-accent)"
-                fillOpacity={0.08}
-                stroke="none"
-                isAnimationActive={false}
-              />
-              {band.low !== null && (
-                <ReferenceLine
-                  y={band.low}
-                  stroke="var(--color-border)"
-                  strokeDasharray="4 4"
-                  strokeWidth={1}
-                  label={{
-                    value: limitLabel(band.low, unit),
-                    position: 'insideTopRight',
-                    fontSize: 10,
-                    fill: 'var(--color-text-secondary)',
-                  }}
-                />
-              )}
-              {band.high !== null && (
-                <ReferenceLine
-                  y={band.high}
-                  stroke="var(--color-border)"
-                  strokeDasharray="4 4"
-                  strokeWidth={1}
-                  label={{
-                    value: limitLabel(band.high, unit),
-                    position: 'insideBottomRight',
-                    fontSize: 10,
-                    fill: 'var(--color-text-secondary)',
-                  }}
-                />
-              )}
-            </>
+            <ReferenceArea
+              y1={band.low ?? domain?.[0]}
+              y2={band.high ?? domain?.[1]}
+              fill="var(--color-accent)"
+              fillOpacity={0.22}
+              stroke="none"
+              isAnimationActive={false}
+              label={{
+                value: 'Reference range',
+                position: 'insideTopLeft',
+                fontSize: 10,
+                fill: 'var(--color-text-secondary)',
+              }}
+            />
+          )}
+          {band && band.low !== null && (
+            <ReferenceLine
+              y={band.low}
+              stroke="var(--color-text-secondary)"
+              strokeDasharray="4 4"
+              strokeWidth={1}
+              label={{
+                value: limitLabel(band.low, unit),
+                position: 'insideTopRight',
+                fontSize: 10,
+                fill: 'var(--color-text-secondary)',
+              }}
+            />
+          )}
+          {band && band.high !== null && (
+            <ReferenceLine
+              y={band.high}
+              stroke="var(--color-text-secondary)"
+              strokeDasharray="4 4"
+              strokeWidth={1}
+              label={{
+                value: limitLabel(band.high, unit),
+                position: 'insideBottomRight',
+                fontSize: 10,
+                fill: 'var(--color-text-secondary)',
+              }}
+            />
           )}
           <Line
             type="monotone"
