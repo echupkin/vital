@@ -679,40 +679,23 @@ export const ANALYTES: LabAnalyte[] = [
     ],
   },
   {
-    key: 'neutrophils',
-    displayName: 'Neutrophils (%)',
-    category: 'CBC',
-    unit: '% of WBC',
-    aliases: ['Neutrophils', 'Neut %', 'PMN'],
-    bands: [
-      {
-        sex: 'any',
-        low: 50,
-        high: 70,
-        refText: '50-70 % of WBC',
-        source: 'secondary',
-        sourceUrl: TESTING_CBC,
-        note:
-          'Percent and absolute count are different columns on a report; label which is plotted. Absolute ANC 2,000-8,250/µL (ABIM).',
-      },
-    ],
-  },
-  {
-    // THE PERCENTAGE, UNDER THE STORED SPELLING A DIFFERENT REPORT PRINTS.
+    // THE DIFFERENTIAL PERCENTAGE — ONE MEASUREMENT UNDER TWO SPELLINGS.
     //
-    // A report that prints its differential under the symbols `NE%`/`NE#`
-    // (`LY%`, `MO%`, `EO%`, `BA%`) makes the extractor write the key
-    // `neutrophils_pct` for the percentage column, while a report that prints a
-    // bare `NEUTROPHILS` writes `neutrophils`. Those are two stored spellings of
-    // ONE measurement, and `neutrophils` no longer claims the `_pct` name as an
-    // alias: the two are kept as SEPARATE series so neither can be charted,
-    // scored or described as the other, and each carries a name that says which
-    // it is. The percentage symbol is the report's own mark for this column.
+    // Two reports print this same percentage under different names: one under the
+    // symbols `NE%` (stored key `neutrophils_pct`), one under a bare `NEUTROPHILS`
+    // (stored key `neutrophils`). Both are the SAME percentage of the white cells
+    // — not an absolute count — so the read model resolves the bare spelling
+    // through this entry's aliases and the two form ONE series: the owner's
+    // history is not split into a chart per spelling, one of them a single point.
+    // The ABSOLUTE count is a DIFFERENT analyte with a DIFFERENT unit and stays
+    // separate (`neutrophils_abs`, and the report-computed `absolute_neutrophils`);
+    // the unit is what tells the two apart, so the name carries no `(%)` suffix
+    // and the unit alone says `%`.
     key: 'neutrophils_pct',
-    displayName: 'Neutrophils, automated (%)',
+    displayName: 'Neutrophils',
     category: 'CBC',
-    unit: '% of WBC',
-    aliases: ['NE%', 'neutrophils_pct'],
+    unit: '%',
+    aliases: ['NE%', 'neutrophils_pct', 'neutrophils', 'Neutrophils', 'Neut %', 'PMN'],
     bands: [
       {
         sex: 'any',
@@ -727,30 +710,13 @@ export const ANALYTES: LabAnalyte[] = [
     ],
   },
   {
-    key: 'lymphocytes',
-    displayName: 'Lymphocytes (%)',
-    category: 'CBC',
-    unit: '% of WBC',
-    aliases: ['Lymphocytes', 'Lymph %'],
-    bands: [
-      {
-        sex: 'any',
-        low: 20,
-        high: 40,
-        refText: '20-40 % of WBC',
-        source: 'secondary',
-        sourceUrl: TESTING_CBC,
-        note: 'Absolute 1,200-4,950/µL (ABIM).',
-      },
-    ],
-  },
-  {
-    // See `neutrophils_pct`: the `_pct` spelling is its own series, named apart.
+    // See `neutrophils_pct`: the `LY%` column and a bare `LYMPHOCYTES` are ONE
+    // measurement under two stored spellings, merged into this one series.
     key: 'lymphocytes_pct',
-    displayName: 'Lymphocytes, automated (%)',
+    displayName: 'Lymphocytes',
     category: 'CBC',
-    unit: '% of WBC',
-    aliases: ['LY%', 'lymphocytes_pct'],
+    unit: '%',
+    aliases: ['LY%', 'lymphocytes_pct', 'lymphocytes', 'Lymphocytes', 'Lymph %'],
     bands: [
       {
         sex: 'any',
@@ -764,30 +730,13 @@ export const ANALYTES: LabAnalyte[] = [
     ],
   },
   {
-    key: 'monocytes',
-    displayName: 'Monocytes (%)',
-    category: 'CBC',
-    unit: '% of WBC',
-    aliases: ['Monocytes', 'Mono %'],
-    bands: [
-      {
-        sex: 'any',
-        low: 2,
-        high: 8,
-        refText: '2-8 % of WBC',
-        source: 'secondary',
-        sourceUrl: TESTING_CBC,
-        note: 'Absolute 0-660/µL (ABIM).',
-      },
-    ],
-  },
-  {
-    // See `neutrophils_pct`: the `_pct` spelling is its own series, named apart.
+    // See `neutrophils_pct`: the `MO%` column and a bare `MONOCYTES` are ONE
+    // measurement under two stored spellings, merged into this one series.
     key: 'monocytes_pct',
-    displayName: 'Monocytes, automated (%)',
+    displayName: 'Monocytes',
     category: 'CBC',
-    unit: '% of WBC',
-    aliases: ['MO%', 'monocytes_pct'],
+    unit: '%',
+    aliases: ['MO%', 'monocytes_pct', 'monocytes', 'Monocytes', 'Mono %'],
     bands: [
       {
         sex: 'any',
@@ -801,30 +750,13 @@ export const ANALYTES: LabAnalyte[] = [
     ],
   },
   {
-    key: 'eosinophils',
-    displayName: 'Eosinophils (%)',
-    category: 'CBC',
-    unit: '% of WBC',
-    aliases: ['Eosinophils', 'Eos %'],
-    bands: [
-      {
-        sex: 'any',
-        low: 1,
-        high: 4,
-        refText: '1-4 % of WBC',
-        source: 'secondary',
-        sourceUrl: TESTING_CBC,
-        note: 'Absolute 0-330/µL (ABIM).',
-      },
-    ],
-  },
-  {
-    // See `neutrophils_pct`: the `_pct` spelling is its own series, named apart.
+    // See `neutrophils_pct`: the `EO%` column and a bare `EOSINOPHILS` are ONE
+    // measurement under two stored spellings, merged into this one series.
     key: 'eosinophils_pct',
-    displayName: 'Eosinophils, automated (%)',
+    displayName: 'Eosinophils',
     category: 'CBC',
-    unit: '% of WBC',
-    aliases: ['EO%', 'eosinophils_pct'],
+    unit: '%',
+    aliases: ['EO%', 'eosinophils_pct', 'eosinophils', 'Eosinophils', 'Eos %'],
     bands: [
       {
         sex: 'any',
@@ -838,30 +770,13 @@ export const ANALYTES: LabAnalyte[] = [
     ],
   },
   {
-    key: 'basophils',
-    displayName: 'Basophils (%)',
-    category: 'CBC',
-    unit: '% of WBC',
-    aliases: ['Basophils', 'Baso %'],
-    bands: [
-      {
-        sex: 'any',
-        low: 0.5,
-        high: 1,
-        refText: '0.5-1 % of WBC',
-        source: 'secondary',
-        sourceUrl: TESTING_CBC,
-        note: 'Absolute 0-110/µL (ABIM).',
-      },
-    ],
-  },
-  {
-    // See `neutrophils_pct`: the `_pct` spelling is its own series, named apart.
+    // See `neutrophils_pct`: the `BA%` column and a bare `BASOPHILS` are ONE
+    // measurement under two stored spellings, merged into this one series.
     key: 'basophils_pct',
-    displayName: 'Basophils, automated (%)',
+    displayName: 'Basophils',
     category: 'CBC',
-    unit: '% of WBC',
-    aliases: ['BA%', 'basophils_pct'],
+    unit: '%',
+    aliases: ['BA%', 'basophils_pct', 'basophils', 'Basophils', 'Baso %'],
     bands: [
       {
         sex: 'any',

@@ -17,12 +17,12 @@
 // spelling of its key happened to be stored. An analyte with no entry returns
 // null and is rendered as absent — never as an empty box.
 //
-// A SECOND SPELLING OF ONE MEASUREMENT SHARES THE FIRST ONE'S COPY. The series
-// read model keeps the differential percentage a report prints as `BA%` (stored
-// key `basophils_pct`) as its own series, named apart from the one a bare
-// `BASOPHILS` produces — but it is the same measurement, so it must show the
-// same audited sentence. `COPY_OF_KEY` below points each such key at the entry
-// whose copy it carries; nothing is invented, retyped or reworded.
+// ONE MEASUREMENT, ONE KEY, ONE COPY. The differential percentage a report
+// prints as `BA%` (stored key `basophils_pct`) and the one a bare `BASOPHILS`
+// produces (stored key `basophils`) are the SAME measurement, so the registry
+// keeps ONE entry — canonical `basophils_pct` — and the bare spelling is one of
+// its aliases. Both stored spellings resolve to that entry and show its one
+// audited sentence; nothing is invented, retyped or reworded.
 //
 // RESOLVED PER SERIES, NOT PER KEY. An analyte can be measured on more than one
 // specimen: `glucose` is blood sugar on a chemistry panel and a dipstick reading
@@ -78,33 +78,6 @@ const DESCRIPTIONS: Record<string, AnalyteDescription> = raw as unknown as Recor
 export const DESCRIBED_KEYS: string[] = Object.keys(DESCRIPTIONS);
 
 /**
- * Keys whose SERIES is a separate measurement of the same thing as another
- * registry entry, and which therefore carry that entry's audited copy.
- *
- * The differential percentages are stored under two spellings — a report that
- * prints a bare `NEUTROPHILS` writes `neutrophils`, one that prints its columns
- * as `NE%`/`BA%` writes `neutrophils_pct`/`basophils_pct` — and the series read
- * model keeps each spelling as its own series (`../db/lab-store`), each with its
- * own display name so the two can never be confused. They are the SAME
- * measurement, though, so the second spelling must show the same sentence about
- * what a neutrophil (or basophil, …) percentage is, rather than the empty box an
- * undescribed key renders. Nothing is invented and nothing is reworded: the
- * copied entry is the one the research pass audited.
- */
-const COPY_OF_KEY: Record<string, string> = {
-  neutrophils_pct: 'neutrophils',
-  lymphocytes_pct: 'lymphocytes',
-  monocytes_pct: 'monocytes',
-  eosinophils_pct: 'eosinophils',
-  basophils_pct: 'basophils',
-};
-
-/** The entry a key's copy lives under: the key itself, or the entry it copies. */
-function copyKeyFor(canonicalKey: string): string {
-  return COPY_OF_KEY[canonicalKey] ?? canonicalKey;
-}
-
-/**
  * The description for a stored or canonical analyte key, or null when the
  * analyte has none. This is the SPECIMEN-AGNOSTIC lookup: it ignores which
  * specimen a series came from. It answers "does this analyte have copy at all",
@@ -114,7 +87,7 @@ function copyKeyFor(canonicalKey: string): string {
 export function analyteDescription(key: string): AnalyteDescription | null {
   if (!key) return null;
   const canonical = analyteByKey(key)?.key ?? key;
-  return DESCRIPTIONS[copyKeyFor(canonical)] ?? null;
+  return DESCRIPTIONS[canonical] ?? null;
 }
 
 /**
@@ -159,5 +132,5 @@ export function seriesDescription(
 ): AnalyteDescription | null {
   if (!analyteKey) return null;
   const canonical = analyteByKey(analyteKey)?.key ?? analyteKey;
-  return descriptionForSeries(DESCRIPTIONS, copyKeyFor(canonical), specimen);
+  return descriptionForSeries(DESCRIPTIONS, canonical, specimen);
 }

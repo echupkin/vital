@@ -915,42 +915,128 @@ describe('one series per canonical analyte', () => {
     expect(series.points.map(point => point.resultId)).toEqual(['a', 'b']);
   });
 
-  it('keeps the two differential percentage spellings as two named series', async () => {
+  it('serves the two stored spellings of one percentage as ONE series', async () => {
+    // `basophils` (a bare `BASOPHILS`) and `basophils_pct` (a `BA%` column) are
+    // two stored spellings of the SAME percentage. The rows keep the keys they
+    // were imported with, but the read model resolves both to the canonical
+    // `basophils_pct` entry, so the owner gets ONE chart holding both readings —
+    // not two, one of them a single point.
+    const make = (id: string, analyteKey: string, resultOn: string) => ({
+      id,
+      report_id: 'p1',
+      line_no: 1,
+      analyte_key: analyteKey,
+      printed_name: analyteKey,
+      panel: null,
+      result_on: resultOn,
+      value: 1,
+      value_text: null,
+      unit: '%',
+      ref_low: null,
+      ref_high: null,
+      ref_text: null,
+      ref_source: 'none',
+      ref_basis: null,
+      printed_flag: null,
+      category: null,
+      extraction_method: 'deterministic',
+      confidence: 1,
+      source_line: 'row',
+      revision: 1,
+      created_at: '',
+      updated_at: '',
+    });
     const db = new FakeDb([
       {
         test: sql => sql.includes('FROM lab_results'),
-        rows: () =>
-          ['basophils', 'basophils_pct'].map((analyte_key, index) => ({
-            id: `b${index}`,
-            report_id: 'p1',
-            line_no: index,
-            analyte_key,
-            printed_name: analyte_key,
-            panel: null,
-            result_on: '2024-01-01',
-            value: 1,
-            value_text: null,
-            unit: '%',
-            ref_low: null,
-            ref_high: null,
-            ref_text: null,
-            ref_source: 'none',
-            ref_basis: null,
-            printed_flag: null,
-            category: null,
-            extraction_method: 'deterministic',
-            confidence: 1,
-            source_line: 'row',
-            revision: 1,
-            created_at: '',
-            updated_at: '',
-          })),
+        rows: () => [make('b0', 'basophils', '2023-01-01'), make('b1', 'basophils_pct', '2024-01-01')],
       },
     ]);
     const read = await getSeries(db, null);
-    const names = read.analytes.map(analyte => analyte.displayName).sort();
-    expect(read.analytes).toHaveLength(2);
-    expect(names[0]).not.toBe(names[1]);
-    expect(names.join(' ')).not.toContain('Basophils Basophils');
+    expect(read.analytes).toHaveLength(1);
+    const series = read.analytes[0]!;
+    expect(series.analyteKey).toBe('basophils_pct');
+    expect(series.displayName).toBe('Basophils');
+    expect(series.unit).toBe('%');
+    expect(series.points.map(point => point.resultId)).toEqual(['b0', 'b1']);
+  });
+
+  it('never serves two stored keys of one canonical analyte as separate series', async () => {
+    // GUARD 1 — the split. A series is keyed by what the analyte IS, so two
+    // stored keys that resolve to the SAME canonical analyte must land in ONE
+    // series. If a future change let one canonical analyte be served as two
+    // series, the owner's history would be split into a chart per spelling again
+    // — the exact regression this gate exists to prevent.
+    const read = await readModel();
+    const keysByCanonical = new Map<string, string[]>();
+    for (const key of STORED_ANALYTE_KEYS) {
+      const canonical = analyteByKey(key)?.key ?? key;
+      keysByCanonical.set(canonical, [...(keysByCanonical.get(canonical) ?? []), key]);
+    }
+    const merged = [...keysByCanonical.entries()].filter(([, keys]) => keys.length > 1);
+    // The owner's data really does reach some canonical analytes by more than one
+    // stored spelling, so the assertion below cannot pass vacuously.
+    expect(merged.length).toBeGreaterThan(0);
+    // And the five differential percentages in particular must be among the merged
+    // groups: if the registry ever stopped resolving a bare spelling to its `_pct`
+    // entry, the guard would otherwise stop covering that pair without failing.
+    for (const cell of ['neutrophils', 'lymphocytes', 'monocytes', 'eosinophils', 'basophils']) {
+      expect(keysByCanonical.get(`${cell}_pct`), cell).toEqual(
+        expect.arrayContaining([cell, `${cell}_pct`])
+      );
+    }
+
+    for (const [canonical, storedKeys] of merged) {
+      const served = read.analytes.filter(analyte => analyte.analyteKey === canonical);
+      // At most ONE series per (canonical key, specimen): a second series of the
+      // same specimen under one canonical key is the split being guarded.
+      const specimens = new Set(served.map(analyte => analyte.specimen));
+      expect(served.length, `${canonical} (${storedKeys.join(', ')})`).toBe(specimens.size);
+      // And every reading is accounted for: one row per stored spelling, plus the
+      // extra urinalysis row the fixture prints for a both-specimen key.
+      const expectedRows = storedKeys.reduce(
+        (total, key) => total + (STORED_BOTH_SPECIMEN_KEYS.includes(key) ? 2 : 1),
+        0
+      );
+      const servedRows = served.reduce((total, analyte) => total + analyte.points.length, 0);
+      expect(servedRows, `${canonical} (${storedKeys.join(', ')})`).toBe(expectedRows);
+    }
+  });
+
+  it('never merges a percent and an absolute variant of one analyte into one series', async () => {
+    // GUARD 2 — the cross-unit merge. A percentage and an absolute count are
+    // DIFFERENT measurements with DIFFERENT units, and the unit is the
+    // discriminator: they must resolve to different canonical analytes and be
+    // served as separate series, or a count is charted and scored against a
+    // percentage's interval.
+    const read = await readModel();
+    for (const cell of ['neutrophils', 'lymphocytes', 'monocytes', 'eosinophils', 'basophils']) {
+      const percentKey = analyteByKey(`${cell}_pct`)?.key;
+      const absoluteKeys = [`${cell}_abs`, `absolute_${cell}`].map(key => analyteByKey(key)?.key);
+      expect(percentKey, cell).toBeTruthy();
+      // Three distinct analytes: the percentage, the `#` count, the computed count.
+      expect(new Set([percentKey, ...absoluteKeys]).size, cell).toBe(3);
+      expect(analyteByKey(`${cell}_pct`)?.unit, cell).toContain('%');
+      for (const key of absoluteKeys) expect(analyteByKey(key!)?.unit, cell).not.toContain('%');
+
+      const served = read.analytes.filter(
+        analyte => analyte.analyteKey === percentKey || absoluteKeys.includes(analyte.analyteKey)
+      );
+      expect(served, cell).toHaveLength(3);
+      const byKey = new Map(served.map(analyte => [analyte.analyteKey, analyte]));
+      const percent = byKey.get(percentKey!)!;
+      // The percent series holds the percentage's own readings (one per stored
+      // spelling) and carries the `%` unit; each absolute series is separate,
+      // carries a non-`%` unit, and holds only its own reading.
+      const percentSpellings = STORED_ANALYTE_KEYS.filter(key => analyteByKey(key)?.key === percentKey);
+      expect(percent.unit, cell).toContain('%');
+      expect(percent.points, cell).toHaveLength(percentSpellings.length);
+      for (const key of absoluteKeys) {
+        const absolute = byKey.get(key!)!;
+        expect(absolute.analyteKey, cell).not.toBe(percent.analyteKey);
+        expect(absolute.unit, cell).not.toContain('%');
+        expect(absolute.points, cell).toHaveLength(1);
+      }
+    }
   });
 });

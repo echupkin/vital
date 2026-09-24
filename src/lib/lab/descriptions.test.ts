@@ -266,6 +266,21 @@ describe('the lookup is by what the analyte is, not by how its key was spelled',
       return !declared.has(entry.key);
     });
     expect(undeclared).toEqual([]);
+
+    // The two stored spellings of one percentage resolve to ONE canonical
+    // analyte, and that analyte resolves a description: the merged series is
+    // never left bare. The absolute count is a different key and keeps its own,
+    // separate copy, so a reader can never confuse the two.
+    for (const cell of ['neutrophils', 'lymphocytes', 'monocytes', 'eosinophils', 'basophils']) {
+      expect(analyteByKey(cell)?.key, cell).toBe(`${cell}_pct`);
+      expect(analyteByKey(`${cell}_pct`)?.key, cell).toBe(`${cell}_pct`);
+      expect(analyteDescription(cell), cell).not.toBeNull();
+      expect(analyteDescription(`${cell}_pct`), cell).not.toBeNull();
+      expect(analyteDescription(cell)?.whatItIs, cell).toBe(analyteDescription(`${cell}_pct`)?.whatItIs);
+      expect(analyteByKey(`${cell}_abs`)?.key, cell).toBe(`${cell}_abs`);
+      expect(analyteDescription(`${cell}_abs`), cell).not.toBeNull();
+      expect(analyteDescription(`${cell}_abs`)?.whatItIs, cell).not.toBe(analyteDescription(cell)?.whatItIs);
+    }
   });
 
   it('describes every urinalysis analyte, under the Urinalysis category', () => {

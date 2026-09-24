@@ -191,13 +191,27 @@ describe('the keys the owner’s stored rows already use', () => {
     }
   });
 
-  it('keeps the differential percentage and the differential count apart', () => {
-    // The percentage a report prints as `BA%` and the count it prints as `BA#`
-    // are DIFFERENT analytes and must resolve to different entries, or one
-    // series is charted against the other's interval. So must the two spellings
-    // of the percentage itself: `basophils` (a bare `BASOPHILS`) and
-    // `basophils_pct` (the `BA%` column) are two series, each named for what it
-    // is — neither is an alias of the other, and neither renders as "Basophils".
+  it('merges the two spellings of one percentage, and keeps the absolute count apart', () => {
+    // A report that prints its differential under the symbols `BA%` makes the
+    // extractor write `basophils_pct`; a report that prints a bare `BASOPHILS`
+    // writes `basophils`. Those are two stored spellings of ONE measurement — a
+    // percentage of the white cells — so BOTH must resolve to the SAME canonical
+    // entry (`basophils_pct`) and form ONE series, each named for what it is with
+    // the unit (`%`) carrying the meaning.
+    for (const cell of ['neutrophils', 'lymphocytes', 'monocytes', 'eosinophils', 'basophils']) {
+      const canonical = analyteByKey(`${cell}_pct`);
+      expect(canonical?.key, cell).toBe(`${cell}_pct`);
+      // The bare spelling is an alias of the `_pct` entry, never an entry of its
+      // own: if it were, the read model would serve one chart per spelling.
+      expect(analyteByKey(cell)?.key, cell).toBe(`${cell}_pct`);
+      expect(resolveAnalyte(cell).key, cell).toBe(`${cell}_pct`);
+      expect(canonical?.displayName, cell).not.toContain(', automated');
+      expect(canonical?.unit, cell).toContain('%');
+    }
+
+    // The percentage and the ABSOLUTE count are DIFFERENT analytes with DIFFERENT
+    // units and must resolve to different entries, or one series is charted
+    // against the other's interval. The unit is the discriminator.
     for (const [pct, abs] of [
       ['neutrophils_pct', 'neutrophils_abs'],
       ['lymphocytes_pct', 'lymphocytes_abs'],
@@ -208,11 +222,7 @@ describe('the keys the owner’s stored rows already use', () => {
       expect(analyteByKey(pct)?.unit, pct).toContain('%');
       expect(analyteByKey(abs)?.unit, abs).toContain('/µL');
       expect(analyteByKey(pct)?.key, pct).not.toBe(analyteByKey(abs)?.key);
-    }
-    for (const bare of ['neutrophils', 'lymphocytes', 'monocytes', 'eosinophils', 'basophils']) {
-      expect(analyteByKey(`${bare}_pct`)?.key, bare).toBe(`${bare}_pct`);
-      expect(analyteByKey(bare)?.key, bare).toBe(bare);
-      expect(analyteByKey(bare)?.displayName, bare).not.toBe(analyteByKey(`${bare}_pct`)?.displayName);
+      expect(analyteByKey(pct)?.displayName, pct).not.toBe(analyteByKey(abs)?.displayName);
     }
   });
 

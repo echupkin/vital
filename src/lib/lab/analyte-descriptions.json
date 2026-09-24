@@ -146,27 +146,27 @@
     "sourceTitle": "MedlinePlus — MPV Blood Test",
     "sourceUrl": "https://medlineplus.gov/lab-tests/mpv-blood-test/"
   },
-  "neutrophils": {
+  "neutrophils_pct": {
     "whatItIs": "Measures the percentage of white blood cells that are neutrophils. Neutrophils are the most common type and are the body's main defence against infection.",
     "sourceTitle": "MedlinePlus — Blood Differential",
     "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
   },
-  "lymphocytes": {
+  "lymphocytes_pct": {
     "whatItIs": "Measures the percentage of white blood cells that are lymphocytes. They include B cells and T cells that fight infection and disease.",
     "sourceTitle": "MedlinePlus — Blood Differential",
     "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
   },
-  "monocytes": {
+  "monocytes_pct": {
     "whatItIs": "Measures the percentage of white blood cells that are monocytes. They kill germs, boost the immune response, and clear away dead cells.",
     "sourceTitle": "MedlinePlus — Blood Differential",
     "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
   },
-  "eosinophils": {
+  "eosinophils_pct": {
     "whatItIs": "Measures the percentage of white blood cells that are eosinophils. They defend against parasites and are involved in allergies and inflammation.",
     "sourceTitle": "MedlinePlus — Blood Differential",
     "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"
   },
-  "basophils": {
+  "basophils_pct": {
     "whatItIs": "Measures the percentage of white blood cells that are basophils. They release enzymes during allergic reactions and asthma attacks.",
     "sourceTitle": "MedlinePlus — Blood Differential",
     "sourceUrl": "https://medlineplus.gov/lab-tests/blood-differential/"

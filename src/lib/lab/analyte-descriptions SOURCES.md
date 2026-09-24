@@ -67,11 +67,11 @@ research pass fills the field in.
 | `rdw` | MedlinePlus — Red Blood Cell (RBC) Indices | https://medlineplus.gov/lab-tests/red-blood-cell-rbc-indices/ | 2026-09-23 | checked, reworded |
 | `platelets` | MedlinePlus — Platelet Tests | https://medlineplus.gov/lab-tests/platelet-tests/ | 2026-09-23 | checked |
 | `mpv` | MedlinePlus — MPV Blood Test | https://medlineplus.gov/lab-tests/mpv-blood-test/ | 2026-09-23 | checked |
-| `neutrophils` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked |
-| `lymphocytes` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked |
-| `monocytes` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked |
-| `eosinophils` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked |
-| `basophils` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked |
+| `neutrophils_pct` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked |
+| `lymphocytes_pct` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked |
+| `monocytes_pct` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked |
+| `eosinophils_pct` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked |
+| `basophils_pct` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked |
 | `neutrophils_abs` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked, reworded |
 | `lymphocytes_abs` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked, reworded |
 | `monocytes_abs` | MedlinePlus — Blood Differential | https://medlineplus.gov/lab-tests/blood-differential/ | 2026-09-23 | checked, reworded |
@@ -174,15 +174,18 @@ A report that prints its white-cell differential under the symbols `NE%`, `LY%`,
 `EO%`, `BA%` makes the extractor write the keys `neutrophils_pct`, `lymphocytes_pct`,
 `monocytes_pct`, `eosinophils_pct` and `basophils_pct`; a report that prints a bare
 `NEUTROPHILS` (or `BASOPHILS`, …) writes `neutrophils` (or `basophils`, …). Those are two
-stored spellings of ONE measurement, and the series read model now keeps each as its own
-series, named `<Analyte> (%)` and `<Analyte>, automated (%)` so the two can never be
-confused. Each pair carries the SAME audited copy — the entry for the bare spelling — through
-`COPY_OF_KEY` in `descriptions.ts`: no second copy was written and nothing was reworded, so
-the audit row above for `basophils` (etc.) still describes what both series show.
+stored spellings of ONE measurement — a percentage of the white cells — so the registry
+keeps ONE entry per cell type, keyed by the `_pct` spelling, with the bare spelling as one
+of its aliases. The series read model resolves both spellings to that one entry, so the
+owner gets ONE series per cell type; the audit row above (keyed by the canonical `_pct`
+entry) describes what that series shows. The display name carries no `(%)` suffix and no
+", automated" twin — the unit (`%`) carries the meaning.
 
-The percentage and the ABSOLUTE COUNT are different analytes and were always described
-separately (`basophils` vs `basophils_abs`); the absolute differential counts a report
-computes for itself (`absolute_basophils`, …) remain deliberately undescribed, as above.
+The percentage and the ABSOLUTE COUNT are different analytes with different units and stay
+separate: the `#` count a report prints (`neutrophils_abs`, unit `/µL`) and the absolute
+count a report computes for itself (`absolute_neutrophils`, unit `cells/uL`) each have
+their own entry, and the absolute differential counts a report computes
+(`absolute_basophils`, …) remain deliberately undescribed, as above.
 
 ### Stored spellings of an analyte that already has an entry
 
