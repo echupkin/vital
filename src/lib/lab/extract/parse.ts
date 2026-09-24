@@ -357,6 +357,13 @@ export function analyteKeyFor(printedName: string): string {
 // ── Privacy ──────────────────────────────────────────────────────────────────
 
 /**
+ * The `SURNAME, GIVEN` shape a patient block prints. Kept as its own name because
+ * it is the ONE identity shape that is also a printed TABLE name: a results table
+ * prints analytes and panels like `BILIRUBIN, TOTAL` and `URINALYSIS, COMPLETE`.
+ */
+const PERSON_NAME_SHAPE = /^[A-Z]{2,},\s*[A-Z]{2,}\b/;
+
+/**
  * Patterns for the identity, contact and provider fields a lab document carries.
  * Deliberately broad: a false positive costs one redacted diagnostic line, a
  * false negative would put a person's address in a database.
@@ -372,13 +379,28 @@ const PII_PATTERNS: RegExp[] = [
   /(?:^|\D)\d{3}-\d{2}-\d{4}(?:\D|$)/, // SSN
   /\b\d{1,6}\s+[A-Z][A-Za-z]*(?:\s+[A-Z0-9][A-Za-z0-9]*)*\s+(?:AVE|AVENUE|ST|STREET|RD|ROAD|BLVD|DR|DRIVE|LN|LANE|WAY|CT|COURT|PL|PLACE|CIR|CIRCLE|TRAIL|PKWY|HWY)\b/i,
   /\b[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/, // state + ZIP
-  /^[A-Z]{2,},\s*[A-Z]{2,}\b/, // SURNAME, GIVEN
+  PERSON_NAME_SHAPE, // SURNAME, GIVEN
   /\b[A-F0-9]{8,}-[A-F0-9]{8,}\b/, // accession / reference identifier
 ];
 
 /** True when a line carries identity, contact or provider data. */
 export function hasPii(text: string): boolean {
   return PII_PATTERNS.some(pattern => pattern.test(text));
+}
+
+/**
+ * The identity patterns that still apply INSIDE a results table, where the
+ * `SURNAME, GIVEN` shape is a printed test or panel name (`BILIRUBIN, TOTAL`,
+ * `URINALYSIS, COMPLETE`) rather than a person. Everything else in
+ * `PII_PATTERNS` — a date of birth, a phone number, an address, a specimen or
+ * requisition identifier, a provider name — is identity wherever it appears, so a
+ * table label is only kept when this returns false for it.
+ */
+const TABLE_PII_PATTERNS = PII_PATTERNS.filter(pattern => pattern !== PERSON_NAME_SHAPE);
+
+/** True when a line carries identity that is never a table row's own text. */
+export function hasTablePii(text: string): boolean {
+  return TABLE_PII_PATTERNS.some(pattern => pattern.test(text));
 }
 
 /**
@@ -442,6 +464,34 @@ export function detectDocumentDate(input: {
   return null;
 }
 
+/**
+ * The panel a document covers, when its FILE NAME states one.
+ *
+ * The LabCorp trend exports are named `<kind> - <panel> - <date>`
+ * (`Result Trends - Lipid Panel - Sep 14, 2026.PDF`), and a trend document prints
+ * no panel heading anywhere in its text: the panel it covers is only ever what
+ * the file's own name states. The shape is read strictly — three ` - ` separated
+ * parts, the last carrying a four-digit year — and anything else yields null
+ * rather than a guess. A document that prints its own panel headings (a Quest
+ * results report) never needs this.
+ */
+export function detectPanelFromFilename(filename: string | null): string | null {
+  if (!filename) return null;
+  const stem = filename.replace(/\.[A-Za-z0-9]+$/, '').trim();
+  const parts = stem
+    .split(/\s+-\s+/)
+    .map(part => part.trim())
+    .filter(part => part !== '');
+  if (parts.length < 3) return null;
+  if (!/\d{4}/.test(parts[parts.length - 1])) return null;
+  const panel = parts.slice(1, -1).join(' - ');
+  if (panel === '') return null;
+  // A file name is text a person typed: it is only kept as a panel when it
+  // carries none of the identity a document itself prints.
+  if (hasTablePii(panel)) return null;
+  return panel;
+}
+
 /** The laboratory, only when the document names itself. */
 export function detectLabName(text: string): string | null {
   if (/quest\s+diagnostics/i.test(text)) return 'Quest Diagnostics';
@@ -500,11 +550,18 @@ export interface InterpretedDocument {
  *
  * One observation per value cell of every surviving block, each carrying the
  * date of the COLUMN it sits under.
+ *
+ * `options.panel` is the panel the DOCUMENT covers, when its own file name states
+ * one (see `detectPanelFromFilename`): a trend document prints panel headings
+ * nowhere in its text, so every row of it belongs to that one panel. A document
+ * that prints its own headings does not go through here at all.
  */
 export function interpretLayout(
   layout: DocumentLayout,
-  columnsByPage: Map<number, { date: string | null; dateText: string }[]>
+  columnsByPage: Map<number, { date: string | null; dateText: string }[]>,
+  options: { panel?: string | null } = {}
 ): InterpretedDocument {
+  const panel = options.panel ?? null;
   const observations: ExtractedObservation[] = [];
   const warnings: ExtractionWarning[] = [...layout.warnings];
   const rejections: ExtractionRejection[] = [];
@@ -591,6 +648,7 @@ export function interpretLayout(
           lineNo: 0,
           analyteKey: analyteKeyFor(printedName),
           printedName,
+          panel,
           resultOn: columnDate,
           value: parsed.value,
           valueText: parsed.valueText,

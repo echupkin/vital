@@ -353,8 +353,9 @@ function questResults() {
   const two = [];
   block(two, '01/03/2021 / 09:30 CDT', '01/03/2021');
   tableHeader(two);
-  // A PANEL label: ALL CAPS, no value and no interval. It must be refused, never
-  // imported as an analyte with an empty value.
+  // A PANEL label: ALL CAPS, no value and no interval. It HEADS the rows below it,
+  // so it must become their panel — and never be imported as an analyte with an
+  // empty value.
   two.push(run(panelX, 572, 'EPSILON PANEL'));
   // A calculated interval: `(calc)` is neither a number nor a unit.
   two.push(run(rowX, 552, 'EPSILON METRIC'));

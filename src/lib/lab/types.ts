@@ -51,6 +51,14 @@ export type LabExtractionMethod = 'deterministic' | 'model' | 'manual';
  */
 export const MAX_PRINTED_FLAG_LENGTH = 32;
 
+/**
+ * The character budget a stored panel label gets. The longest heading these
+ * reports are known to print is a wrapped multi-level one such as
+ * `TESTOSTERONE, FREE, BIOAVAILABLE AND TOTAL, MS`; 120 characters leaves room
+ * for a longer wording while keeping a runaway line from being stored as a panel.
+ */
+export const MAX_PANEL_LENGTH = 120;
+
 /** Which pass produced the observations of a document. */
 export type LabExtractionPass = 'deterministic' | 'model' | 'none';
 
@@ -100,6 +108,13 @@ export interface LabResult {
   lineNo: number;
   analyteKey: string;
   printedName: string;
+  /**
+   * The panel heading the report printed this row under — `LIPID PANEL WITH
+   * RATIOS`, `URINALYSIS, COMPLETE` — or the panel its own file name states, or
+   * null when the document printed none for it. A LABEL the document made, never
+   * a judgement, and the one thing that says which SPECIMEN the row came from.
+   */
+  panel: string | null;
   /** ISO date (YYYY-MM-DD) of the COLUMN this value belongs to. */
   resultOn: string;
   value: number | null;
@@ -135,6 +150,12 @@ export interface ExtractedObservation {
   lineNo: number;
   analyteKey: string;
   printedName: string;
+  /**
+   * The panel heading the report printed this row under — `LIPID PANEL WITH
+   * RATIOS`, `URINALYSIS, COMPLETE` — or the panel its own file name states, or
+   * null when the document printed none for it.
+   */
+  panel: string | null;
   /** ISO date (YYYY-MM-DD) of the column this value belongs to. */
   resultOn: string;
   value: number | null;
@@ -218,8 +239,13 @@ export type ExtractionRejectionReason =
   | 'no_result'
   /** A date, signature, page-number or footer line rather than a result row. */
   | 'not_a_result_line'
-  /** A panel/section group label (ALL-CAPS, no value, no interval) — not an analyte. */
-  | 'panel_header'
+  /**
+   * A group label that introduced no row of its own. A panel heading that DOES
+   * head rows is not a refusal any more: it is recorded as those rows' `panel`
+   * (see 0006 and ../panel.ts), which is what keeps a urine series apart from a
+   * blood one.
+   */
+  | 'group_label'
   /** Arrived before the date-header row, so it belongs to no table. */
   | 'outside_table_region'
   /** Blank once normalised. */

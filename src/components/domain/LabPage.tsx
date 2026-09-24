@@ -323,7 +323,10 @@ function LabContent({ data }: { data: LoadedLab }) {
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 {group.analytes.map(analyte => (
                   <AnalyteCard
-                    key={analyte.analyteKey}
+                    // The SERIES id, not the analyte key: an analyte with both a
+                    // blood and a urine series has one card each, and React needs
+                    // them apart.
+                    key={analyte.seriesKey ?? analyte.analyteKey}
                     analyte={analyte}
                     profile={profile}
                     provenance={provenance}
@@ -453,7 +456,7 @@ function AnalyteCard({
 
       <div className="mt-3 pt-3 border-t border-border">
         <Link
-          href={`/lab/${analyte.analyteKey}`}
+          href={`/lab/${analyte.seriesKey ?? analyte.analyteKey}`}
           className="inline-flex items-center gap-1 text-sm text-primary hover:underline min-h-[44px]"
         >
           Open {analyte.displayName} detail

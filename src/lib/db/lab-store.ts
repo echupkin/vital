@@ -20,9 +20,18 @@
 // analyte on the same day. The series read model returns them as separate points
 // and reports a `collisions` count so the UI can say so; it never silently picks
 // one.
+//
+// ONE SERIES PER (ANALYTE, SPECIMEN). A stored row's `panel` is the heading its
+// report printed above it, and a heading that names a urinalysis is the report
+// saying the row came from URINE. Those rows are kept in their own series, so a
+// dipstick reading (`glucose NEGATIVE`) can never be charted, scored or
+// "difference"-ed against a serum series (`glucose 78 mg/dL`): see ../lab/panel.
+// An analyte is only split when BOTH specimens exist, so a urine-only analyte
+// keeps its single metric and no empty twin is manufactured for it.
 
 import type { ExtractedObservation, LabReport, LabResult } from '@/lib/lab/types';
-import { redact } from '@/lib/lab/extract/parse';
+import { redact, hasTablePii } from '@/lib/lab/extract/parse';
+import { specimenOfPanel, seriesIdOf, seriesNameOf, type PanelSpecimen } from '@/lib/lab/panel';
 import {
   analyteByKey,
   displayNameFor,
@@ -52,7 +61,7 @@ const REPORT_COLUMNS = `
 `;
 
 const RESULT_COLUMNS = `
-  id, report_id, line_no, analyte_key, printed_name,
+  id, report_id, line_no, analyte_key, printed_name, panel,
   to_char(result_on, 'YYYY-MM-DD') AS result_on,
   value, value_text, unit, ref_low, ref_high, ref_text, ref_source, ref_basis,
   printed_flag, category, extraction_method, confidence, source_line,
@@ -69,10 +78,10 @@ const INSERT_REPORT = `
 
 const INSERT_RESULT = `
   INSERT INTO lab_results
-    (report_id, line_no, analyte_key, printed_name, result_on, value, value_text,
-     unit, ref_low, ref_high, ref_text, ref_source, ref_basis, printed_flag,
-     category, extraction_method, confidence, source_line)
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+    (report_id, line_no, analyte_key, printed_name, panel, result_on, value,
+     value_text, unit, ref_low, ref_high, ref_text, ref_source, ref_basis,
+     printed_flag, category, extraction_method, confidence, source_line)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
   RETURNING ${RESULT_COLUMNS}
 `;
 
@@ -212,6 +221,7 @@ export function toLabResult(row: Record<string, unknown>): LabResult {
     lineNo: numberOrZero(row.line_no),
     analyteKey: typeof row.analyte_key === 'string' ? row.analyte_key : 'unknown',
     printedName: typeof row.printed_name === 'string' ? row.printed_name : '',
+    panel: stringOrNull(row.panel),
     resultOn: typeof row.result_on === 'string' ? row.result_on : '',
     value: numberOrNull(row.value),
     valueText: stringOrNull(row.value_text),
@@ -246,14 +256,27 @@ export function resultRevision(row: Record<string, unknown>): number {
  * redactor would still change means the parser regressed and the write is
  * stopped rather than persisting a leak. The redaction marker itself is
  * accepted: it carries no data.
+ *
+ * The PANEL is checked too, against the TABLE's identity test rather than
+ * `redact`: a panel heading is printed in the table's own name column and shares
+ * the `SURNAME, GIVEN` shape with a patient name (`URINALYSIS, COMPLETE`), so
+ * `redact` would refuse every one of them, while an address, a phone number, a
+ * specimen id or a provider name in a heading is still caught.
  */
-export function assertNoPii(rows: Array<{ sourceLine?: string | null; printedName?: string | null }>): void {
+export function assertNoPii(
+  rows: Array<{ sourceLine?: string | null; printedName?: string | null; panel?: string | null }>
+): void {
   for (const row of rows) {
     const line = row.sourceLine ?? '';
-    if (line === '') continue;
-    if (redact(line) !== line) {
+    if (line !== '' && redact(line) !== line) {
       throw new Error(
         'Refusing to store an observation whose source line is not in redacted form. The extractor must redact identity, contact and provider details before a row exists.'
+      );
+    }
+    const panel = row.panel ?? '';
+    if (panel !== '' && hasTablePii(panel)) {
+      throw new Error(
+        'Refusing to store an observation whose panel carries identity data. A panel is only ever a heading the report printed above a table row.'
       );
     }
   }
@@ -377,6 +400,7 @@ async function insertObservation(
     observation.lineNo,
     observation.analyteKey,
     observation.printedName,
+    observation.panel,
     observation.resultOn,
     observation.value,
     observation.valueText,
@@ -460,6 +484,33 @@ export async function updateResult(
   return row ? toLabResult(row) : null;
 }
 
+const UPDATE_RESULT_PANEL = `
+  UPDATE lab_results
+     SET panel = $2,
+         updated_at = now()
+   WHERE id = $1
+  RETURNING ${RESULT_COLUMNS}
+`;
+
+/**
+ * Record the panel one already-stored row was printed under — the re-extraction
+ * path a parser improvement takes over a document that is ALREADY stored (0006).
+ *
+ * It touches the panel and nothing else: no value, unit or interval is rewritten,
+ * the row keeps its id and its `created_at`, and its revision does not move —
+ * the measurement has not changed, only what the report said it belonged to.
+ * Returns null when there is no such row.
+ */
+export async function updateResultPanel(
+  client: SqlClient,
+  id: string,
+  panel: string | null
+): Promise<LabResult | null> {
+  const result = await client.query(UPDATE_RESULT_PANEL, [id, panel]);
+  const row = result.rows[0];
+  return row ? toLabResult(row) : null;
+}
+
 // ── Read path ───────────────────────────────────────────────────────────────
 
 export interface ReportSummary extends LabReport {
@@ -522,6 +573,8 @@ export interface SeriesPoint {
   value: number | null;
   valueText: string | null;
   unit: string | null;
+  /** The panel heading this row was printed under, or null when the page had none. */
+  panel: string | null;
   printedFlag: string | null;
   /** The interval that was scored against, and where it came from. */
   interval: ResolvedInterval;
@@ -534,10 +587,29 @@ export interface SeriesPoint {
 }
 
 export interface AnalyteSeries {
+  /**
+   * The series' public id: the analyte key, or `<key>~urine` for the urinalysis
+   * series of an analyte that has both. This is what the Lab page links with and
+   * what the detail route resolves.
+   */
+  seriesKey: string;
   analyteKey: string;
   displayName: string;
   /** The registry's category, or 'Other' for an unrecognised analyte. */
   category: AnalyteCategory;
+  /**
+   * `urine` when every row of this series was printed under a urinalysis heading,
+   * else `other`. A row whose page printed no heading at all is `other`: the
+   * document made no statement about its specimen, so it stays with the analyte's
+   * ordinary series rather than being moved into the urine one on a guess.
+   */
+  specimen: PanelSpecimen;
+  /** True when this analyte has BOTH a urine and a non-urine series. */
+  split: boolean;
+  /** The distinct panel headings this series' rows were printed under, in order. */
+  panels: string[];
+  /** The first of `panels`, or null when none of the rows had a heading. */
+  panel: string | null;
   unit: string | null;
   /** The registry entry, when one matched. Null for an unrecognised name. */
   registered: boolean;
@@ -569,14 +641,18 @@ export interface SeriesProfile {
 }
 
 /**
- * Build the series read model: per analyte, its observations oldest first with
- * their intervals and computed status, plus the earliest and latest values and
- * the delta.
+ * Build the series read model: per (analyte, specimen), its observations oldest
+ * first with their intervals and computed status, plus the earliest and latest
+ * values and the delta.
  *
  * DE-DUPLICATION RULE: two rows sharing (`analyte_key`, `result_on`) are BOTH
  * kept and returned as separate points. Different assays and different labs
  * legitimately produce the same analyte on the same day, so the UI is told the
  * pair collides (`collisions`) rather than being handed a silently chosen row.
+ *
+ * SPECIMEN RULE: rows are grouped by (analyte, specimen) as well, so the
+ * urinalysis rows of an analyte form their own metric and can never be drawn,
+ * scored or "difference"-ed against its serum rows. See ../lab/panel.
  */
 export async function getSeries(
   client: SqlClient,
@@ -585,17 +661,34 @@ export async function getSeries(
   const result = await client.query(SELECT_ALL_RESULTS);
   const rows = result.rows.map(toLabResult);
 
-  const byKey = new Map<string, LabResult[]>();
+  // One bucket per (analyte, specimen): a urine row and a serum row of the same
+  // analyte are two different measurements and never share a series.
+  const bySeries = new Map<string, { analyteKey: string; specimen: PanelSpecimen; rows: LabResult[] }>();
   for (const row of rows) {
-    const bucket = byKey.get(row.analyteKey);
-    if (bucket) bucket.push(row);
-    else byKey.set(row.analyteKey, [row]);
+    const specimen = specimenOfPanel(row.panel);
+    const id = `${row.analyteKey}\u0000${specimen}`;
+    const bucket = bySeries.get(id);
+    if (bucket) bucket.rows.push(row);
+    else bySeries.set(id, { analyteKey: row.analyteKey, specimen, rows: [row] });
+  }
+
+  // An analyte is split into two metrics only when BOTH specimens really exist:
+  // a urine-only analyte keeps its single metric.
+  const specimensByKey = new Map<string, Set<PanelSpecimen>>();
+  for (const bucket of bySeries.values()) {
+    const set = specimensByKey.get(bucket.analyteKey) ?? new Set<PanelSpecimen>();
+    set.add(bucket.specimen);
+    specimensByKey.set(bucket.analyteKey, set);
   }
 
   const analytes: AnalyteSeries[] = [];
   let totalCollisions = 0;
 
-  for (const [analyteKey, analyteRows] of byKey) {
+  for (const bucket of bySeries.values()) {
+    const analyteKey = bucket.analyteKey;
+    const specimen = bucket.specimen;
+    const analyteRows = bucket.rows;
+    const split = (specimensByKey.get(analyteKey)?.size ?? 1) > 1;
     const registered = analyteByKey(analyteKey);
     const points: SeriesPoint[] = analyteRows.map(row => {
       const selection = registered
@@ -633,6 +726,7 @@ export async function getSeries(
         value: row.value,
         valueText: row.valueText,
         unit: row.unit,
+        panel: row.panel,
         printedFlag: row.printedFlag,
         interval: scored.interval,
         status: scored.status,
@@ -671,15 +765,37 @@ export async function getSeries(
     }
 
     const names = analyteRows.map(row => row.printedName).filter(name => name.trim().length > 0);
-    const displayName = registered
-      ? registered.displayName
-      : displayNameFor(analyteKey, names[0] ?? null);
+    const baseName = registered ? registered.displayName : displayNameFor(analyteKey, names[0] ?? null);
+    const panels = [
+      ...new Set(analyteRows.map(row => row.panel).filter((value): value is string => value !== null)),
+    ];
+
+    if (specimen === 'urine') {
+      warnings.push(
+        'These readings are urinalysis (urine) results: the report printed them under a panel heading that names a urine specimen. They are kept apart from any blood series of the same name — they are not comparable and are never charted or scored against one.'
+      );
+    }
 
     analytes.push({
+      seriesKey: seriesIdOf(analyteKey, specimen, split),
       analyteKey,
-      displayName,
-      category: registered?.category ?? ('Other' as AnalyteCategory),
-      unit: registered?.unit ?? analyteRows[0]?.unit ?? null,
+      // Two specimens of one analyte are labelled apart; nothing else is relabelled.
+      displayName: seriesNameOf(baseName, specimen, split),
+      // A urinalysis series is laid out with the other urine analytes whatever the
+      // analyte's ordinary category is: a urine `wbc` is not a CBC.
+      category: specimen === 'urine' ? 'Urinalysis' : registered?.category ?? ('Other' as AnalyteCategory),
+      specimen,
+      split,
+      panels,
+      panel: panels[0] ?? null,
+      // The registry's unit describes the SERUM assay, so a urine series must not
+      // borrow it: `wbc` is K/uL in blood and `/HPF` in a sediment count, and a
+      // series labelled K/uL holding a dipstick reading is the very confusion this
+      // gate removes. A urine series takes the unit its own rows printed.
+      unit:
+        specimen === 'urine'
+          ? analyteRows.find(row => row.unit !== null)?.unit ?? null
+          : registered?.unit ?? analyteRows[0]?.unit ?? null,
       registered: registered !== null,
       points,
       first,

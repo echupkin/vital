@@ -10,6 +10,7 @@ import {
   toLabReport,
   toLabResult,
   updateResult,
+  updateResultPanel,
   withTransaction,
   type NewReportInput,
   type NewObservationInput,
@@ -84,20 +85,21 @@ function writingDb(overrides: Rule[] = []): FakeDb {
           line_no: params?.[1],
           analyte_key: params?.[2],
           printed_name: params?.[3],
-          result_on: params?.[4],
-          value: params?.[5],
-          value_text: params?.[6],
-          unit: params?.[7],
-          ref_low: params?.[8],
-          ref_high: params?.[9],
-          ref_text: params?.[10],
-          ref_source: params?.[11],
-          ref_basis: params?.[12],
-          printed_flag: params?.[13],
-          category: params?.[14],
-          extraction_method: params?.[15],
-          confidence: params?.[16],
-          source_line: params?.[17],
+          panel: params?.[4],
+          result_on: params?.[5],
+          value: params?.[6],
+          value_text: params?.[7],
+          unit: params?.[8],
+          ref_low: params?.[9],
+          ref_high: params?.[10],
+          ref_text: params?.[11],
+          ref_source: params?.[12],
+          ref_basis: params?.[13],
+          printed_flag: params?.[14],
+          category: params?.[15],
+          extraction_method: params?.[16],
+          confidence: params?.[17],
+          source_line: params?.[18],
           revision: 1,
           created_at: '2024-03-05T00:00:00.000Z',
           updated_at: '2024-03-05T00:00:00.000Z',
@@ -124,6 +126,7 @@ function observation(overrides: Partial<NewObservationInput> = {}): NewObservati
     lineNo: 1,
     analyteKey: 'sodium',
     printedName: 'Sodium',
+    panel: 'Comprehensive Metabolic Panel',
     resultOn: '2024-03-03',
     value: 140,
     valueText: null,
@@ -521,5 +524,211 @@ describe('withTransaction', () => {
       })
     ).rejects.toThrow('boom');
     expect(db.statements).toEqual(['BEGIN', 'ROLLBACK']);
+  });
+});
+
+describe('the panel a row was printed under', () => {
+  it('is mapped from the row, and is null when the page printed none', () => {
+    expect(toLabResult({ id: 'x', analyte_key: 'glucose', panel: 'URINALYSIS, COMPLETE' }).panel).toBe(
+      'URINALYSIS, COMPLETE'
+    );
+    expect(toLabResult({ id: 'x', analyte_key: 'glucose' }).panel).toBeNull();
+  });
+
+  it('is refused when a caller hands over identity instead of a panel heading', () => {
+    const row = { sourceLine: 'glucose | 78', printedName: 'Glucose', panel: '2501 SAMPLE ST, SAMPLE TX 00000' };
+    expect(() => assertNoPii([row])).toThrow(/panel carries identity/);
+    // The heading a report really prints shares the `SURNAME, GIVEN` shape with a
+    // person's name and must still be accepted.
+    expect(() =>
+      assertNoPii([{ sourceLine: 'glucose | 78', printedName: 'Glucose', panel: 'URINALYSIS, COMPLETE' }])
+    ).not.toThrow();
+  });
+
+  it('is written and updated by the panel path alone, never re-inserting the row', async () => {
+    const db = new FakeDb([
+      {
+        test: sql => sql.includes('SET panel'),
+        rows: () => [
+          {
+            id: 'r1',
+            report_id: 'p1',
+            line_no: 1,
+            analyte_key: 'glucose',
+            printed_name: 'GLUCOSE, URINE',
+            panel: 'URINALYSIS, COMPLETE',
+            result_on: '2024-03-03',
+            value: null,
+            value_text: 'NEGATIVE',
+          },
+        ],
+      },
+    ]);
+    const updated = await updateResultPanel(db, 'r1', 'URINALYSIS, COMPLETE');
+    expect(updated?.panel).toBe('URINALYSIS, COMPLETE');
+    const sql = db.queries[0]!.text;
+    const setClause = sql.slice(sql.indexOf('SET'), sql.indexOf('RETURNING'));
+    expect(setClause).toContain('panel = $2');
+    // The measurement, its revision and its creation time are untouched: only the
+    // heading the report printed for it is being recorded.
+    expect(setClause).not.toContain('value');
+    expect(setClause).not.toContain('revision');
+    expect(setClause).not.toContain('created_at');
+    expect(db.queries[0]!.params).toEqual(['r1', 'URINALYSIS, COMPLETE']);
+  });
+
+  it('returns null when there is no such row', async () => {
+    const db = new FakeDb([{ test: sql => sql.includes('SET panel'), rows: () => [] }]);
+    expect(await updateResultPanel(db, 'missing', 'URINALYSIS, COMPLETE')).toBeNull();
+  });
+});
+
+describe('the specimen split', () => {
+  function rows() {
+    const make = (over: Record<string, unknown>) => ({
+      id: String(over.id),
+      report_id: 'p1',
+      line_no: 1,
+      analyte_key: String(over.analyte_key),
+      printed_name: String(over.printed_name ?? over.analyte_key),
+      panel: over.panel ?? null,
+      result_on: String(over.result_on),
+      value: over.value ?? null,
+      value_text: over.value_text ?? null,
+      unit: over.unit ?? null,
+      ref_low: over.ref_low ?? null,
+      ref_high: over.ref_high ?? null,
+      ref_text: over.ref_text ?? null,
+      ref_source: over.ref_source ?? 'none',
+      ref_basis: null,
+      printed_flag: null,
+      category: null,
+      extraction_method: 'deterministic',
+      confidence: 1,
+      source_line: 'row',
+      revision: 1,
+      created_at: '',
+      updated_at: '',
+    });
+    return [
+      make({
+        id: 'g1',
+        analyte_key: 'glucose',
+        printed_name: 'GLUCOSE',
+        panel: 'COMPREHENSIVE METABOLIC PANEL',
+        result_on: '2024-03-03',
+        value: 78,
+        unit: 'mg/dL',
+        ref_low: 65,
+        ref_high: 99,
+        ref_text: '65-99 mg/dL',
+        ref_source: 'report',
+      }),
+      make({
+        id: 'g2',
+        analyte_key: 'glucose',
+        printed_name: 'GLUCOSE, URINE',
+        panel: 'URINALYSIS, COMPLETE',
+        result_on: '2024-03-03',
+        value_text: 'NEGATIVE',
+        ref_text: 'NEGATIVE',
+        ref_source: 'report',
+      }),
+      make({
+        id: 'p1r',
+        analyte_key: 'protein',
+        printed_name: 'PROTEIN',
+        panel: 'URINALYSIS, COMPLETE',
+        result_on: '2024-03-03',
+        value_text: 'NEGATIVE',
+        ref_text: 'NEGATIVE',
+        ref_source: 'report',
+      }),
+      make({
+        id: 'w1',
+        analyte_key: 'wbc',
+        printed_name: 'WBC',
+        panel: 'CBC (INCLUDES DIFF/PLT)',
+        result_on: '2024-03-03',
+        value: 6.2,
+        unit: 'K/uL',
+      }),
+      make({
+        id: 'w2',
+        analyte_key: 'wbc',
+        printed_name: 'WBC',
+        panel: 'URINALYSIS, COMPLETE',
+        result_on: '2024-03-03',
+        value_text: 'NONE SEEN',
+        unit: '/HPF',
+        ref_text: '< OR = 5 /HPF',
+        ref_source: 'report',
+      }),
+    ];
+  }
+
+  async function series() {
+    const db = new FakeDb([{ test: sql => sql.includes('FROM lab_results'), rows }]);
+    return getSeries(db, null);
+  }
+
+  it('never lets a urine row share a series with the blood rows of the same analyte', async () => {
+    const read = await series();
+    const glucose = read.analytes.filter(analyte => analyte.analyteKey === 'glucose');
+    expect(glucose).toHaveLength(2);
+
+    const blood = glucose.find(analyte => analyte.specimen === 'other')!;
+    const urine = glucose.find(analyte => analyte.specimen === 'urine')!;
+    expect(blood.points.map(point => point.resultId)).toEqual(['g1']);
+    expect(urine.points.map(point => point.resultId)).toEqual(['g2']);
+    // The qualitative row can never be drawn, scored or "difference"-ed against
+    // the mg/dL one: they are two metrics, labelled apart and grouped apart.
+    expect(urine.points.every(point => point.value === null)).toBe(true);
+    expect(blood.unit).toBe('mg/dL');
+    expect(urine.unit).toBeNull();
+    // The registry's unit describes the SERUM assay and must not be borrowed: the
+    // urine `wbc` is a sediment count in /HPF, not a blood count in K/uL.
+    const wbc = read.analytes.filter(analyte => analyte.analyteKey === 'wbc');
+    expect(wbc.find(analyte => analyte.specimen === 'urine')?.unit).toBe('/HPF');
+    expect(wbc.find(analyte => analyte.specimen === 'other')?.unit).toBe('thousand/µL (10^3/µL)');
+  });
+
+  it('gives the two series distinct ids, labels and categories', async () => {
+    const read = await series();
+    const glucose = read.analytes.filter(analyte => analyte.analyteKey === 'glucose');
+    expect(glucose.map(analyte => analyte.seriesKey).sort()).toEqual(['glucose', 'glucose~urine']);
+    expect(glucose.map(analyte => analyte.displayName).sort()).toEqual(['Glucose (blood)', 'Glucose (urine)']);
+    expect(glucose.find(analyte => analyte.specimen === 'urine')?.category).toBe('Urinalysis');
+    // A urinalysis series carries the headings it was printed under, and says so.
+    expect(glucose.find(analyte => analyte.specimen === 'urine')?.panels).toEqual(['URINALYSIS, COMPLETE']);
+    expect(glucose.find(analyte => analyte.specimen === 'urine')?.warnings.join(' ')).toMatch(/urinalysis \(urine\)/i);
+    // The blood side keeps its ordinary category and name.
+    expect(glucose.find(analyte => analyte.specimen === 'other')?.category).toBe('Metabolic');
+  });
+
+  it('does not manufacture an empty twin for an analyte that only ever appears in urine', async () => {
+    const read = await series();
+    const protein = read.analytes.filter(analyte => analyte.analyteKey === 'protein');
+    expect(protein).toHaveLength(1);
+    expect(protein[0]!.seriesKey).toBe('protein');
+    expect(protein[0]!.displayName).toBe('Protein');
+    expect(protein[0]!.category).toBe('Urinalysis');
+    expect(protein[0]!.split).toBe(false);
+  });
+
+  it('keeps a row whose page printed no heading with the analyte’s ordinary series', async () => {
+    // No panel is the document making no statement about the specimen, so the row
+    // is not moved into the urine series on a guess.
+    const db = new FakeDb([
+      {
+        test: sql => sql.includes('FROM lab_results'),
+        rows: () => [{ ...rows()[0]!, panel: null }],
+      },
+    ]);
+    const read = await getSeries(db, null);
+    expect(read.analytes).toHaveLength(1);
+    expect(read.analytes[0]!.specimen).toBe('other');
+    expect(read.analytes[0]!.seriesKey).toBe('glucose');
+    expect(read.analytes[0]!.displayName).toBe('Glucose');
   });
 });

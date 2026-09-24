@@ -479,11 +479,16 @@ describe('reading a page of this layout', () => {
     expect(read.qualitativeNote).toBeNull();
   });
 
-  it('refuses the panel label as a panel header, never as an empty analyte', () => {
-    const panel = read.rejections.find(rejection => rejection.reason === 'panel_header');
-    expect(panel?.text).toBe('GAMMA PANEL');
-    expect(read.panelHeaders).toBe(1);
+  it('reads a panel label as the panel of the rows below it, never as an analyte', () => {
+    // The label introduces the rows rather than being one of them: it is CONTEXT,
+    // so it is never refused (there is no `panel_header` refusal any more — the
+    // reason is gone from the vocabulary), never an empty analyte of its own, and
+    // every row under it carries it as the panel it was printed under.
+    expect(read.panels).toEqual(['GAMMA PANEL']);
+    expect(read.rejections.some(rejection => rejection.text.includes('GAMMA PANEL'))).toBe(false);
     expect(read.observations.some(observation => observation.printedName.includes('PANEL'))).toBe(false);
+    expect(read.observations.length).toBeGreaterThan(0);
+    expect(read.observations.every(observation => observation.panel === 'GAMMA PANEL')).toBe(true);
   });
 
   it('refuses a row that prints an interval but no value', () => {
@@ -516,6 +521,60 @@ describe('reading a page of this layout', () => {
     // The refusal is recorded, with the placeholder in place of the line.
     const identity = read.rejections.find(rejection => rejection.reason === 'identity_line');
     expect(identity?.text).toBe(QUEST_BLOCK_TEXT);
+  });
+});
+
+describe('reading a panel heading', () => {
+  const layout = layoutOf(1, [
+    line(1, 1, 700, [['Collected: 02/03/2021 / 08:00 CDT', 230], ['Reported: 02/03/2021 / 09:00 CDT', 430]]),
+    line(1, 2, 600, HEADER_RUNS),
+    // A heading the report wrapped over two lines: both halves are one panel.
+    line(1, 3, 580, [['COMPREHENSIVE METABOLIC', 20]]),
+    line(1, 4, 560, [['PANEL', 40]]),
+    line(1, 5, 540, [['ALPHA ONE', 40], ['12.1', 240], ['4.0-12.0 u/L', 404]]),
+    // Then a sub-group heading over the rows of one analyte. It is deeper than the
+    // panel's own first line, but it already reads as a complete panel name, so the
+    // join STOPS and the rows below belong to the panel that was ordered.
+    line(1, 6, 520, [['THYROID PANEL WITH TSH', 20]]),
+    line(1, 7, 500, [['THYROID PANEL', 40]]),
+    line(1, 8, 480, [['BETA TWO', 40], ['3.3', 240], ['0.5-4.5 u/L', 404]]),
+    // A name that wraps: held back and merged into the row below, never a heading.
+    line(1, 9, 460, [['SEX HORMONE BINDING', 40]]),
+    line(1, 10, 440, [['GLOBULIN', 52], ['45', 240], ['10-50 nmol/L', 404]]),
+  ]);
+
+  const read = interpretQuest(layout);
+
+  it('joins a wrapped heading into one panel, and stops at a complete one', () => {
+    expect(read.panels).toEqual(['COMPREHENSIVE METABOLIC PANEL', 'THYROID PANEL WITH TSH']);
+  });
+
+  it('gives every row the heading above it, and refuses none of them', () => {
+    expect(read.observations.map(observation => [observation.printedName, observation.panel])).toEqual([
+      ['ALPHA ONE', 'COMPREHENSIVE METABOLIC PANEL'],
+      ['BETA TWO', 'THYROID PANEL WITH TSH'],
+      ['SEX HORMONE BINDING GLOBULIN', 'THYROID PANEL WITH TSH'],
+    ]);
+    expect(read.rejections.filter(rejection => rejection.reason === 'group_label')).toEqual([]);
+  });
+
+  it('never carries one page’s heading onto the next page’s rows', () => {
+    const twoPages = layoutOf(2, [
+      line(1, 1, 700, [['Collected: 02/03/2021 / 08:00 CDT', 230], ['Reported: 02/03/2021 / 09:00 CDT', 430]]),
+      line(1, 2, 600, HEADER_RUNS),
+      line(1, 3, 580, [['URINALYSIS, COMPLETE', 20]]),
+      line(1, 4, 560, [['ALPHA ONE', 40], ['NEGATIVE', 240], ['NEGATIVE', 404]]),
+      line(2, 5, 700, [['Collected: 02/04/2021 / 08:00 CDT', 230], ['Reported: 02/05/2021 / 09:00 CDT', 430]]),
+      line(2, 6, 600, HEADER_RUNS),
+      line(2, 7, 560, [['BETA TWO', 40], ['3.3', 240], ['0.5-4.5 u/L', 404]]),
+    ]);
+    // A new page starts a new section: the page that printed no heading of its own
+    // says nothing about its specimen, so its rows carry NO panel rather than the
+    // previous page's urine one.
+    expect(interpretQuest(twoPages).observations.map(observation => observation.panel)).toEqual([
+      'URINALYSIS, COMPLETE',
+      null,
+    ]);
   });
 });
 

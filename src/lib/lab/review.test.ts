@@ -32,6 +32,7 @@ function observation(overrides: Partial<ExtractedObservation> = {}): ExtractedOb
     lineNo: 1,
     analyteKey: 'sodium',
     printedName: 'Sodium',
+    panel: 'Comprehensive Metabolic Panel',
     resultOn: '2024-03-03',
     value: 140,
     valueText: null,

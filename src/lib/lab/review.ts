@@ -52,6 +52,12 @@ export interface ReviewRow {
   include: boolean;
   printedName: string;
   analyteKey: string;
+  /**
+   * The panel heading the row was read under. Not an editable field: the reader
+   * corrects values, and the heading is provenance the extractor read off the
+   * page, carried through the review untouched.
+   */
+  panel: string | null;
   resultOn: string;
   /** Numeric value as text, or `''` when there is none. */
   value: string;
@@ -86,6 +92,7 @@ export function rowsFromDraft(draft: LabDraft): ReviewRow[] {
     include: true,
     printedName: row.printedName,
     analyteKey: row.analyteKey,
+    panel: row.panel,
     resultOn: row.resultOn,
     value: numberText(row.value),
     valueText: text(row.valueText),
@@ -224,6 +231,7 @@ export function toCommitRow(row: ReviewRow): CommitRow {
     lineNo: row.lineNo,
     printedName: row.printedName.trim(),
     analyteKey: row.analyteKey,
+    panel: row.panel,
     resultOn: row.resultOn,
     value: parseNumber(row.value),
     valueText: parseText(row.valueText),

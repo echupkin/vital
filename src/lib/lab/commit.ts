@@ -24,8 +24,9 @@ import type {
   LabRefSource,
   LabCategory,
 } from './types';
-import { MAX_PRINTED_FLAG_LENGTH } from './types';
+import { MAX_PRINTED_FLAG_LENGTH, MAX_PANEL_LENGTH } from './types';
 import { resolveAnalyte } from './analytes';
+import { hasTablePii } from './extract/parse';
 import type { NewReportInput } from '@/lib/db/lab-store';
 
 /** The draft returned by an upload. NOT persisted: the owner reviews it first. */
@@ -79,6 +80,8 @@ export interface CommitRow {
   lineNo?: number;
   printedName?: string;
   analyteKey?: string;
+  /** The panel heading the row was read under, as the draft carried it. */
+  panel?: string | null;
   resultOn?: string;
   value?: number | null;
   valueText?: string | null;
@@ -293,6 +296,25 @@ export function validateCommitPayload(body: unknown): CommitValidation {
       };
     }
 
+    // The panel is a label, never identity: a heading that carries an address, a
+    // phone number, a specimen id or a provider name is refused here too, because
+    // the payload is what the client sends, not what the extractor produced.
+    const panel = stringOrNull(row.panel, MAX_PANEL_LENGTH);
+    if (panel === undefined) {
+      return {
+        ok: false,
+        status: 400,
+        error: `${at}.panel must be a string of at most ${MAX_PANEL_LENGTH} characters or null.`,
+      };
+    }
+    if (panel !== null && hasTablePii(panel)) {
+      return {
+        ok: false,
+        status: 422,
+        error: `${at}.panel looks like a person's details rather than a panel heading; a panel is only ever the heading a report printed above a row.`,
+      };
+    }
+
     const sourceLine = stringOrNull(row.sourceLine, 200);
     if (sourceLine === undefined) {
       return { ok: false, status: 400, error: `${at}.sourceLine must be a string of at most 200 characters or null.` };
@@ -321,6 +343,7 @@ export function validateCommitPayload(body: unknown): CommitValidation {
       lineNo,
       analyteKey: resolvedKey,
       printedName,
+      panel,
       resultOn: row.resultOn,
       value,
       valueText,

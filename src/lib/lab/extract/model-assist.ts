@@ -186,6 +186,9 @@ export async function assistExtraction(
       lineNo: 0,
       analyteKey: typeof row.analyteKey === 'string' && row.analyteKey.trim() ? row.analyteKey.trim() : analyteKeyFor(row.printedName),
       printedName: row.printedName.trim(),
+      // The model pass reads VALUES from a crop of the page: it is shown no panel
+      // heading and is never asked to invent one, so its rows carry none.
+      panel: null,
       resultOn: row.resultOn,
       value: row.value,
       valueText: row.valueText === null ? null : row.valueText,

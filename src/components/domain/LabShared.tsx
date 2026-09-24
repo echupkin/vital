@@ -101,7 +101,7 @@ export function observationRows(
       // bound) — the basis of that verdict.
       note: unscoredReason(analyte, point, profile) ?? (point.value === null ? point.notes[0] ?? null : null),
       provenance: row
-        ? `printed as “${row.printedName}” · ${describeExtraction(row.extractionMethod)}${
+        ? `printed as “${row.printedName}”${point.panel ? ` · under “${point.panel}”` : ''} · ${describeExtraction(row.extractionMethod)}${
             row.printedFlag ? ` · report flag ${row.printedFlag}` : ''
           }`
         : null,

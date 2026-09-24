@@ -23,6 +23,7 @@ import { useParams } from 'next/navigation';
 import { ArrowLeft, Info } from 'lucide-react';
 import { formatDayKeyLong } from '@/lib/analytics/windows';
 import { analyteByKey } from '@/lib/lab/analytes';
+import { analyteKeyOfSeriesId } from '@/lib/lab/panel';
 import {
   fetchLabDocuments,
   fetchLabSummary,
@@ -130,7 +131,7 @@ export function LabDetailPage() {
     );
   }
 
-  return <LabDetailContent analyteKey={analyteKey} data={state.data} />;
+  return <LabDetailContent seriesKey={analyteKey} data={state.data} />;
 }
 
 function BackLink() {
@@ -145,11 +146,16 @@ function BackLink() {
   );
 }
 
-function LabDetailContent({ analyteKey, data }: { analyteKey: string; data: LoadedLab }) {
+function LabDetailContent({ seriesKey, data }: { seriesKey: string; data: LoadedLab }) {
   const { summary, documents, provenance } = data;
   const profile: LabProfileFacts = summary.profile;
+  // The route carries a SERIES id: the analyte key, or `glucose~urine` for the
+  // urinalysis series of an analyte that has both. The registry is keyed by the
+  // analyte, so the specimen suffix comes off before it is consulted.
+  const analyteKey = analyteKeyOfSeriesId(seriesKey);
   const registry = analyteByKey(analyteKey);
-  const analyte = summary.analytes.find(entry => entry.analyteKey === analyteKey) ?? null;
+  const analyte =
+    summary.analytes.find(entry => (entry.seriesKey ?? entry.analyteKey) === seriesKey) ?? null;
 
   // ── An honest not-found state ────────────────────────────────────────────
   if (!analyte && !registry) {
@@ -158,7 +164,7 @@ function LabDetailContent({ analyteKey, data }: { analyteKey: string; data: Load
         <BackLink />
         <InsufficientDataState
           metricName="this analyte"
-          message={`No analyte is registered under the key "${analyteKey}", and no imported result uses it either. The link may be out of date, or the key may be misspelled.`}
+          message={`No analyte is registered under the key "${seriesKey}", and no imported result uses it either. The link may be out of date, or the key may be misspelled.`}
         />
         <div>
           <Link href="/lab" className="text-sm text-primary hover:underline">
@@ -232,7 +238,7 @@ function LabDetailContent({ analyteKey, data }: { analyteKey: string; data: Load
           profile={profile}
           provenance={provenance}
           documents={documents}
-          presentKeys={summary.analytes.map(entry => entry.analyteKey)}
+          presentKeys={[...new Set(summary.analytes.map(entry => entry.analyteKey))]}
           category={category}
         />
       )}

@@ -32,15 +32,30 @@
 // A label line carries no value, so it is held as a pending fragment and only
 // resolved when the next value-bearing line arrives: if that line's name starts
 // DEEPER than the fragment, the fragment is a wrapped name belonging to it;
-// otherwise the fragment was a group label and is refused as `panel_header`.
-// Nothing is guessed in either direction — an unresolved fragment is refused.
+// otherwise the fragment was a GROUP LABEL — and a group label is CONTEXT, never
+// a row. It is recorded as the PANEL of every row that follows it on its page.
+//
+// WHY THE PANEL MATTERS. A panel heading is the document saying which section a
+// row came from, and one of those sections is URINE: the same report prints
+// `glucose NEGATIVE` on a dipstick pad under `URINALYSIS, COMPLETE` and
+// `GLUCOSE 78 mg/dL` under `COMPREHENSIVE METABOLIC PANEL`. Without the heading,
+// both rows resolve to the analyte key `glucose` and land in ONE series, so a
+// dipstick reading is charted and differenced against a mg/dL one. The panel is
+// read here and the series are kept apart in ../panel.ts. It is NEVER carried
+// across a page break: a page that printed no heading of its own says nothing
+// about its specimen's, and assuming one would be exactly the mix-up this
+// prevents.
 //
 // PRIVACY. Every line walked produces either an observation or a recorded
 // refusal, and every refusal's text goes through `redact`, which replaces a line
 // carrying identity, contact or provider data wholesale. The patient block is
 // refused as `identity_line`/`letterhead_line` and no identifier (name, DOB,
 // phone, patient/health ID, specimen, requisition, physician, NPI, addresses)
-// can reach a stored field: there is no field for one.
+// can reach a stored field: there is no field for one. The panel is stored, so
+// it is checked against every identity shape EXCEPT the `SURNAME, GIVEN` one
+// (`hasTablePii`), which inside this table is a printed panel name
+// (`URINALYSIS, COMPLETE`); a heading that carries anything else — an address, a
+// phone number, a specimen id, a provider name — is refused rather than kept.
 //
 // NOTHING HERE IS A JUDGEMENT. A value, unit, interval or date is only ever what
 // the document printed; anything unreadable stays null with the reason recorded.
@@ -63,7 +78,7 @@ import type {
 import type { DocumentLayout, LayoutLine } from './layout';
 import { joinedText } from './layout';
 import type { PdfTextItem } from './pdf-items';
-import { analyteKeyFor, confidenceOf, parseBoundedCell, parseRangeText, parseValueCell, redact, UNIT_TOKEN } from './parse';
+import { analyteKeyFor, confidenceOf, hasTablePii, parseBoundedCell, parseRangeText, parseValueCell, redact, UNIT_TOKEN } from './parse';
 import type { ParsedValue } from './parse';
 import {
   qualitativeWord,
@@ -436,8 +451,17 @@ const CONTACT = [
  */
 export const QUEST_BLOCK_TEXT = '[redacted: patient, specimen or client block]';
 
-/** Why a line that is NOT part of the table was refused. */
-export function questFurnitureReason(text: string): ExtractionRejectionReason | null {
+/**
+ * The furniture that is NEVER part of the table, on any line: the block's own
+ * labelled fields, a page number, an address or a phone number.
+ *
+ * A `SURNAME, GIVEN` shape is deliberately NOT tested here. Above the header it
+ * is a person; BELOW the header the table prints the same shape as a PANEL
+ * heading (`URINALYSIS, COMPLETE`, `BILIRUBIN, FRACTIONATED`) and as a test name
+ * (`BILIRUBIN, TOTAL`), so refusing it would throw away the panel this gate
+ * exists to record. See `aboveHeaderReason` for the above-header test.
+ */
+function hardFurnitureReason(text: string): ExtractionRejectionReason | null {
   const trimmed = text.trim();
   if (trimmed === '') return 'empty';
   if (/^page\s+\d+\s+of\s+\d+/i.test(trimmed)) return 'not_a_result_line';
@@ -448,8 +472,15 @@ export function questFurnitureReason(text: string): ExtractionRejectionReason | 
     if (/^comments\s*:|^physician\s+comments\s*:/i.test(trimmed)) return 'notice_line';
     return 'letterhead_line';
   }
-  if (PERSON_NAME.test(trimmed)) return 'identity_line';
   if (CONTACT.some(pattern => pattern.test(trimmed))) return 'identity_line';
+  return null;
+}
+
+/** Why a line that is NOT part of the table was refused. */
+export function questFurnitureReason(text: string): ExtractionRejectionReason | null {
+  const furniture = hardFurnitureReason(text);
+  if (furniture) return furniture;
+  if (PERSON_NAME.test(text.trim())) return 'identity_line';
   return null;
 }
 
@@ -522,16 +553,69 @@ function nearestColumn(header: QuestHeader, x: number): QuestColumn | null {
 // ── Panel labels ─────────────────────────────────────────────────────────────
 
 /**
- * Is this a panel/section label rather than an analyte with a missing value?
- * The reports print them as ALL-CAPS group labels carrying no value and no
- * interval, so that is exactly what is tested — anything else is refused as a
- * notice instead of being called a panel.
+ * Is this a ALL-CAPS group label rather than an analyte with a missing value?
+ *
+ * The reports print a heading in caps and carry no value and no interval with it,
+ * so that is exactly what is tested. A fragment that passes is CANDIDATE name
+ * material: the walk uses this to tell a wrapped NAME (one held fragment, printed
+ * right of the `Test Name` column and shallower than the row under it) from a
+ * panel heading, and `panelLabelFrom` below decides whether a whole run of
+ * fragments spells one.
  */
 export function isPanelLabel(text: string): boolean {
   const trimmed = text.trim();
   if (trimmed === '') return false;
   if (/[a-z]/.test(trimmed)) return false;
   return /[A-Z]/.test(trimmed);
+}
+
+/** Words that make a heading read as a COMPLETE panel name once it carries one. */
+const PANEL_WORD = /\b(?:PANEL|PROFILE|GROUP|BATTERY|CASCADE)\b/i;
+/** Words a heading can still end on while it is unfinished: `LIPID PANEL WITH`. */
+const UNFINISHED = /\b(?:WITH|AND|OR|OF|FOR|TO|IN)\s*$/i;
+
+/**
+ * Is this fragment the text of a panel HEADING, rather than prose or a footnote?
+ *
+ * A heading is set in caps and only a lab shorthand (`A1c`, `eAG`) may carry a
+ * lone small letter; a fragment with an ordinary word in it is prose (`For
+ * additional information, please refer to`), and one with no word at all is a
+ * number, a link or a phone line — never a heading.
+ */
+function isPanelText(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed === '') return false;
+  if (/[a-z]{2,}/.test(trimmed)) return false;
+  return /[A-Z]{2,}/.test(trimmed);
+}
+
+/**
+ * The panel heading a run of fragments spells, or null when the run is not one.
+ *
+ * The fragments are joined in reading order, stopping at the first one that
+ * already reads as a COMPLETE panel name: a report prints the panel that was
+ * ordered and then a heading for the sub-group inside it (`THYROID PANEL WITH
+ * TSH`, then a `THYROID PANEL` heading over the same rows), and only the first is
+ * the panel. A fragment with no panel word in it yet, or one that ends on a
+ * joining word, is a WRAPPED line of the same heading (`COMPREHENSIVE METABOLIC` /
+ * `PANEL`), so the join carries on.
+ *
+ * Returns null — and the run is then refused as a notice, exactly as it was
+ * before — when a fragment is prose, or when the heading carries identity
+ * (`hasTablePii`). The panel is STORED, so a heading with an address, a phone
+ * number, a specimen id or a provider name in it is refused rather than kept.
+ */
+function panelLabelFrom(fragments: Fragment[]): string | null {
+  let label = '';
+  for (const fragment of fragments) {
+    const text = fragment.name.replace(/\s+/g, ' ').trim();
+    if (!isPanelText(text)) return null;
+    if (hasTablePii(text)) return null;
+    label = label === '' ? text : `${label} ${text}`;
+    if (PANEL_WORD.test(label) && !UNFINISHED.test(label)) break;
+  }
+  if (label === '' || hasTablePii(label)) return null;
+  return label;
 }
 
 // ── Dates ────────────────────────────────────────────────────────────────────
@@ -589,8 +673,8 @@ export interface QuestInterpretation {
   observations: ExtractedObservation[];
   warnings: ExtractionWarning[];
   rejections: ExtractionRejection[];
-  /** How many lines were refused as panel/section labels. */
-  panelHeaders: number;
+  /** The panel headings this document printed, in reading order, once each. */
+  panels: string[];
   /** Pages on which the results header was found. */
   tablePages: number[];
   /**
@@ -619,7 +703,8 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
   const warnings: ExtractionWarning[] = [...layout.warnings];
   const rejections: ExtractionRejection[] = [];
   const tablePages: number[] = [];
-  let panelHeaders = 0;
+  /** Every panel heading the document printed, in reading order, once each. */
+  const panels: string[] = [];
   let qualitativeRead = 0;
 
   const headers = new Map(questHeaders(layout).map(header => [header.page, header]));
@@ -635,7 +720,6 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
   const candidates: Candidate[] = [];
 
   const refuse = (line: LayoutLine, reason: ExtractionRejectionReason, text: string = redact(line.text)) => {
-    if (reason === 'panel_header') panelHeaders += 1;
     rejections.push({ page: line.page, lineNo: line.lineNo, text, reason });
   };
 
@@ -654,11 +738,40 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
     const boundary = nameBoundaryOf(header);
     const resultOn = collected.get(page.page) ?? documentCollected;
     const pending: Fragment[] = [];
+    /**
+     * The panel of the rows on THIS page. Reset at every page and never carried
+     * over a page break: a report starts a fresh section on a new page, and a
+     * page that printed no heading of its own says nothing about its specimen —
+     * assuming the previous page's would be exactly the urine/blood mix-up this
+     * reading exists to prevent.
+     */
+    let panel: string | null = null;
 
+    /**
+     * A run of fragments that introduced no row of its own. A run that spells a
+     * panel heading is refused as a `group_label` — there was nothing for it to
+     * head — and a run of prose is refused as a notice, exactly as it was before.
+     */
     const flushPending = () => {
-      for (const fragment of pending) {
-        refuse(fragment.line, isPanelLabel(fragment.name) ? 'panel_header' : 'notice_line');
+      if (pending.length === 0) return;
+      const label = panelLabelFrom(pending);
+      for (const fragment of pending) refuse(fragment.line, label ? 'group_label' : 'notice_line');
+      pending.length = 0;
+    };
+
+    /**
+     * The run above a value row is the panel that row came from: the heading the
+     * report printed, recorded as the panel of every row below it on its page. A
+     * run that spells no heading is refused exactly as it was before.
+     */
+    const takePanel = () => {
+      const label = panelLabelFrom(pending);
+      if (!label) {
+        flushPending();
+        return;
       }
+      panel = label;
+      if (!panels.includes(label)) panels.push(label);
       pending.length = 0;
     };
 
@@ -675,7 +788,7 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
         continue;
       }
 
-      const furniture = questFurnitureReason(line.text);
+      const furniture = hardFurnitureReason(line.text);
       if (furniture && furniture !== 'empty') {
         if (pending.length) flushPending();
         refuse(line, furniture);
@@ -731,7 +844,8 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
         printedName = `${held.name} ${name}`.trim();
         pending.length = 0;
       } else if (pending.length) {
-        flushPending();
+        // Everything else held above this row is the panel it came from.
+        takePanel();
       }
 
       if (!resultOn) {
@@ -835,6 +949,7 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
           lineNo: 0,
           analyteKey: analyteKeyFor(printedName),
           printedName,
+          panel,
           resultOn,
           value: parsedValue.value,
           valueText: parsedValue.valueText,
@@ -873,7 +988,7 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
     observations,
     warnings,
     rejections,
-    panelHeaders,
+    panels,
     tablePages,
     qualitativeRead,
     qualitativeNote: qualitativeSummary(qualitativeRead),

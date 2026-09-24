@@ -31,6 +31,8 @@ export interface LabPoint {
   value: number | null;
   valueText: string | null;
   unit: string | null;
+  /** The panel heading this row was printed under, or null when its page had none. */
+  panel?: string | null;
   printedFlag: string | null;
   interval: ResolvedInterval;
   status: ResultStatus;
@@ -42,11 +44,24 @@ export interface LabPoint {
 
 /** One analyte's whole series, as `/api/lab/summary` serves it. */
 export interface LabAnalyte {
+  /**
+   * The series' id: the analyte key, or `<key>~urine` for the urinalysis series of
+   * an analyte that has both a urine and a blood series. Links and the detail
+   * route take THIS, not `analyteKey`.
+   */
+  seriesKey?: string;
   analyteKey: string;
   displayName: string;
   category: AnalyteCategory;
   unit: string | null;
   registered: boolean;
+  /** `urine` when the whole series was printed under a urinalysis heading. */
+  specimen?: 'urine' | 'other';
+  /** True when this analyte exists in both specimens and was split in two. */
+  split?: boolean;
+  /** The panel headings the series' rows were printed under, and the first of them. */
+  panels?: string[];
+  panel?: string | null;
   points: LabPoint[];
   /** Present in the payload; kept optional so the type never claims more. */
   first?: { value: number; on: string } | null;
@@ -275,6 +290,9 @@ export const CATEGORY_ORDER: AnalyteCategory[] = [
   'Hormones',
   'Coagulation',
   'Cardiac/Muscle',
+  // Urine analytes are a specimen, not an organ system: they are laid out last so
+  // a dipstick reading never sits silently among the blood chemistry.
+  'Urinalysis',
   'Other',
 ];
 

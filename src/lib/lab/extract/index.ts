@@ -29,6 +29,7 @@ import {
   detectDocumentDate,
   detectDocumentKind,
   detectLabName,
+  detectPanelFromFilename,
   interpretLayout,
   PARSER_VERSION,
   redact,
@@ -137,10 +138,15 @@ export async function extractLabDocument(
     }
   }
 
+  // The panel a TREND document covers is only ever what its file name says: the
+  // document prints no panel heading of its own (the Quest layout, which does
+  // print them, is read by `interpretQuest`). Null when the name states none.
+  const documentPanel = quest ? null : detectPanelFromFilename(options.filename ?? null);
+
   const interpreted = quest
     ? quest
     : kind === 'results'
-      ? interpretLayout(layout, columnsByPage)
+      ? interpretLayout(layout, columnsByPage, { panel: documentPanel })
       : { observations: [], warnings: layout.warnings, rejections: interpretRejections(layout) };
 
   let observations = interpreted.observations;

@@ -663,11 +663,25 @@ describe('a Quest Diagnostics results report', () => {
     expect(result.notes).toContain('1 qualitative result was read from the values the report printed');
   });
 
-  it('refuses the panel label with its own reason, and imports it as no analyte', async () => {
+  it('reads the panel label as the panel of the rows below it, and imports it as no analyte', async () => {
     const result = await extractLabDocument(fixture('quest-results.pdf'), { filename: 'quest-results.pdf' });
-    const panel = result.rejections.filter(rejection => rejection.reason === 'panel_header');
-    expect(panel.map(rejection => rejection.text)).toEqual(['EPSILON PANEL']);
+    // The label heads the rows that follow it: it is recorded as THEIR panel, never
+    // imported as an analyte with an empty value and never refused either.
     expect(result.observations.some(observation => observation.printedName.includes('PANEL'))).toBe(false);
+    expect(result.rejections.some(rejection => rejection.text.includes('EPSILON PANEL'))).toBe(false);
+    const under = [
+      'epsilon_metric',
+      'zeta_long_name_test',
+      'eta_bare',
+      'theta_grade',
+      'kappa_calc',
+      'lambda_cells',
+      'mu_bound',
+      'nu_above',
+    ];
+    const rows = result.observations.filter(observation => under.includes(observation.analyteKey));
+    expect(rows.map(observation => observation.analyteKey)).toEqual(under);
+    expect(rows.every(observation => observation.panel === 'EPSILON PANEL')).toBe(true);
   });
 
   it('refuses the repeated patient block on every page, and stores no identifier', async () => {
