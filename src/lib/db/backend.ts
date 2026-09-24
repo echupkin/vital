@@ -1,69 +1,70 @@
-// ── Configuration backend selection (SERVER ONLY) ────────────────────────────
+// ── Configuration backend (SERVER ONLY) ──────────────────────────────────────
 //
 // ONE place answers "where does the configuration live?" so the profile store,
 // the preferences store and the API routes cannot disagree about it.
 //
-//   * a Postgres database is configured  → every configuration read and write
-//     goes to Postgres;
-//   * nothing is configured              → today's JSON files under ./data;
-//   * configured but invalid             → a thrown error carrying the reason.
+//   * a Postgres database is configured → every configuration read and write
+//     goes to Postgres. This is the deployment docker-compose ships;
+//   * nothing is configured             → a thrown error carrying the reason;
+//   * configured but invalid            → a thrown error carrying the reason.
 //
-// The invalid case throws rather than returning "no database" on purpose:
-// silently treating a broken configuration as "no database" would start writing
-// the reader's settings into JSON files they believe are in Postgres.
+// Both failure cases throw rather than returning "no database": this deployment
+// stores its settings in Postgres and has NO JSON-file fallback. Silently
+// treating an absent or broken configuration as "no database" is exactly how a
+// reader's settings end up written to a file they believe is in Postgres.
 //
 // Nothing here reads a health value, a token or a credential: it resolves WHERE
 // configuration is stored, and nothing else.
 
 import { databaseTarget, resolveDatabaseConfig } from './config';
 
-export type BackendKind = 'postgres' | 'files';
+export type BackendKind = 'postgres';
 
 export interface Backend {
   kind: BackendKind;
-  /** The redacted target (`postgres://user@host:port/db`) when Postgres is
-   *  active, or `null` for the file backend. Safe to log, show and report. */
-  target: string | null;
+  /** The redacted target (`postgres://user@host:port/db`). Safe to log, show
+   *  and report — it never carries the password. */
+  target: string;
 }
+
+/** The reason thrown when no database is configured. Actionable and secret-free. */
+export const NO_DATABASE_CONFIGURED_REASON =
+  'No Postgres database is configured; set DATABASE_URL or the VITAL_PG_* variables — ' +
+  'this deployment stores its settings in Postgres and has no file fallback.';
 
 /**
  * Resolve the active configuration backend.
  *
- * Throws with the clear reason when a database is configured but the settings
- * are unusable — the caller decides how to report it (the API routes turn it
- * into a 500; the container entrypoint refuses to start).
+ * Throws with the clear reason when nothing is configured (there is no file
+ * fallback) and when a database is configured but the settings are unusable —
+ * the caller decides how to report it (the API routes turn it into a 500; the
+ * container entrypoint refuses to start).
  */
 export function resolveBackend(env: NodeJS.ProcessEnv = process.env): Backend {
   const config = resolveDatabaseConfig(env);
-  if (config.configured) return { kind: 'postgres', target: databaseTarget(config) };
+  if (config.configured) return { kind: 'postgres', target: databaseTarget(config) ?? 'postgres' };
   if (config.invalid) {
     throw new Error(`The Postgres configuration is invalid: ${config.reason}`);
   }
-  return { kind: 'files', target: null };
+  throw new Error(NO_DATABASE_CONFIGURED_REASON);
 }
 
 /**
  * True when a database is configured, whether or not its settings are valid.
  *
  * Used for reporting ("is this deployment database-backed?"), never for
- * choosing a write path — that is `resolveBackend`, which throws on an invalid
- * configuration instead of quietly picking the files.
+ * choosing a write path — that is the store, which throws when no database is
+ * configured instead of quietly writing to a file.
  */
 export function isDatabaseConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
-  try {
-    return resolveBackend(env).kind === 'postgres';
-  } catch {
-    return true;
-  }
+  const config = resolveDatabaseConfig(env);
+  return config.configured || config.invalid;
 }
 
 /** A one-line, secret-free description of where configuration is stored. */
 export function describeBackend(env: NodeJS.ProcessEnv = process.env): string {
   try {
-    const backend = resolveBackend(env);
-    return backend.kind === 'postgres'
-      ? `Postgres (${backend.target})`
-      : 'JSON files under ./data';
+    return `Postgres (${resolveBackend(env).target})`;
   } catch (error) {
     return `unavailable — ${error instanceof Error ? error.message : String(error)}`;
   }

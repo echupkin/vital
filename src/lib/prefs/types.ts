@@ -1,10 +1,10 @@
 // ── Preferences: shared types and pure rules ────────────
 //
 // The display preferences the SERVER owns: the unit system, the theme and the
-// three notification flags. They live in `data/preferences.json` on the same
-// writable volume as the profile (see `store.ts`), so one person's settings
-// follow them between browsers and devices instead of being trapped in one
-// browser's localStorage.
+// three notification flags. They live in the Vital Postgres database, in the
+// same database as the profile (the `preferences` row; see `store.ts`), so one
+// person's settings follow them between browsers and devices instead of being
+// trapped in one browser's localStorage.
 //
 // This module has NO imports and touches nothing global, so the server store,
 // the API route, the client sync layer and the tests all share one validator
@@ -49,7 +49,7 @@ export interface PreferencesRecord extends VitalPreferences {
   updatedAt: string;
 }
 
-/** The version of the stored record. A file with another version is rejected. */
+/** The version of the stored record. A row with another version is rejected. */
 export const PREFS_SCHEMA_VERSION = 1;
 
 /** The namespaced local cache key. Versioned so an old shape is never read. */
@@ -105,7 +105,7 @@ export function defaultPreferences(): VitalPreferences {
   return { ...DEFAULT_PREFERENCES, notifications: { ...DEFAULT_NOTIFICATIONS } };
 }
 
-/** The record served when no file exists: defaults at revision 0. */
+/** The record served when no row exists: defaults at revision 0. */
 export function defaultPreferencesRecord(updatedAt: string = new Date(0).toISOString()): PreferencesRecord {
   return { ...defaultPreferences(), schemaVersion: PREFS_SCHEMA_VERSION, revision: 0, updatedAt };
 }
@@ -214,7 +214,7 @@ export function validatePreferencesInput(raw: unknown): PreferencesValid<{
 }
 
 /**
- * Validate a stored record on the way in, so a hand-edited file cannot smuggle
+ * Validate a stored record on the way in, so a hand-edited row cannot smuggle
  * in an unknown field, a wrong type or a schema this build does not understand.
  */
 export function validatePreferencesRecord(

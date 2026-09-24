@@ -5,10 +5,10 @@
 // sex, a short note, the timezone the app's calendar days are cut on, and the
 // hour a new briefing may be written.
 //
-// It is OWNED BY THE SERVER and stored as JSON on a writable volume
-// (`./data/profile.json` → `/app/data/profile.json`; see `store.ts`). Both the
-// server-rendered greeting and the (server-side) briefing read it, so it is not
-// tied to one browser.
+// It is OWNED BY THE SERVER and stored in Postgres, in the same database as the
+// rest of the configuration (the `profile` row; see `@/lib/db/profile-store`).
+// Both the server-rendered greeting and the (server-side) briefing read it, so
+// it is not tied to one browser.
 //
 // This module has NO imports, so the browser can use the types, the greeting
 // rules and the validator without pulling the filesystem store into the bundle.
@@ -64,10 +64,6 @@ export const PROFILE_NOTES_MAX = 500;
 export const DEFAULT_BRIEFING_HOUR = 6;
 /** Fallback timezone when the profile has none and no environment override. */
 export const DEFAULT_PROFILE_TIMEZONE = 'America/Chicago';
-
-/** Where the profile lives on the host and in the container (documented copy). */
-export const PROFILE_HOST_PATH = './data/profile.json';
-export const PROFILE_CONTAINER_PATH = '/app/data/profile.json';
 
 export function defaultProfile(timezone: string = DEFAULT_PROFILE_TIMEZONE): VitalProfile {
   return {

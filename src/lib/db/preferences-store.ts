@@ -1,11 +1,11 @@
 // ── Preferences store: Postgres (SERVER ONLY) ────────────
 //
-// The database half of the preferences store. It serves and replaces the same
-// record `@/lib/prefs/store` serves from JSON, so `/api/preferences` does not
-// know which backend is active:
+// The preferences store. Postgres is the only backend: a configured database is
+// the only place preferences are read from or written to, and a missing
+// configuration is a loud error rather than a JSON file:
 //
 //   database configured → this module
-//   nothing configured  → ./data/preferences.json
+//   nothing configured  → the caller throws with the reason
 //
 // One row, pinned to `id = 1` by the schema's CHECK constraint. Every write
 // carries the revision the client last read; the caller compares it with the
@@ -25,6 +25,7 @@ import {
   type PreferencesRecord,
   type VitalPreferences,
 } from '@/lib/prefs/types';
+import { NO_DATABASE_CONFIGURED_REASON } from './backend';
 import { getPool } from './pool';
 
 const SELECT_PREFERENCES = `
@@ -54,10 +55,7 @@ const UPSERT_PREFERENCES = `
 function poolOrThrow(env: NodeJS.ProcessEnv) {
   const pool = getPool(env);
   if (!pool) {
-    throw new Error(
-      'No Postgres database is configured, so the preferences are not in a database. ' +
-        'Configure DATABASE_URL or the VITAL_PG_* variables, or use the file store.'
-    );
+    throw new Error(NO_DATABASE_CONFIGURED_REASON);
   }
   return pool;
 }

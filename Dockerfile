@@ -64,7 +64,8 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1
 
-# Migrate, then serve. With no database configured the migration step is a no-op
-# and the app runs on its JSON files exactly as before.
+# Migrate, then serve. With no database configured the migration step prints the
+# reason and exits non-zero, so the container refuses to start: this deployment
+# stores its settings in Postgres and has no file fallback.
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
 CMD ["node", "server.js"]

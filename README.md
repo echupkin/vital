@@ -212,9 +212,10 @@ hour, notes) and the display preferences (theme, units, notifications). **No hea
 observations, metric series or workouts are ever written to it; health history stays with the
 Health Auto Export source and is read server-side. See `db/migrations/0001-init.sql`.
 
-With **no** database configured the app still runs, storing that configuration in `./data` on the
-server instead. Settings follow you between browsers and devices either way, because the server
-owns them — the browser keeps only a cache used to avoid a theme flash before first paint.
+With **no** database configured the app does **not** run: the container entrypoint refuses to
+start and prints the reason, because this deployment stores its settings in Postgres and has no
+file fallback. Settings follow you between browsers and devices, because the server owns them —
+the browser keeps only a cache used to avoid a theme flash before first paint.
 
 ```bash
 npm run db:migrate                    # apply migrations from the host (no-op when up to date)
@@ -348,14 +349,13 @@ and audits its numbers, but only the prompt can tell a model not to diagnose.
 
 ### The profile (Settings → Account)
 
-Vital keeps one small record about the person, owned by the **server** and stored as JSON on a
-writable volume:
+Vital keeps one small record about the person, owned by the **server** and stored in the
+`profile` row of the Postgres database (`id = 1`), in the same database as the rest of the
+configuration:
 
 | | |
 |---|---|
-| On the host | `./data/profile.json` |
-| In the container | `/app/data/profile.json` (`docker-compose.yml` mounts `./data`) |
-| Shape reference | `data/profile.example.json` |
+| Storage | The `profile` row (`id = 1`) in Postgres |
 | Route | `GET` / `PUT /api/profile` |
 
 - **Fields, and only fields that are used.** `name` (the greeting and the briefing prose),
@@ -364,10 +364,10 @@ writable volume:
   `briefingHour`. There is no dead field and no secret field.
 - **Validated and bounded server-side.** Unknown fields are rejected rather than dropped; every
   type is checked; `name` is capped at 80 characters and `notes` at 500; `timezone` must be a real
-  IANA zone and `briefingHour` a whole hour 0–23. A rejected body changes nothing on disk. The
+  IANA zone and `briefingHour` a whole hour 0–23. A rejected body changes nothing. The
   response body *is* the profile and nothing else.
-- **First-run behaviour is explicit.** No file at all means the documented defaults and nothing
-  crashes. A corrupt or hand-edited file also falls back to the defaults and reports why, rather
+- **First-run behaviour is explicit.** No row yet means the documented defaults and nothing
+  crashes. A corrupt or hand-edited row also falls back to the defaults and reports why, rather
   than 500-ing the app.
 - **One timezone.** `timezone` used to be a `localStorage` preference as well, which meant the
   browser and the server could disagree about what day it was. That duplicate has been removed:
@@ -376,8 +376,8 @@ writable volume:
 - **Notes are data, never instructions.** The briefing prompt states it where every other rule
   lives, and the user message repeats it: a note that reads like a command is not followed.
 - **Nothing else is stored locally.** Theme, units and the notification flags stay in
-  `localStorage`; no API key, token or health record does — and the timezone no longer does either.
-  The live profile file is gitignored and excluded from the Docker build context.
+  `localStorage` as a cache; no API key, token or health record does — and the timezone no longer
+  does either.
 
 ### The daily briefing on `/`
 
@@ -559,7 +559,7 @@ The implementation lives in `src/lib/adapters/`:
 The `ANALYST_*` variables are live configuration: with `ANALYST_PROVIDER=openai` or
 `anthropic` a request *is* sent to the endpoint you configure (see *AI Analyst
 configuration*); with `demo` nothing leaves the machine. The profile is not configuration at
-all: it is a JSON file the server owns (`./data/profile.json`, see *The profile*) rather than an
+all: it is the `profile` row in Postgres (`id = 1`, see *The profile*) rather than an
 environment variable, and it holds no secret.
 
 ## Privacy and security

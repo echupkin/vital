@@ -4,9 +4,8 @@
 // notification flags. One person's settings follow them between browsers and
 // devices instead of being trapped in one browser's localStorage.
 //
-// The record lives in Postgres when a database is configured, and in
-// ./data/preferences.json when it is not — `@/lib/prefs/store` decides, and this
-// route does not care which.
+// The record lives in Postgres — `@/lib/prefs/store` decides how it is served,
+// and this route does not care.
 //
 // The response body IS the record and nothing else — no path, no environment
 // echo, no secret. The record has no secret field: it holds a theme, a unit

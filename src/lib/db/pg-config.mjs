@@ -109,7 +109,7 @@ function invalid(reason) {
  *   configured: true                      — usable settings (the password may be
  *                                           absent only when it came from a URL,
  *                                           where a trust/md5 setup may not need one)
- *   configured: false, invalid: false     — nothing is set: use the file store
+ *   configured: false, invalid: false     — nothing is set: no database, so the
  *   configured: false, invalid: true      — set, but wrong: report `reason`
  */
 export function resolveDatabaseConfig(env = process.env) {
@@ -127,7 +127,8 @@ export function resolveDatabaseConfig(env = process.env) {
     value => value !== null
   );
   if (!anythingSet) {
-    // Not configured at all: this is the documented file-backed deployment.
+    // Not configured at all: the caller must fail with an actionable reason —
+    // this deployment stores its settings in Postgres and has no file fallback.
     return { configured: false, invalid: false, reason: null };
   }
 

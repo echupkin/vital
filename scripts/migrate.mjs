@@ -8,9 +8,10 @@
 // Applied automatically by the container entrypoint (scripts/docker-entrypoint.sh)
 // BEFORE the server starts, so a deploy can never serve a half-migrated app.
 //
-//   * a database that is not configured is not an error: this prints a line and
-//     exits 0, because a file-backed deployment is a supported deployment;
-//   * a database that IS configured but unreachable (or invalid) is a hard
+//   * a database that is not configured is a hard failure: this prints the
+//     reason and exits 1, because this deployment stores its settings in
+//     Postgres and there is no file-backed fallback;
+//   * a database that IS configured but unreachable (or invalid) is also a hard
 //     failure: exit 1 with the reason, so nothing starts on top of a broken
 //     database;
 //   * re-running is a no-op.
@@ -62,10 +63,10 @@ export async function migrate({ env = process.env, dir, log = console.log } = {}
   const config = resolveDatabaseConfig(env);
   if (!config.configured && !config.invalid) {
     log(
-      '[vital-migrate] no Postgres database is configured (DATABASE_URL and the VITAL_PG_* variables are ' +
-        'unset) — skipping migrations; this deployment stores configuration in files under ./data.'
+      '[vital-migrate] FATAL: no Postgres database is configured (DATABASE_URL and the VITAL_PG_* variables ' +
+        'are unset). This deployment stores its settings in Postgres; set the database variables and retry.'
     );
-    return 0;
+    return 1;
   }
   if (config.invalid) {
     log(`[vital-migrate] FATAL: the Postgres configuration is invalid: ${config.reason}`);

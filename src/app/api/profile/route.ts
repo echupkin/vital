@@ -4,9 +4,8 @@
 // greeting and the briefing read the same record, so the app's name, timezone
 // and briefing hour cannot disagree between surfaces or between browsers.
 //
-// The record lives in Postgres when a database is configured, and in
-// ./data/profile.json when it is not — `@/lib/profile/store` decides, and this
-// route does not care which.
+// The record lives in Postgres — `@/lib/profile/store` decides how it is served,
+// and this route does not care.
 //
 // The response body IS the profile and nothing else — no path, no timestamp, no
 // environment echo. There is no secret field to leak: the profile holds a name,

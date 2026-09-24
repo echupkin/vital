@@ -2,13 +2,10 @@
 //
 // The profile is server-owned state, so these tests care about three things:
 // what the route will accept, what the greeting says (and does not say) at each
-// hour, and that a missing or corrupt file degrades to defaults instead of
-// crashing.
+// hour, and that an unconfigured store reports a clear reason instead of
+// writing to a file or crashing.
 
-import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { describe, expect, it } from 'vitest';
 import {
   PROFILE_NAME_MAX,
   PROFILE_NOTES_MAX,
@@ -22,21 +19,12 @@ import {
   timeOfDay,
   timeOfDayAt,
   validateProfileInput,
-  type VitalProfile,
 } from '@/lib/profile/types';
-import { profileFilePath, readProfile, readProfileState, writeProfile } from '@/lib/profile/store';
+import { readProfile, readProfileState, writeProfile } from '@/lib/profile/store';
+import { NO_DATABASE_CONFIGURED_REASON } from '@/lib/db/backend';
 
-const dirs: string[] = [];
-function tempProfileEnv(): { env: NodeJS.ProcessEnv; path: string } {
-  const dir = mkdtempSync(join(tmpdir(), 'vital-profile-'));
-  dirs.push(dir);
-  const path = join(dir, 'profile.json');
-  return { env: { VITAL_PROFILE_PATH: path } as unknown as NodeJS.ProcessEnv, path };
-}
-
-afterEach(() => {
-  while (dirs.length > 0) rmSync(dirs.pop()!, { recursive: true, force: true });
-});
+/** An environment with no database configured: there is no file fallback. */
+const NO_DB_ENV = {} as NodeJS.ProcessEnv;
 
 describe('greeting by time of day', () => {
   it('uses one band scheme everywhere (05–11:59 morning, 12–16:59 afternoon, 17–04:59 evening)', () => {
@@ -178,60 +166,26 @@ describe('profile validation', () => {
   });
 });
 
-describe('the profile store', () => {
-  it('falls back to documented defaults when no file exists', async () => {
-    const { env } = tempProfileEnv();
-    const state = await readProfileState(env);
-    expect(state.backend).toBe('files');
+describe('the profile store — Postgres is the only backend', () => {
+  it('reports the reason, and uses no file, when no database is configured', async () => {
+    const state = await readProfileState(NO_DB_ENV);
+    expect(state.backend).toBe('postgres');
     expect(state.stored).toBe(false);
-    expect(state.error).toBeNull();
     expect(state.profile).toEqual(defaultProfile());
     // Never a literal name.
     expect(state.profile.name).toBeNull();
+    // The actionable reason — not a silent fallback to a file.
+    expect(state.error).toBe(NO_DATABASE_CONFIGURED_REASON);
   });
 
-  it('round-trips a profile through the file', async () => {
-    const { env, path } = tempProfileEnv();
-    const profile: VitalProfile = {
-      name: 'Ada Lovelace',
-      dateOfBirth: '1815-12-10',
-      sex: 'female',
-      notes: 'Counts things.',
-      timezone: 'Europe/London',
-      briefingHour: 7,
-    };
-    await writeProfile(profile, env);
-    expect(existsSync(path)).toBe(true);
-    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual(profile);
-    expect(await readProfile(env)).toEqual(profile);
-    expect((await readProfileState(env)).stored).toBe(true);
+  it('serves the documented defaults from readProfile, never a crash', async () => {
+    expect(await readProfile(NO_DB_ENV)).toEqual(defaultProfile());
   });
 
-  it('never throws on a corrupt or invalid file, and says why', async () => {
-    const { env, path } = tempProfileEnv();
-    writeFileSync(path, '{ not json', 'utf8');
-    const broken = await readProfileState(env);
-    expect(broken.profile).toEqual(defaultProfile());
-    expect(broken.stored).toBe(false);
-    expect(broken.error).toMatch(/not valid JSON/);
-
-    writeFileSync(path, JSON.stringify({ name: 'x', briefingHour: 99, timezone: 'UTC' }), 'utf8');
-    const invalid = await readProfileState(env);
-    expect(invalid.profile).toEqual(defaultProfile());
-    expect(invalid.error).toMatch(/not a valid profile/);
-  });
-
-  it('refuses to write a profile the validator rejects', async () => {
-    const { env, path } = tempProfileEnv();
-    await expect(
-      writeProfile({ ...defaultProfile(), briefingHour: 42 } as VitalProfile, env)
-    ).rejects.toThrow(/Refusing to write an invalid profile/);
-    expect(existsSync(path)).toBe(false);
-  });
-
-  it('reports the writable path it will use', () => {
-    const { env, path } = tempProfileEnv();
-    expect(profileFilePath(env)).toBe(path);
-    expect(profileFilePath({} as NodeJS.ProcessEnv)).toMatch(/data\/profile\.json$/);
+  it('throws with the reason when there is no database to write to', async () => {
+    await expect(writeProfile(defaultProfile(), NO_DB_ENV)).rejects.toThrow(
+      /No Postgres database is configured/
+    );
+    await expect(writeProfile(defaultProfile(), NO_DB_ENV)).rejects.toThrow(/VITAL_PG_/);
   });
 });

@@ -1,15 +1,15 @@
 // ── Profile store: Postgres (SERVER ONLY) ────────────────
 //
-// The database half of the profile store. It implements the same record the
-// JSON file store does (`./data/profile.json`, see `@/lib/profile/store`), so
-// the caller cannot tell which backend is active:
+// The profile store. Postgres is the only backend: a configured database is the
+// only place a profile is read from or written to, and a missing configuration
+// is a loud error rather than a JSON file:
 //
 //   database configured → this module
-//   nothing configured  → the JSON file
+//   nothing configured  → the caller throws with the reason
 //
 // One row, pinned to `id = 1` by the schema's CHECK constraint. The row carries
-// the same six fields plus the bookkeeping the file never had: `revision`,
-// bumped by the database on every write, and `updated_at`.
+// the same six fields plus the bookkeeping: `revision`, bumped by the database
+// on every write, and `updated_at`.
 //
 // CONFIGURATION ONLY. The profile holds a display name, a birth date, the
 // person's sex, a short note, the IANA timezone and the briefing hour. There is
@@ -20,9 +20,10 @@
 // in an unknown shape. Nothing logs or returns a secret: the profile has none.
 
 import { validateProfileInput, type VitalProfile } from '@/lib/profile/types';
+import { NO_DATABASE_CONFIGURED_REASON } from './backend';
 import { getPool } from './pool';
 
-/** The record shape the application record has; mirrors the file store's version. */
+/** The record shape the application record has. */
 export const PROFILE_SCHEMA_VERSION = 1;
 
 export interface StoredProfileRow {
@@ -67,10 +68,7 @@ const UPSERT_PROFILE = `
 function poolOrThrow(env: NodeJS.ProcessEnv) {
   const pool = getPool(env);
   if (!pool) {
-    throw new Error(
-      'No Postgres database is configured, so the profile is not in a database. ' +
-        'Configure DATABASE_URL or the VITAL_PG_* variables, or use the file store.'
-    );
+    throw new Error(NO_DATABASE_CONFIGURED_REASON);
   }
   return pool;
 }

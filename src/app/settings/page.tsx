@@ -36,9 +36,6 @@ import { FreshnessIndicator } from '@/components/shell/FreshnessIndicator';
 import { useProfile } from '@/components/profile/ProfileProvider';
 import { LabUpload } from '@/components/settings/LabUpload';
 import {
-  DEFAULT_PROFILE_TIMEZONE,
-  PROFILE_CONTAINER_PATH,
-  PROFILE_HOST_PATH,
   PROFILE_NAME_MAX,
   PROFILE_NOTES_MAX,
   type VitalProfile,
@@ -491,7 +488,7 @@ function AccountTab() {
           </Button>
           {savedAt && (
             <span role="status" className="text-xs text-text-secondary">
-              Saved to the profile file on the server.
+              Saved to your account on the server.
             </span>
           )}
           {dirty && !saving && (
@@ -507,26 +504,6 @@ function AccountTab() {
             </p>
           </div>
         )}
-      </Card>
-
-      <Card className="p-6">
-        <SectionHead icon={<Database size={18} className="text-text-secondary" />} title="Where this is stored" />
-        <div className="space-y-3 text-sm">
-          <StatusRow label="File on this host" value={PROFILE_HOST_PATH} tone="neutral" />
-          <StatusRow label="Inside the container" value={`${PROFILE_CONTAINER_PATH} (writable volume)`} tone="muted" />
-          <StatusRow
-            label="Default timezone when unset"
-            value={DEFAULT_PROFILE_TIMEZONE}
-            tone="muted"
-          />
-        </div>
-        <div className="mt-4">
-          <DataStateNote>
-            The profile is owned by the server and stored in the same database as the rest of your configuration, so
-            both the server-rendered greeting and the briefing read one record — the same for every browser and device.
-            It holds no credential and no health record, and nothing here is written to this browser.
-          </DataStateNote>
-        </div>
       </Card>
     </div>
   );

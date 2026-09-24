@@ -7,8 +7,7 @@
 //
 // What changed and why: these values used to live in this browser's localStorage
 // only, so a second browser or another device started from defaults. The server
-// is now authoritative — the record lives in the Vital Postgres database when one
-// is configured, and in a JSON file on the server when it is not.
+// is now authoritative — the record lives in the Vital Postgres database.
 //
 // The local cache is still here, with one job: it lets the pre-paint script in
 // `src/app/layout.tsx` apply the right theme before first paint instead of

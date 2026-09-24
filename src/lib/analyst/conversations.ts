@@ -88,10 +88,10 @@ export function resolveConversations(deps: ConversationDeps = {}): Resolved {
 
   const env = deps.env ?? process.env;
   try {
-    const backend = resolveBackend(env);
-    if (backend.kind === 'files') {
-      return { availability: { available: false, backend: 'memory', reason: NO_DATABASE_REASON }, client: null };
-    }
+    // Postgres is the only backend: this throws the actionable reason when no
+    // database is configured (or the configuration is invalid), and there is no
+    // file substitute. The analyst then answers in memory.
+    resolveBackend(env);
     const client = storeClient(env);
     if (!client) {
       return { availability: { available: false, backend: 'memory', reason: NO_DATABASE_REASON }, client: null };
@@ -102,9 +102,7 @@ export function resolveConversations(deps: ConversationDeps = {}): Resolved {
       availability: {
         available: false,
         backend: 'memory',
-        reason: `The Postgres configuration is invalid, so conversations are not saved: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        reason: `${messageOf(error, NO_DATABASE_REASON)} The analyst still answers, but this conversation is not saved.`,
       },
       client: null,
     };

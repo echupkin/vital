@@ -91,11 +91,9 @@ services:
       # Timezone overnight sleep is assigned in and days are cut on.
       VITAL_TIMEZONE: "${VITAL_TIMEZONE:-UTC}"
       # ── Profile (server-side only) ──────────────────────────────────────────
-      # The profile is NOT an environment variable: it is a JSON file the server
-      # owns on a writable volume (./data → /app/data, mounted below), written by
-      # Settings → Account. VITAL_PROFILE_PATH only overrides where that file
-      # lives; the default is /app/data/profile.json.
-      VITAL_PROFILE_PATH: "${VITAL_PROFILE_PATH:-}"
+      # The profile is NOT an environment variable: it is the `profile` row in
+      # the Postgres database above (id = 1), written by Settings → Account.
+      # There is no file-backed profile.
       # ── AI analyst (server-side only; five configurable things) ─────────────
       # provider · model · endpoint · credential · system prompt
       # `demo` (the default) needs no provider and sends nothing anywhere.
@@ -157,13 +155,11 @@ services:
       # ANALYST_SYSTEM_PROMPT_FILE at /app/config/analyst-prompt.md. Read-only, so
       # the container can never rewrite your prompt.
       - ./config:/app/config:ro
-      # The profile: the ONE writable mount. The server writes ./data/profile.json
-      # here when you save Settings → Account, and reads it on every request for
-      # the greeting and the briefing. It must be writable by uid 1001 (the
-      # container's user), so make the host directory writable by it:
+      # Uploaded lab PDFs: the ONE writable mount. The content-addressed
+      # documents a person uploaded under Settings → Data live in ./data/lab.
+      # The directory must be writable by uid 1001 (the container's user), so
+      # make the host directory writable by it too:
       #   mkdir -p data && chmod 777 data
-      # If it cannot be written, nothing crashes: the defaults are served and the
-      # Account tab reports the failure.
       - ./data:/app/data
     # Networking note: the configured Health Auto Export host resolves to this
     # machine's LAN address and the container reaches it directly

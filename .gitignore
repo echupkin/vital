@@ -7,14 +7,6 @@ next-env.d.ts
 .env.development.local
 .env.test.local
 .env.production.local
-# The live profile is personal data written by the server, not source.
-data/profile.json
-data/profile.json.tmp
-
-# Runtime state written by the server when no database is configured.
-data/preferences.json
-data/*.tmp
-
 # Uploaded lab PDFs: runtime data (documents a person uploaded), never source.
 # Content-addressed, so every file here is a person's own document.
 data/lab/
