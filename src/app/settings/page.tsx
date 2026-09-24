@@ -23,9 +23,9 @@ import { coverageFact, coverageSentence } from '@/lib/analytics/coverage';
 import { formatDayKeyLong } from '@/lib/analytics/windows';
 import { REFERENCE_KEY, unavailableReasonFor } from '@/lib/adapters/dataset';
 import {
-  applyTheme, clearPreferences, describeStoredPreferences, getPreferencesState, loadPreferences,
+  applyTheme, clearPreferences, getPreferencesState, loadPreferences,
   savePreferencesResult, subscribePreferences, syncPreferences,
-  STORAGE_KEY_NAME, type ThemeMode, type UnitSystem, type VitalPreferences,
+  type ThemeMode, type UnitSystem, type VitalPreferences,
 } from '@/lib/prefs';
 import {
   Badge, Button, Card, DataStateNote, ErrorState, Select, Skeleton, Tabs,
@@ -279,56 +279,20 @@ function SettingsView() {
           </Card>
 
           {/* ── Where the settings live ──────────────── */}
-          <Card className="p-6">
-            <SectionHead icon={<Database size={18} className="text-text-secondary" />} title="Where these settings are stored" />
-            <p className="text-xs text-text-secondary mb-3">
-              Theme, units and notification switches are stored <span className="text-text-primary">on the server</span> —
-              in the Vital Postgres database when one is configured — so they follow you to any other browser or device
-              instead of being trapped in one browser. Saving happens against the server: if the settings were changed
-              somewhere else first, the change is refused and you are told rather than one device overwriting another.
-            </p>
-            <p className="text-xs text-text-secondary mb-3">
-              This browser keeps one small <span className="text-text-primary">cache</span> of the last values it read at{' '}
-              <code>{STORAGE_KEY_NAME}</code>. Its only job is to apply the right theme before the first paint (so the page
-              does not flash the wrong one) and to keep the page working if the server is briefly unreachable. It is never
-              the source of truth: the server&rsquo;s record always wins, and nothing is sent anywhere else. No API key,
-              token or health record is stored in the browser, and the timezone is not here either — it belongs to the
-              server-owned profile on the Account tab, so the browser and the server cannot disagree about the day.
-            </p>
-            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Cached preference values">
-              <table className="w-full text-sm text-left">
-                <caption className="sr-only">The cache entry this browser keeps, and its value</caption>
-                <thead>
-                  <tr className="border-b border-border text-xs text-text-secondary">
-                    <th scope="col" className="py-2 pr-4 font-medium">Key</th>
-                    <th scope="col" className="py-2 font-medium">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {describeStoredPreferences(prefs).map(row => (
-                    <tr key={row.key} className="border-b border-border/50">
-                      <td className="py-2 pr-4 text-text-secondary"><code>{row.key}</code></td>
-                      <td className="py-2 tnum text-text-primary">{row.value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-3">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  clearPreferences();
-                  const fresh = loadPreferences();
-                  applyTheme(fresh.theme);
-                  setPrefs(fresh);
-                }}
-              >
-                <Trash2 size={14} aria-hidden="true" />
-                <span className="ml-1.5">Clear stored preferences</span>
-              </Button>
-            </div>
-          </Card>
+          <div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                clearPreferences();
+                const fresh = loadPreferences();
+                applyTheme(fresh.theme);
+                setPrefs(fresh);
+              }}
+            >
+              <Trash2 size={14} aria-hidden="true" />
+              <span className="ml-1.5">Clear stored preferences</span>
+            </Button>
+          </div>
         </div>
       )}
 
@@ -736,46 +700,6 @@ function ConnectionsTab() {
         )}
       </Card>
 
-      <Card className="p-6">
-        <SectionHead icon={<Shield size={18} className="text-text-secondary" />} title="Connection configuration and status" />
-        <div className="space-y-3 text-sm">
-          <StatusRow
-            label="Health Auto Export server"
-            value={
-              report?.config.healthApiConfigured
-                ? `Configured (${report.config.healthApiHost ?? 'host unknown'})`
-                : 'Not configured'
-            }
-            tone={report?.config.healthApiConfigured ? 'neutral' : 'muted'}
-          />
-          <StatusRow
-            label="Read token"
-            value={report?.config.healthApiConfigured ? 'Present on the server (never exposed)' : 'Not set'}
-            tone="muted"
-          />
-          <StatusRow
-            label="Live health adapter"
-            value={
-              report?.mode === 'live'
-                ? 'Active — reads Health Auto Export server-side'
-                : 'Not active (demo mode reads the committed fixtures)'
-            }
-            tone={report?.mode === 'live' ? 'neutral' : 'muted'}
-          />
-          <StatusRow
-            label="Data source"
-            value={report?.mode === 'live' ? 'Live Health Auto Export history' : 'Committed demo fixtures'}
-            tone="neutral"
-          />
-        </div>
-        <div className="mt-4">
-          <DataStateNote>
-            Credentials are read from the server environment only and are never returned to the browser. Every health
-            read happens in server code: the browser never calls the export API and never receives the token. When live
-            mode is selected and the source cannot be read, the app shows a connection error rather than demo data.
-          </DataStateNote>
-        </div>
-      </Card>
     </div>
   );
 }
