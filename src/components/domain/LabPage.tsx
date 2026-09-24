@@ -32,7 +32,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ChevronRight, FlaskConical, Info } from 'lucide-react';
 import { formatDayKeyLong } from '@/lib/analytics/windows';
-import { analyteDescription } from '@/lib/lab/descriptions';
+import { seriesDescription } from '@/lib/lab/descriptions';
 import {
   fetchLabDocuments,
   fetchLabSummary,
@@ -385,7 +385,12 @@ function AnalyteCard({
   const model = useMemo(() => chartModel(analyte), [analyte]);
   const change = useMemo(() => changeFromPrevious(analyte), [analyte]);
   const rows = useMemo(() => observationRows(analyte, provenance, profile), [analyte, provenance, profile]);
-  const description = useMemo(() => analyteDescription(analyte.analyteKey), [analyte.analyteKey]);
+  // Resolved for THIS series, not for the analyte key alone: a urine series of an
+  // analyte that also has a blood one must never be shown the blood copy.
+  const description = useMemo(
+    () => seriesDescription(analyte.analyteKey, analyte.specimen ?? 'other'),
+    [analyte.analyteKey, analyte.specimen]
+  );
   if (!latest) return null;
 
   const points = orderedPoints(analyte);

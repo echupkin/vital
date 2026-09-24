@@ -18,6 +18,30 @@ information.
 
 Date all sources opened: 2026-09-23
 
+## The `specimen` field
+
+An entry may carry one extra field, `specimen`, which states **which specimen the copy
+describes**. The patient-facing lookup resolves a description per SERIES — an analyte
+together with the specimen its rows were printed under — not per analyte key alone:
+
+- an entry that declares `"specimen": "urine"` describes a urine (urinalysis) reading;
+- an entry that declares nothing describes the analyte's **ordinary, non-urine report**,
+  and so behaves as `other`;
+- a series may also be served by a **specimen-qualified entry**, keyed `<analyte_key>_<specimen>`
+  (e.g. `glucose_urine`), which wins over the base entry of the same analyte.
+
+The rule the lookup enforces: a series is never shown copy whose own specimen
+contradicts it. An entry that declares `urine` never serves a non-urine series, and an
+entry that declares nothing (or `other`) never serves a urine series — such a series
+renders **no description at all**, which is this app's standing convention for a thing
+that is absent, and is preferred over copy about a specimen that was not tested.
+
+A specimen-qualified entry must still be written by the research pass against a cited
+source like any other entry; keying it is not a substitute for auditing its sentences.
+When a urine series has no entry of its own, it stays bare until a researcher writes the
+copy. This header is the place to record that specimen each entry describes as the
+research pass fills the field in.
+
 | analyte key | source title | URL | date opened | claims |
 | --- | --- | --- | --- | --- |
 | `total_cholesterol` | MedlinePlus — Cholesterol Levels | https://medlineplus.gov/lab-tests/cholesterol-levels/ | 2026-09-23 | checked, reworded |

@@ -23,7 +23,7 @@ import { useParams } from 'next/navigation';
 import { ArrowLeft, Info } from 'lucide-react';
 import { formatDayKeyLong } from '@/lib/analytics/windows';
 import { analyteByKey } from '@/lib/lab/analytes';
-import { analyteKeyOfSeriesId } from '@/lib/lab/panel';
+import { analyteKeyOfSeriesId, URINE_SERIES_SEPARATOR, type PanelSpecimen } from '@/lib/lab/panel';
 import {
   fetchLabDocuments,
   fetchLabSummary,
@@ -156,6 +156,12 @@ function LabDetailContent({ seriesKey, data }: { seriesKey: string; data: Loaded
   const registry = analyteByKey(analyteKey);
   const analyte =
     summary.analytes.find(entry => (entry.seriesKey ?? entry.analyteKey) === seriesKey) ?? null;
+  // WHICH SPECIMEN THE COPY MAY DESCRIBE. The stored series carries it (its panel
+  // is the report's own statement about the specimen); a registry-only route
+  // takes it from the series id, so `glucose~urine` still cannot be shown the
+  // blood copy.
+  const specimen: PanelSpecimen =
+    analyte?.specimen ?? (seriesKey.endsWith(`${URINE_SERIES_SEPARATOR}urine`) ? 'urine' : 'other');
 
   // ── An honest not-found state ────────────────────────────────────────────
   if (!analyte && !registry) {
@@ -204,7 +210,7 @@ function LabDetailContent({ seriesKey, data }: { seriesKey: string; data: Loaded
       {/* What the analyte is, and what a high or low value may mean. Rendered
           only when a description entry exists — an absent description is absent,
           never an empty box. */}
-      <LabAnalyteDescription analyteKey={analyteKey} />
+      <LabAnalyteDescription analyteKey={analyteKey} specimen={specimen} />
 
       {!summary.available && (
         <Card className="p-5">

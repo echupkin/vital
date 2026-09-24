@@ -10,7 +10,8 @@
 
 import { AlertTriangle, CheckCircle2, ExternalLink, Info } from 'lucide-react';
 import { TONE_CLASS, TONE_ICON } from '@/lib/lab/tone';
-import { analyteDescription } from '@/lib/lab/descriptions';
+import { seriesDescription } from '@/lib/lab/descriptions';
+import type { PanelSpecimen } from '@/lib/lab/panel';
 import type { RowProvenance } from '@/lib/lab/client-data';
 import type { StatusTone } from '@/lib/lab/status';
 import {
@@ -129,12 +130,20 @@ export function needsSexNotice(analyte: LabAnalyte, profile: LabProfileFacts): b
  * sentence against, and the one line that says this is general information and
  * not a diagnosis.
  *
- * AN ABSENT DESCRIPTION IS ABSENT. An analyte with no description entry renders
- * NOTHING here — no card, no "Description" header and no placeholder — which is
- * this app's standing convention: a thing that is missing is missing.
+ * AN ABSENT DESCRIPTION IS ABSENT. An analyte with no description entry — or a
+ * series whose specimen no honest entry describes — renders NOTHING here: no
+ * card, no "Description" header and no placeholder, which is this app's standing
+ * convention: a thing that is missing is missing. The SPECIMEN is part of the
+ * lookup, so a urine series can never be shown the copy of a blood test.
  */
-export function LabAnalyteDescription({ analyteKey }: { analyteKey: string }) {
-  const description = analyteDescription(analyteKey);
+export function LabAnalyteDescription({
+  analyteKey,
+  specimen = 'other',
+}: {
+  analyteKey: string;
+  specimen?: PanelSpecimen;
+}) {
+  const description = seriesDescription(analyteKey, specimen);
   if (!description) return null;
 
   return (

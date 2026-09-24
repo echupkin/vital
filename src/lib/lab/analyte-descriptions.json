@@ -568,6 +568,7 @@
     "sourceUrl": "https://medlineplus.gov/lab-tests/blood-glucose-test/"
   },
   "ph": {
+    "specimen": "urine",
     "whatItIs": "Measures how acidic or alkaline your urine is, using a dipstick pad that changes colour with the level of acid.",
     "ifHigh": "A high urine pH may be seen with a urinary tract infection, kidney failure, or vomiting.",
     "ifLow": "A low urine pH may be seen with diarrhea, starvation, or a build-up of acid in the body.",
@@ -575,66 +576,78 @@
     "sourceUrl": "https://medlineplus.gov/ency/article/003583.htm"
   },
   "specific_gravity": {
+    "specimen": "urine",
     "whatItIs": "Measures the concentration of all the chemical particles in your urine. It is used to check your body's water balance and how concentrated the urine is.",
     "sourceTitle": "MedlinePlus — Urine specific gravity test",
     "sourceUrl": "https://medlineplus.gov/ency/article/003587.htm"
   },
   "ketones": {
+    "specimen": "urine",
     "whatItIs": "Measures whether ketones are present in your urine. Ketones are made when your body breaks down fat for energy instead of glucose.",
     "sourceTitle": "MedlinePlus — Ketones urine test",
     "sourceUrl": "https://medlineplus.gov/ency/article/003585.htm"
   },
   "protein": {
+    "specimen": "urine",
     "whatItIs": "Measures the presence of proteins, including albumin, in a urine sample, using a dipstick pad that changes colour with the level of protein.",
     "ifHigh": "Protein in the urine may be seen with kidney disease; the test is often used to screen for kidney problems.",
     "sourceTitle": "MedlinePlus — Urine protein dipstick test",
     "sourceUrl": "https://medlineplus.gov/ency/article/003580.htm"
   },
   "color": {
+    "specimen": "urine",
     "whatItIs": "A visual check of the colour of your urine. The usual colour is straw-yellow; food, medicines, or illness can change it.",
     "sourceTitle": "MedlinePlus — Urine: abnormal color",
     "sourceUrl": "https://medlineplus.gov/ency/article/003139.htm"
   },
   "appearance": {
+    "specimen": "urine",
     "whatItIs": "A visual check of how the urine sample looks to the naked eye, such as whether it is clear or cloudy.",
     "sourceTitle": "MedlinePlus — Urinalysis",
     "sourceUrl": "https://medlineplus.gov/ency/article/003579.htm"
   },
   "nitrite": {
+    "specimen": "urine",
     "whatItIs": "Looks for nitrites in the urine. Many bacteria that cause urinary tract infections change a normal chemical in urine, nitrate, into nitrite.",
     "ifHigh": "Nitrites are not normally found in urine; their presence may be a sign of a urinary tract infection.",
     "sourceTitle": "MedlinePlus — Nitrites in Urine",
     "sourceUrl": "https://medlineplus.gov/lab-tests/nitrites-in-urine/"
   },
   "occult_blood": {
+    "specimen": "urine",
     "whatItIs": "Looks for blood in the urine, including amounts too small to see. Blood in the urine is called hematuria.",
     "ifHigh": "Blood in the urine may be seen with a urinary tract infection, kidney disease, or liver disease.",
     "sourceTitle": "MedlinePlus — Blood in Urine",
     "sourceUrl": "https://medlineplus.gov/lab-tests/blood-in-urine/"
   },
   "leukocyte_esterase": {
+    "specimen": "urine",
     "whatItIs": "A urine dipstick test that looks for white blood cells by detecting a substance they release, as a screening test for infection.",
     "ifHigh": "A positive test may be a sign of a urinary tract infection.",
     "sourceTitle": "MedlinePlus — Leukocyte esterase urine test",
     "sourceUrl": "https://medlineplus.gov/ency/article/003584.htm"
   },
   "bacteria": {
+    "specimen": "urine",
     "whatItIs": "A microscopic check of the urine sample for bacteria or other germs.",
     "sourceTitle": "MedlinePlus — Urinalysis",
     "sourceUrl": "https://medlineplus.gov/ency/article/003579.htm"
   },
   "squamous_epithelial_cells": {
+    "specimen": "urine",
     "whatItIs": "Flat cells that line the lower urinary tract and the genital area. A large number in a urine sample may mean the sample was contaminated.",
     "sourceTitle": "MedlinePlus — Epithelial Cells in Urine",
     "sourceUrl": "https://medlineplus.gov/lab-tests/epithelial-cells-in-urine/"
   },
   "hyaline_cast": {
+    "specimen": "urine",
     "whatItIs": "Hyaline casts are the most common type of urinary cast: tiny tube-shaped particles seen when urine is examined under a microscope.",
     "ifHigh": "A few hyaline casts are normal; more may be seen with dehydration, strenuous exercise, or kidney disease.",
     "sourceTitle": "MedlinePlus — Urinary casts",
     "sourceUrl": "https://medlineplus.gov/ency/article/003586.htm"
   },
   "bilirubin": {
+    "specimen": "urine",
     "whatItIs": "Measures the level of bilirubin in your urine. Bilirubin is not normally found in urine; if it is present it may be an early sign of a liver problem.",
     "ifHigh": "Bilirubin in the urine may be seen with a liver or bile-duct problem.",
     "sourceTitle": "MedlinePlus — Bilirubin in Urine",

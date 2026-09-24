@@ -16,9 +16,9 @@
 import { describe, it, expect } from 'vitest';
 import raw from './analyte-descriptions.json';
 import { ANALYTES, UNDESCRIBED_BY_DESIGN, analyteByKey } from './analytes';
-import { DESCRIBED_KEYS, analyteDescription, type AnalyteDescription } from './descriptions';
+import { DESCRIBED_KEYS, analyteDescription, descriptionForSeries, seriesDescription, type AnalyteDescription } from './descriptions';
 
-const RAW: Record<string, AnalyteDescription> = raw;
+const RAW: Record<string, AnalyteDescription> = raw as unknown as Record<string, AnalyteDescription>;
 
 /**
  * Every analyte key the owner's imported data uses, measured from the live
@@ -167,6 +167,24 @@ describe('the description file', () => {
     }
   });
 
+  it('declares only an allowed specimen, and only where the registry agrees', () => {
+    // The imported JSON widens `specimen` to a plain string (see descriptions.ts),
+    // so this pins the VALUE: a mistyped specimen would otherwise make an entry
+    // silently unreachable, which is exactly the failure the cast could hide.
+    for (const key of DESCRIBED_KEYS) {
+      const specimen = RAW[key]!.specimen;
+      if (specimen === undefined) continue;
+      expect(['urine', 'other'], key).toContain(specimen);
+    }
+    // The specimen declared today is `urine`, and only on the urinalysis entries:
+    // an entry that claims to describe urine must be a urine analyte.
+    for (const key of DESCRIBED_KEYS) {
+      if (RAW[key]!.specimen === 'urine') {
+        expect(analyteByKey(key)?.category, key).toBe('Urinalysis');
+      }
+    }
+  });
+
   it('gives every entry a whatItIs, a source title and an https source URL', () => {
     for (const key of DESCRIBED_KEYS) {
       const entry = RAW[key]!;
@@ -277,5 +295,73 @@ describe('the lookup is by what the analyte is, not by how its key was spelled',
       expect(entry?.bands ?? [], key).toEqual([]);
       expect((entry?.note ?? '').trim().length, key).toBeGreaterThan(0);
     }
+  });
+});
+
+// ── Resolution per series ────────────────────────────────────────────────────
+//
+// A description is resolved for a SERIES — an analyte together with the specimen
+// its rows were printed under — and not for the analyte key alone, because one
+// key can name two different measurements: `glucose` is blood sugar on a
+// chemistry panel and a dipstick reading on a urinalysis one. The
+// specimen-qualified entry (`<key>_<specimen>`) wins; the base entry is used ONLY
+// when its own specimen does not contradict the series'. A series no honest
+// entry describes resolves to null, which the UI renders as NOTHING — the same
+// convention an analyte with no entry has always followed.
+
+describe('a series resolves the copy of its own specimen', () => {
+  const source = { sourceTitle: 'Fixture source', sourceUrl: 'https://example.invalid/page' };
+
+  /** A fixture: one analyte key measured on two specimens, each with its own copy. */
+  const TWO_SPECIMENS: Record<string, AnalyteDescription> = {
+    glucose: { whatItIs: 'the non-urine copy', ...source },
+    glucose_urine: { whatItIs: 'the urine copy', specimen: 'urine', ...source },
+  };
+
+  /** The shipped shape today: a base entry and no urine-qualified copy written yet. */
+  const NO_URINE_COPY: Record<string, AnalyteDescription> = {
+    glucose: { whatItIs: 'the non-urine copy', ...source },
+  };
+
+  it('prefers the specimen-qualified entry over the base one', () => {
+    expect(descriptionForSeries(TWO_SPECIMENS, 'glucose', 'urine')?.whatItIs).toBe('the urine copy');
+    expect(descriptionForSeries(TWO_SPECIMENS, 'glucose', 'other')?.whatItIs).toBe('the non-urine copy');
+  });
+
+  it('never serves one specimen’s copy to a series of the other specimen', () => {
+    // THE ASSERTION THIS GATE EXISTS FOR: with no urine copy written, the urine
+    // series of a key whose base entry describes the other specimen must resolve
+    // to NOTHING rather than borrow the base copy.
+    expect(descriptionForSeries(NO_URINE_COPY, 'glucose', 'urine')).toBeNull();
+    expect(descriptionForSeries(NO_URINE_COPY, 'glucose', 'other')?.whatItIs).toBe('the non-urine copy');
+
+    // And against the SHIPPED copy: `glucose_urine` has no entry yet, so the real
+    // `glucose` urine series resolves to null — the urine card shows no copy.
+    expect(RAW['glucose_urine']).toBeUndefined();
+    expect(seriesDescription('glucose', 'urine')).toBeNull();
+    expect(seriesDescription('glucose', 'other')?.whatItIs).toBe(RAW.glucose!.whatItIs);
+  });
+
+  it('serves the base copy to a series whose specimen the entry does not contradict', () => {
+    // A series the document made no specimen statement for is `other`, and the
+    // base entry describes exactly that ordinary report — so it still shows.
+    expect(seriesDescription('ldl_c', 'other')?.whatItIs).toBe(RAW.ldl_c!.whatItIs);
+    expect(seriesDescription('ldl_c')?.whatItIs).toBe(RAW.ldl_c!.whatItIs);
+  });
+
+  it('serves a urine entry to the urine series of a urine-only analyte', () => {
+    // A urinalysis entry declares its own specimen, so its series still finds it…
+    expect(seriesDescription('nitrite', 'urine')?.whatItIs).toBe(RAW.nitrite!.whatItIs);
+    // …and that urine copy is not served to a series of any other specimen.
+    expect(seriesDescription('nitrite', 'other')).toBeNull();
+  });
+
+  it('renders no description element at all for an analyte with no entry', () => {
+    // The component returns null when the resolver does (no card, no header, no
+    // placeholder), so a null here is literally nothing on the page.
+    expect(seriesDescription('widget_one', 'urine')).toBeNull();
+    expect(seriesDescription('widget_one', 'other')).toBeNull();
+    expect(seriesDescription('', 'urine')).toBeNull();
+    expect(descriptionForSeries(TWO_SPECIMENS, 'widget_one', 'urine')).toBeNull();
   });
 });
