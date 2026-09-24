@@ -65,11 +65,11 @@ describe('alias resolution', () => {
       ['SGOT (AST)', 'ast'],
       ['Glycohemoglobin (GHb),Total', 'hba1c'],
       ['CHD', 'cholesterol_hdl_ratio'],
-      ['NE%', 'neutrophils'],
-      ['LY%', 'lymphocytes'],
-      ['MO%', 'monocytes'],
-      ['EO%', 'eosinophils'],
-      ['BA%', 'basophils'],
+      ['NE%', 'neutrophils_pct'],
+      ['LY%', 'lymphocytes_pct'],
+      ['MO%', 'monocytes_pct'],
+      ['EO%', 'eosinophils_pct'],
+      ['BA%', 'basophils_pct'],
       ['NE#', 'neutrophils_abs'],
       ['LY#', 'lymphocytes_abs'],
       ['MO#', 'monocytes_abs'],
@@ -164,18 +164,18 @@ describe('the keys the owner’s stored rows already use', () => {
   // under them — so the REGISTRY is extended to cover them instead.
   const STORED_KEYS: Array<[string, string]> = [
     ['alkaline_phosphatase', 'alp'],
-    ['basophils_pct', 'basophils'],
+    ['basophils_pct', 'basophils_pct'],
     ['bilirubin_total', 'total_bilirubin'],
     ['calculated_bun_creat', 'bun_creatinine_ratio'],
     ['cholesterol_total', 'total_cholesterol'],
     ['co2', 'co2_bicarbonate'],
-    ['eosinophils_pct', 'eosinophils'],
+    ['eosinophils_pct', 'eosinophils_pct'],
     ['glucose', 'glucose'],
     ['hdl', 'hdl_c'],
     ['ldl', 'ldl_c'],
-    ['lymphocytes_pct', 'lymphocytes'],
-    ['monocytes_pct', 'monocytes'],
-    ['neutrophils_pct', 'neutrophils'],
+    ['lymphocytes_pct', 'lymphocytes_pct'],
+    ['monocytes_pct', 'monocytes_pct'],
+    ['neutrophils_pct', 'neutrophils_pct'],
     ['protein_total', 'total_protein'],
   ];
 
@@ -188,6 +188,31 @@ describe('the keys the owner’s stored rows already use', () => {
       // unit convention and its description.
       expect(analyte?.displayName.length ?? 0, stored).toBeGreaterThan(0);
       expect(analyte?.category, stored).toBeTruthy();
+    }
+  });
+
+  it('keeps the differential percentage and the differential count apart', () => {
+    // The percentage a report prints as `BA%` and the count it prints as `BA#`
+    // are DIFFERENT analytes and must resolve to different entries, or one
+    // series is charted against the other's interval. So must the two spellings
+    // of the percentage itself: `basophils` (a bare `BASOPHILS`) and
+    // `basophils_pct` (the `BA%` column) are two series, each named for what it
+    // is — neither is an alias of the other, and neither renders as "Basophils".
+    for (const [pct, abs] of [
+      ['neutrophils_pct', 'neutrophils_abs'],
+      ['lymphocytes_pct', 'lymphocytes_abs'],
+      ['monocytes_pct', 'monocytes_abs'],
+      ['eosinophils_pct', 'eosinophils_abs'],
+      ['basophils_pct', 'basophils_abs'],
+    ]) {
+      expect(analyteByKey(pct)?.unit, pct).toContain('%');
+      expect(analyteByKey(abs)?.unit, abs).toContain('/µL');
+      expect(analyteByKey(pct)?.key, pct).not.toBe(analyteByKey(abs)?.key);
+    }
+    for (const bare of ['neutrophils', 'lymphocytes', 'monocytes', 'eosinophils', 'basophils']) {
+      expect(analyteByKey(`${bare}_pct`)?.key, bare).toBe(`${bare}_pct`);
+      expect(analyteByKey(bare)?.key, bare).toBe(bare);
+      expect(analyteByKey(bare)?.displayName, bare).not.toBe(analyteByKey(`${bare}_pct`)?.displayName);
     }
   });
 

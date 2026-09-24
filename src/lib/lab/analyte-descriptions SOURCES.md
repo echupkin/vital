@@ -168,6 +168,22 @@ No patient-facing page states these as an analyte of their own, so none is descr
 `absolute_neutrophils` (absolute differential counts), `estimated_average_glucose`,
 `eag_mg_dl`, `eag_mmol_l` (derived from HbA1c), and `free_t4_index_t7` (the derived T7 index).
 
+### The differential percentages, stored under two spellings
+
+A report that prints its white-cell differential under the symbols `NE%`, `LY%`, `MO%`,
+`EO%`, `BA%` makes the extractor write the keys `neutrophils_pct`, `lymphocytes_pct`,
+`monocytes_pct`, `eosinophils_pct` and `basophils_pct`; a report that prints a bare
+`NEUTROPHILS` (or `BASOPHILS`, …) writes `neutrophils` (or `basophils`, …). Those are two
+stored spellings of ONE measurement, and the series read model now keeps each as its own
+series, named `<Analyte> (%)` and `<Analyte>, automated (%)` so the two can never be
+confused. Each pair carries the SAME audited copy — the entry for the bare spelling — through
+`COPY_OF_KEY` in `descriptions.ts`: no second copy was written and nothing was reworded, so
+the audit row above for `basophils` (etc.) still describes what both series show.
+
+The percentage and the ABSOLUTE COUNT are different analytes and were always described
+separately (`basophils` vs `basophils_abs`); the absolute differential counts a report
+computes for itself (`absolute_basophils`, …) remain deliberately undescribed, as above.
+
 ### Stored spellings of an analyte that already has an entry
 
 Each of these IS the same analyte as an existing entry, so no second entry was written (the

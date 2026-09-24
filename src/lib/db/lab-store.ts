@@ -650,9 +650,15 @@ export interface SeriesProfile {
 }
 
 /**
- * Build the series read model: per (analyte, specimen), its observations oldest
- * first with their intervals and computed status, plus the earliest and latest
- * values and the delta.
+ * Build the series read model: per (CANONICAL analyte, specimen), its
+ * observations oldest first with their intervals and computed status, plus the
+ * earliest and latest values and the delta.
+ *
+ * CANONICAL RULE: the series' identity is (canonical key, specimen), where the
+ * canonical key is the stored key resolved through the registry's key+alias map
+ * (`bun` and `urea_nitrogen_bun` are one series; `hba1c` and `hemoglobin_a1c` are
+ * one). Rows keep the keys they were imported with — nothing is renamed or
+ * rewritten — so no migration is needed and a re-read is enough.
  *
  * DE-DUPLICATION RULE: two rows sharing (`analyte_key`, `result_on`) are BOTH
  * kept and returned as separate points. Different assays and different labs
@@ -670,15 +676,27 @@ export async function getSeries(
   const result = await client.query(SELECT_ALL_RESULTS);
   const rows = result.rows.map(toLabResult);
 
-  // One bucket per (analyte, specimen): a urine row and a serum row of the same
-  // analyte are two different measurements and never share a series.
+  // One bucket per (CANONICAL analyte, specimen): a urine row and a serum row
+  // of the same analyte are two different measurements and never share a series,
+  // and two stored SPELLINGS of one analyte are ONE measurement and never split.
   const bySeries = new Map<string, { analyteKey: string; specimen: PanelSpecimen; rows: LabResult[] }>();
   for (const row of rows) {
+    // SERIES IDENTITY IS THE CANONICAL KEY. The stored key is whatever the
+    // document's printed name produced (`bun` on one report, `urea_nitrogen_bun`
+    // on another; `hba1c` and `hemoglobin_a1c`), so the SAME analyte arrives
+    // under different keys and, left alone, each key becomes its own chart. The
+    // stored key is therefore resolved through the registry's own key+alias map
+    // — the same resolution the display name, category and description lookups
+    // already use — and the series is keyed by what the analyte IS. A key with
+    // no registry entry has no other spelling to meet, so it stays its own
+    // series under its raw key: an unrecognised thing is never dropped, merged
+    // or renamed, and it keeps the printed name it was stored with.
+    const canonicalKey = analyteByKey(row.analyteKey)?.key ?? row.analyteKey;
     const specimen = specimenOfPanel(row.panel);
-    const id = `${row.analyteKey}\u0000${specimen}`;
+    const id = `${canonicalKey}\u0000${specimen}`;
     const bucket = bySeries.get(id);
     if (bucket) bucket.rows.push(row);
-    else bySeries.set(id, { analyteKey: row.analyteKey, specimen, rows: [row] });
+    else bySeries.set(id, { analyteKey: canonicalKey, specimen, rows: [row] });
   }
 
   // An analyte is split into two metrics only when BOTH specimens really exist:

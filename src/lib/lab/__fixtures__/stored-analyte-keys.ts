@@ -1,0 +1,157 @@
+// ── The stored analyte keys, as a test fixture ────────────────────────────
+//
+// MEASURED, NOT GUESSED. Every key here is a distinct `lab_results.analyte_key`
+// the owner’s five imported documents produced, read from the live database —
+// the keys are the extractor’s own spelling and are NOT stored anywhere else in
+// this repo, so they are pinned here as data for the tests that hold the read
+// model to its invariants (see ../db/lab-store.test.ts).
+//
+// NO PATIENT DATA: an analyte key names a measurement, not a person. The panel
+// headings are NOT reproduced — only WHICH specimen the rows came from, which is
+// what the series split depends on (`../panel`).
+
+/** Every stored analyte key, sorted. */
+export const STORED_ANALYTE_KEYS: string[] = [
+  'absolute_basophils',
+  'absolute_eosinophils',
+  'absolute_lymphocytes',
+  'absolute_monocytes',
+  'absolute_neutrophils',
+  'adiponectin',
+  'albumin',
+  'albumin_globulin_ratio',
+  'alkaline_phosphatase',
+  'alt',
+  'anion_gap',
+  'apolipoprotein_b',
+  'appearance',
+  'ast',
+  'bacteria',
+  'basophils',
+  'basophils_abs',
+  'basophils_pct',
+  'bilirubin',
+  'bilirubin_direct',
+  'bilirubin_indirect',
+  'bilirubin_total',
+  'bun',
+  'c_peptide',
+  'calcium',
+  'calculated_bun_creat',
+  'carbon_dioxide',
+  'chloride',
+  'chol_hdlc_ratio',
+  'cholesterol_hdl_ratio',
+  'cholesterol_total',
+  'co2',
+  'color',
+  'cortisol_total',
+  'creatinine',
+  'dhea_sulfate',
+  'eag_mg_dl',
+  'eag_mmol_l',
+  'egfr',
+  'eosinophils',
+  'eosinophils_abs',
+  'eosinophils_pct',
+  'estimated_average_glucose',
+  'estradiol',
+  'ferritin',
+  'free_t4_index_t7',
+  'fructosamine',
+  'fsh',
+  'ggt',
+  'globulin',
+  'glucose',
+  'hba1c',
+  'hdl',
+  'hematocrit',
+  'hemoglobin',
+  'hemoglobin_a1c',
+  'hs_crp',
+  'hyaline_cast',
+  'insulin',
+  'iron_binding_capacity',
+  'iron_total',
+  'ketones',
+  'ldl',
+  'ldl_hdl_ratio',
+  'leptin',
+  'leukocyte_esterase',
+  'lh',
+  'lymphocytes',
+  'lymphocytes_abs',
+  'lymphocytes_pct',
+  'mch',
+  'mchc',
+  'mcv',
+  'monocytes',
+  'monocytes_abs',
+  'monocytes_pct',
+  'mpv',
+  'neutrophils',
+  'neutrophils_abs',
+  'neutrophils_pct',
+  'nitrite',
+  'non_hdl_cholesterol',
+  'occult_blood',
+  'ph',
+  'platelets',
+  'potassium',
+  'protein',
+  'protein_total',
+  'rbc',
+  'rdw',
+  'red_blood_cell_count',
+  'saturation',
+  'sex_hormone_binding_globulin',
+  'sodium',
+  'specific_gravity',
+  'squamous_epithelial_cells',
+  't3_uptake',
+  't4_thyroxine_total',
+  'testosterone_bioavailable',
+  'testosterone_free',
+  'triglycerides',
+  'tsh',
+  'urea_nitrogen_bun',
+  'uric_acid',
+  'vitamin_d_25_oh_total_ia',
+  'wbc',
+  'white_blood_cell_count',
+];
+
+/**
+ * The stored keys whose rows the documents printed under a urinalysis heading.
+ * The series read model keeps those in a urine series, apart from the same
+ * analyte’s ordinary one.
+ */
+export const STORED_URINE_KEYS: string[] = [
+  'appearance',
+  'bacteria',
+  'bilirubin',
+  'color',
+  'glucose',
+  'hyaline_cast',
+  'ketones',
+  'leukocyte_esterase',
+  'nitrite',
+  'occult_blood',
+  'ph',
+  'protein',
+  'rbc',
+  'specific_gravity',
+  'squamous_epithelial_cells',
+  'wbc',
+];
+
+/**
+ * The stored keys that arrived under BOTH a urinalysis and a non-urine heading,
+ * so the read model splits them into two series. Every other key in
+ * `STORED_URINE_KEYS` is urine-only and must keep its single series.
+ */
+export const STORED_BOTH_SPECIMEN_KEYS: string[] = [
+  'glucose',
+  'rbc',
+  'wbc',
+];

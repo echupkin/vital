@@ -680,10 +680,39 @@ export const ANALYTES: LabAnalyte[] = [
   },
   {
     key: 'neutrophils',
-    displayName: 'Neutrophils',
+    displayName: 'Neutrophils (%)',
     category: 'CBC',
     unit: '% of WBC',
-    aliases: ['Neutrophils', 'Neut %', 'PMN', 'NE%', 'neutrophils_pct'],
+    aliases: ['Neutrophils', 'Neut %', 'PMN'],
+    bands: [
+      {
+        sex: 'any',
+        low: 50,
+        high: 70,
+        refText: '50-70 % of WBC',
+        source: 'secondary',
+        sourceUrl: TESTING_CBC,
+        note:
+          'Percent and absolute count are different columns on a report; label which is plotted. Absolute ANC 2,000-8,250/µL (ABIM).',
+      },
+    ],
+  },
+  {
+    // THE PERCENTAGE, UNDER THE STORED SPELLING A DIFFERENT REPORT PRINTS.
+    //
+    // A report that prints its differential under the symbols `NE%`/`NE#`
+    // (`LY%`, `MO%`, `EO%`, `BA%`) makes the extractor write the key
+    // `neutrophils_pct` for the percentage column, while a report that prints a
+    // bare `NEUTROPHILS` writes `neutrophils`. Those are two stored spellings of
+    // ONE measurement, and `neutrophils` no longer claims the `_pct` name as an
+    // alias: the two are kept as SEPARATE series so neither can be charted,
+    // scored or described as the other, and each carries a name that says which
+    // it is. The percentage symbol is the report's own mark for this column.
+    key: 'neutrophils_pct',
+    displayName: 'Neutrophils, automated (%)',
+    category: 'CBC',
+    unit: '% of WBC',
+    aliases: ['NE%', 'neutrophils_pct'],
     bands: [
       {
         sex: 'any',
@@ -699,10 +728,29 @@ export const ANALYTES: LabAnalyte[] = [
   },
   {
     key: 'lymphocytes',
-    displayName: 'Lymphocytes',
+    displayName: 'Lymphocytes (%)',
     category: 'CBC',
     unit: '% of WBC',
-    aliases: ['Lymphocytes', 'Lymph %', 'LY%', 'lymphocytes_pct'],
+    aliases: ['Lymphocytes', 'Lymph %'],
+    bands: [
+      {
+        sex: 'any',
+        low: 20,
+        high: 40,
+        refText: '20-40 % of WBC',
+        source: 'secondary',
+        sourceUrl: TESTING_CBC,
+        note: 'Absolute 1,200-4,950/µL (ABIM).',
+      },
+    ],
+  },
+  {
+    // See `neutrophils_pct`: the `_pct` spelling is its own series, named apart.
+    key: 'lymphocytes_pct',
+    displayName: 'Lymphocytes, automated (%)',
+    category: 'CBC',
+    unit: '% of WBC',
+    aliases: ['LY%', 'lymphocytes_pct'],
     bands: [
       {
         sex: 'any',
@@ -717,10 +765,29 @@ export const ANALYTES: LabAnalyte[] = [
   },
   {
     key: 'monocytes',
-    displayName: 'Monocytes',
+    displayName: 'Monocytes (%)',
     category: 'CBC',
     unit: '% of WBC',
-    aliases: ['Monocytes', 'Mono %', 'MO%', 'monocytes_pct'],
+    aliases: ['Monocytes', 'Mono %'],
+    bands: [
+      {
+        sex: 'any',
+        low: 2,
+        high: 8,
+        refText: '2-8 % of WBC',
+        source: 'secondary',
+        sourceUrl: TESTING_CBC,
+        note: 'Absolute 0-660/µL (ABIM).',
+      },
+    ],
+  },
+  {
+    // See `neutrophils_pct`: the `_pct` spelling is its own series, named apart.
+    key: 'monocytes_pct',
+    displayName: 'Monocytes, automated (%)',
+    category: 'CBC',
+    unit: '% of WBC',
+    aliases: ['MO%', 'monocytes_pct'],
     bands: [
       {
         sex: 'any',
@@ -735,10 +802,29 @@ export const ANALYTES: LabAnalyte[] = [
   },
   {
     key: 'eosinophils',
-    displayName: 'Eosinophils',
+    displayName: 'Eosinophils (%)',
     category: 'CBC',
     unit: '% of WBC',
-    aliases: ['Eosinophils', 'Eos %', 'EO%', 'eosinophils_pct'],
+    aliases: ['Eosinophils', 'Eos %'],
+    bands: [
+      {
+        sex: 'any',
+        low: 1,
+        high: 4,
+        refText: '1-4 % of WBC',
+        source: 'secondary',
+        sourceUrl: TESTING_CBC,
+        note: 'Absolute 0-330/µL (ABIM).',
+      },
+    ],
+  },
+  {
+    // See `neutrophils_pct`: the `_pct` spelling is its own series, named apart.
+    key: 'eosinophils_pct',
+    displayName: 'Eosinophils, automated (%)',
+    category: 'CBC',
+    unit: '% of WBC',
+    aliases: ['EO%', 'eosinophils_pct'],
     bands: [
       {
         sex: 'any',
@@ -753,10 +839,29 @@ export const ANALYTES: LabAnalyte[] = [
   },
   {
     key: 'basophils',
-    displayName: 'Basophils',
+    displayName: 'Basophils (%)',
     category: 'CBC',
     unit: '% of WBC',
-    aliases: ['Basophils', 'Baso %', 'BA%', 'basophils_pct'],
+    aliases: ['Basophils', 'Baso %'],
+    bands: [
+      {
+        sex: 'any',
+        low: 0.5,
+        high: 1,
+        refText: '0.5-1 % of WBC',
+        source: 'secondary',
+        sourceUrl: TESTING_CBC,
+        note: 'Absolute 0-110/µL (ABIM).',
+      },
+    ],
+  },
+  {
+    // See `neutrophils_pct`: the `_pct` spelling is its own series, named apart.
+    key: 'basophils_pct',
+    displayName: 'Basophils, automated (%)',
+    category: 'CBC',
+    unit: '% of WBC',
+    aliases: ['BA%', 'basophils_pct'],
     bands: [
       {
         sex: 'any',

@@ -14,13 +14,15 @@
 // analyte's name, its unit or its value — a label that says `URINALYSIS` is the
 // document saying "this row is urine", and nothing else is claimed.
 //
-// HOW A SERIES IS IDENTIFIED. By (analyte_key, specimen): every non-urine row of
-// an analyte stays in ONE series however many panels it came from — `cholesterol`
-// printed under a LabCorp `Lipid Panel` trend and under a Quest `LIPID PANEL WITH
-// RATIOS` is the same measurement and must not be split into two charts — and a
-// urinalysis row can never join it. Two specimens of one analyte are only split
-// apart when both exist (see `seriesIdOf`), so a urine-only analyte keeps its
-// single metric and no empty twin is manufactured for it.
+// HOW A SERIES IS IDENTIFIED. By (CANONICAL analyte key, specimen): the stored
+// `analyte_key` is resolved through the registry's key+alias map first, so two
+// spellings of one analyte (`bun` / `urea_nitrogen_bun`) form ONE series, and
+// every non-urine row of an analyte stays in that one series however many panels
+// it came from — `cholesterol` printed under a LabCorp `Lipid Panel` trend and
+// under a Quest `LIPID PANEL WITH RATIOS` is the same measurement and must not be
+// split into two charts — while a urinalysis row can never join it. Two specimens
+// of one analyte are only split apart when both exist (see `seriesIdOf`), so a
+// urine-only analyte keeps its single metric and no empty twin is manufactured.
 //
 // TYPES ONLY + DATA: no imports, so this is safe in the browser bundle.
 

@@ -16,6 +16,12 @@ import {
   type NewObservationInput,
 } from './lab-store';
 import type { PoolLike } from './pool';
+import { analyteByKey } from '../lab/analytes';
+import {
+  STORED_ANALYTE_KEYS,
+  STORED_BOTH_SPECIMEN_KEYS,
+  STORED_URINE_KEYS,
+} from '../lab/__fixtures__/stored-analyte-keys';
 
 interface Rule {
   test: (sql: string) => boolean;
@@ -773,5 +779,178 @@ describe('the specimen split', () => {
     expect(read.analytes[0]!.specimen).toBe('other');
     expect(read.analytes[0]!.seriesKey).toBe('glucose');
     expect(read.analytes[0]!.displayName).toBe('Glucose');
+  });
+});
+
+describe('one series per canonical analyte', () => {
+  // THE INVARIANTS THIS GATE EXISTS FOR.
+  //
+  // Every stored `analyte_key` the owner's documents produced is fed through the
+  // real read model here (see `@/lib/lab/__fixtures__/stored-analyte-keys` for
+  // where the list comes from). Two things must then hold for EVERY key, not just
+  // for the ones a hand-written case happens to name:
+  //
+  //   * no two series carry the same display name — the Lab page must never show
+  //     one label over two charts, and a question keyed to a label must never
+  //     have to guess which series it meant; and
+  //   * every stored key canonicalises — the series it lands in renders a
+  //     registry name, never the raw stored key as its display name.
+  const URINE_PANEL = 'URINALYSIS, COMPLETE';
+
+  /** One stored row per key, plus the urinalysis row of a key that has one. */
+  function storedKeyRows(): Record<string, unknown>[] {
+    const urineOnly = new Set(STORED_URINE_KEYS.filter(key => !STORED_BOTH_SPECIMEN_KEYS.includes(key)));
+    const both = new Set(STORED_BOTH_SPECIMEN_KEYS);
+    const rows: Record<string, unknown>[] = [];
+    let line = 0;
+    const push = (analyteKey: string, panel: string | null) => {
+      line += 1;
+      rows.push({
+        id: `row-${line}`,
+        report_id: 'p1',
+        line_no: line,
+        analyte_key: analyteKey,
+        printed_name: analyteKey,
+        panel,
+        result_on: '2024-01-01',
+        value: 1,
+        value_text: null,
+        unit: null,
+        ref_low: null,
+        ref_high: null,
+        ref_text: null,
+        ref_source: 'none',
+        ref_basis: null,
+        printed_flag: null,
+        category: null,
+        extraction_method: 'deterministic',
+        confidence: 1,
+        source_line: 'row',
+        revision: 1,
+        created_at: '',
+        updated_at: '',
+      });
+    };
+    for (const key of STORED_ANALYTE_KEYS) {
+      if (urineOnly.has(key)) {
+        push(key, URINE_PANEL);
+        continue;
+      }
+      push(key, null);
+      if (both.has(key)) push(key, URINE_PANEL);
+    }
+    return rows;
+  }
+
+  async function readModel() {
+    const db = new FakeDb([{ test: sql => sql.includes('FROM lab_results'), rows: storedKeyRows }]);
+    return getSeries(db, null);
+  }
+
+  it('never serves two series under one display name', async () => {
+    const read = await readModel();
+    const names = read.analytes.map(analyte => analyte.displayName);
+    const duplicated = [...new Set(names.filter((name, index) => names.indexOf(name) !== index))];
+    expect(duplicated).toEqual([]);
+    expect(names.length).toBe(new Set(names).size);
+  });
+
+  it('canonicalises every stored analyte key, and never shows a raw key as its name', async () => {
+    const read = await readModel();
+    for (const key of STORED_ANALYTE_KEYS) {
+      const entry = analyteByKey(key);
+      expect(entry, key).not.toBeNull();
+      const series = read.analytes.filter(analyte => analyte.analyteKey === entry?.key);
+      expect(series.length, key).toBeGreaterThan(0);
+      for (const one of series) {
+        expect(one.registered, key).toBe(true);
+        expect(one.displayName, key).not.toBe(key);
+        expect(one.displayName.trim().length, key).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('merges two stored spellings of one analyte into a single series', async () => {
+    // The rows keep the keys they were imported with — `bun` and
+    // `urea_nitrogen_bun` are two `analyte_key` values — but the read model
+    // resolves both to the analyte they BOTH name, so the owner gets ONE chart
+    // rather than two, one of them a single point.
+    const make = (id: string, analyteKey: string, resultOn: string) => ({
+      id,
+      report_id: 'p1',
+      line_no: 1,
+      analyte_key: analyteKey,
+      printed_name: analyteKey,
+      panel: null,
+      result_on: resultOn,
+      value: 14,
+      value_text: null,
+      unit: 'mg/dL',
+      ref_low: null,
+      ref_high: null,
+      ref_text: null,
+      ref_source: 'none',
+      ref_basis: null,
+      printed_flag: null,
+      category: null,
+      extraction_method: 'deterministic',
+      confidence: 1,
+      source_line: 'row',
+      revision: 1,
+      created_at: '',
+      updated_at: '',
+    });
+    const db = new FakeDb([
+      {
+        test: sql => sql.includes('FROM lab_results'),
+        rows: () => [make('a', 'bun', '2023-01-01'), make('b', 'urea_nitrogen_bun', '2024-01-01')],
+      },
+    ]);
+    const read = await getSeries(db, null);
+    expect(read.analytes).toHaveLength(1);
+    const series = read.analytes[0]!;
+    expect(series.analyteKey).toBe('bun');
+    expect(series.seriesKey).toBe('bun');
+    expect(series.displayName).toBe('Blood urea nitrogen');
+    expect(series.points.map(point => point.resultId)).toEqual(['a', 'b']);
+  });
+
+  it('keeps the two differential percentage spellings as two named series', async () => {
+    const db = new FakeDb([
+      {
+        test: sql => sql.includes('FROM lab_results'),
+        rows: () =>
+          ['basophils', 'basophils_pct'].map((analyte_key, index) => ({
+            id: `b${index}`,
+            report_id: 'p1',
+            line_no: index,
+            analyte_key,
+            printed_name: analyte_key,
+            panel: null,
+            result_on: '2024-01-01',
+            value: 1,
+            value_text: null,
+            unit: '%',
+            ref_low: null,
+            ref_high: null,
+            ref_text: null,
+            ref_source: 'none',
+            ref_basis: null,
+            printed_flag: null,
+            category: null,
+            extraction_method: 'deterministic',
+            confidence: 1,
+            source_line: 'row',
+            revision: 1,
+            created_at: '',
+            updated_at: '',
+          })),
+      },
+    ]);
+    const read = await getSeries(db, null);
+    const names = read.analytes.map(analyte => analyte.displayName).sort();
+    expect(read.analytes).toHaveLength(2);
+    expect(names[0]).not.toBe(names[1]);
+    expect(names.join(' ')).not.toContain('Basophils Basophils');
   });
 });
