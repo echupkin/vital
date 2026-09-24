@@ -57,6 +57,7 @@ export const DEFAULT_TIMEOUT_MS = 60000;
 export const REMOTE_SENDING_CATEGORIES = [
   'Metric summaries (averages, medians, totals, comparison deltas and observation counts)',
   'Bounded record windows (at most 90 points per metric)',
+  'Lab results from your uploaded documents (per analyte: the latest value with its unit and observation date, the reference interval the report printed and where it came from, the previous observation, and a bounded series of earlier observations)',
   'Date windows, coverage statements and the text of your question',
 ];
 
