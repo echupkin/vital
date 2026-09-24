@@ -38,6 +38,7 @@ function toSeriesInput(series: AnalyteSeries): LabSeriesInput {
     seriesKey: series.seriesKey,
     analyteKey: series.analyteKey,
     displayName: series.displayName,
+    category: series.category,
     specimen: series.specimen,
     registered: series.registered,
     unit: series.unit,

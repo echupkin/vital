@@ -16,8 +16,13 @@
 // the latest and previous observation (so "is it moving?" is answerable); when
 // the question names an analyte, that analyte's series carries up to
 // MAX_POINTS_PER_SERIES observations — the same cap the metric retrieval uses.
-// When more series exist than are shown, the block's own `note` says so; it is
-// never truncated silently.
+//
+// THE CAP NEVER HIDES A NAME. A capped block carries `notIncludedSeries`: the
+// display names of every stored series it left out, with `capped: true` and a
+// `note` that states the rule. A series that EXISTS can therefore never be
+// reported as "not recorded" — the model is given the distinction in the data
+// and the prompt requires it (see systemPrompt.ts). A named-analyte question is
+// not limited by this cap at all: it fetches that analyte's own bounded history.
 //
 // WHAT IS NOT HERE. No diagnosis, no "normal"/"safe" verdict, no risk score: the
 // status label is the same population-interval verdict the Lab page shows, and
@@ -36,13 +41,22 @@ import { MAX_POINTS_PER_SERIES, type LabSpec } from './retrieval';
  *
  * BUDGET REASONING (measured, not guessed). One entry — its latest and previous
  * reading with their intervals, plus the display strings — serializes to about
- * 1.4 KB, so 40 series would be ~57 KB of the context, nearly twice the ~32 KB
- * the WHOLE general metric selection already occupies (14 summaries over 30
- * days). 20 series is ~29 KB: a lab block comparable to the metric context it
- * travels with, not one that pushes it out. The owner's data holds ~126 series,
- * so the block states "showing the 20 most recently measured of 126" — and a
- * question that names an analyte is not limited by this cap at all: it gets that
- * analyte's own bounded history (≤ MAX_POINTS_PER_SERIES observations).
+ * 1.4 KB. Measured against the owner's own dataset (104 series, 10 categories),
+ * the 20-series overview block — including the list of the 84 series it left out
+ * — is 28,844 bytes (≈1.4 KB per entry), against the ~32 KB the WHOLE general
+ * metric selection already occupies (14 summaries over 30 days). Forty series
+ * would be ~55 KB: a lab block that pushes the metric context out rather than
+ * travelling with it. A question that names an analyte is not limited by this
+ * cap at all: it gets that analyte's own bounded history (≤
+ * MAX_POINTS_PER_SERIES observations).
+ *
+ * WHAT THE CAP SELECTS (see `overviewSelection`). Not twenty series picked by
+ * newest date alone: when many series share one newest date (one document), that
+ * rule shows an arbitrary alphabetical slice of a single day and hides
+ * everything else. The block instead carries, in order: the most recent series
+ * overall, the most recent series in each category the data holds, the
+ * longest-running series, and then the most recently measured to fill the
+ * budget. Whatever it leaves out is named in `notIncludedSeries`.
  */
 export const MAX_LAB_SERIES = 20;
 
@@ -81,6 +95,8 @@ export interface LabSeriesInput {
   analyteKey: string;
   /** Already qualified `(blood)`/`(urine)` where a collision exists. */
   displayName: string;
+  /** The registry's category, or 'Other' for an unrecognised analyte. */
+  category: string;
   specimen: PanelSpecimen;
   registered: boolean;
   unit: string | null;
@@ -299,8 +315,79 @@ function recencyOf(series: LabSeriesInput): string {
   return last;
 }
 
+/** A series' category, or 'Other' when the loader did not state one. */
+function categoryOf(series: LabSeriesInput): string {
+  const category = series.category;
+  return typeof category === 'string' && category.trim().length > 0 ? category : 'Other';
+}
+
+/** Most recently measured first; ties broken by name, so the order is stable. */
+function byRecency(a: LabSeriesInput, b: LabSeriesInput): number {
+  const recency = recencyOf(b).localeCompare(recencyOf(a));
+  return recency !== 0 ? recency : a.displayName.localeCompare(b.displayName);
+}
+
+/**
+ * The series an overview block carries, inside a budget.
+ *
+ * Why not "the most recently measured"? The owner's documents put ~90 series on
+ * ONE newest date, so newest-date-only shows an arbitrary alphabetical slice of a
+ * single day and hides every other series — the exact defect gate 29k fixes.
+ *
+ * The rule, in priority order, each pick once:
+ *   1. the most recent series overall (the freshest thing the owner has);
+ *   2. the most recent series in EACH category the data holds (coverage of what
+ *      the owner actually has, not one panel);
+ *   3. the longest-running series (where a trend is answerable at all);
+ *   4. the most recently measured, to fill any remaining budget.
+ *
+ * Deterministic: recency, then observation count, then display name. Whatever it
+ * does not reach is named in `notIncludedSeries`, so the block is never silent
+ * about what it left out.
+ */
+export function overviewSelection(series: LabSeriesInput[], budget: number): LabSeriesInput[] {
+  const ordered = [...series].sort(byRecency);
+  const picked: LabSeriesInput[] = [];
+  const seen = new Set<string>();
+  const take = (candidate: LabSeriesInput | undefined): void => {
+    if (!candidate || picked.length >= budget || seen.has(candidate.seriesKey)) return;
+    seen.add(candidate.seriesKey);
+    picked.push(candidate);
+  };
+
+  // 1. The most recent series overall.
+  take(ordered[0]);
+
+  // 2. The most recent series in each category the data holds.
+  const byCategory = new Map<string, LabSeriesInput>();
+  for (const candidate of ordered) {
+    const category = categoryOf(candidate);
+    if (!byCategory.has(category)) byCategory.set(category, candidate);
+  }
+  for (const candidate of [...byCategory.values()].sort(byRecency)) take(candidate);
+
+  // 3. The series with a multi-observation history, longest first: these are the
+  //    ones a "how has it changed?" question can be answered from.
+  const withHistory = series
+    .filter(candidate => candidate.points.length > 1)
+    .sort((a, b) => b.points.length - a.points.length || byRecency(a, b));
+  for (const candidate of withHistory) take(candidate);
+
+  // 4. Fill the remaining budget with the most recently measured.
+  for (const candidate of ordered) take(candidate);
+
+  return picked;
+}
+
 export interface BuildLabSnapshotOptions {
   question: string;
+  /**
+   * The lab selection the handler declared (see retrieval.ts). Advisory: the
+   * QUESTION decides — a question that names an analyte always selects that
+   * analyte's series, whatever spec the handler declared, so the snapshot cap can
+   * never hide a series the owner asked about. Kept so a caller can state its
+   * intent and a test can pin it.
+   */
   spec?: LabSpec | null;
   maxSeries?: number;
   maxPoints?: number;
@@ -320,7 +407,9 @@ function unavailableSnapshot(reason: string): LabContextSnapshot {
     requestedName: null,
     found: false,
     shownSeries: 0,
+    capped: false,
     note: reason,
+    notIncludedSeries: [],
     series: [],
   };
 }
@@ -328,10 +417,15 @@ function unavailableSnapshot(reason: string): LabContextSnapshot {
 /**
  * Build the bounded lab block for a question.
  *
- * A question that names an analyte gets that analyte's bounded history (and, if
- * the data does not hold it, `found: false` — never another analyte substituted
- * for it). Any other question gets the overview: the most recently measured
- * series, latest and previous observation each. Both state their own bound.
+ * A question that names an analyte gets that analyte's bounded history — the
+ * snapshot cap does NOT apply to it, so an analyte the owner asks about can never
+ * be hidden by a cap that happened to fill up on other series — and, if the data
+ * does not hold it, `found: false` (never another analyte substituted for it).
+ *
+ * Any other question gets the overview: see `overviewSelection` for what the
+ * budget is spent on. A block that does not carry every series sets `capped` and
+ * names what it left out in `notIncludedSeries`, so "the data does not hold this"
+ * can never be said about a series that exists.
  */
 export function buildLabSnapshot(source: LabSourceInput, options: BuildLabSnapshotOptions): LabContextSnapshot {
   if (!source.available) return unavailableSnapshot(source.reason ?? 'No lab results are available in the context.');
@@ -353,16 +447,30 @@ export function buildLabSnapshot(source: LabSourceInput, options: BuildLabSnapsh
     requestedName: requested?.displayName ?? null,
   } as const;
 
+  /** The names of the series this block does not carry, so absence is never assumed. */
+  const namesNotIn = (carried: LabSeriesInput[]): string[] => {
+    const shownKeys = new Set(carried.map(series => series.seriesKey));
+    return source.series
+      .filter(series => !shownKeys.has(series.seriesKey))
+      .map(series => series.displayName)
+      .sort((a, b) => a.localeCompare(b));
+  };
+
   if (mode === 'analyte' && requested) {
+    // NOT LIMITED BY THE SNAPSHOT CAP: the named analyte's series are fetched in
+    // full (bounded per series), whatever the cap would have selected.
     const matches = source.series
       .filter(series => series.analyteKey === requested.key)
       .sort((a, b) => a.displayName.localeCompare(b.displayName));
     if (matches.length === 0) {
+      // The canonical key is not held at all — a genuine absence, stated as such.
       return {
         ...base,
         found: false,
         shownSeries: 0,
+        capped: false,
         note: `no lab results for "${requested.displayName}" were found among the ${source.series.length} stored lab series`,
+        notIncludedSeries: [],
         series: [],
       };
     }
@@ -370,26 +478,27 @@ export function buildLabSnapshot(source: LabSourceInput, options: BuildLabSnapsh
       ...base,
       found: true,
       shownSeries: matches.length,
+      capped: false,
       note: `showing the ${matches.length} series for "${requested.displayName}" out of ${source.series.length} stored lab series; each carries up to the last ${maxPoints} observations`,
+      notIncludedSeries: namesNotIn(matches),
       series: matches.map(series => seriesSnapshot(series, 'analyte', maxPoints)),
     };
   }
 
-  const ordered = [...source.series].sort((a, b) => {
-    const recency = recencyOf(b).localeCompare(recencyOf(a));
-    return recency !== 0 ? recency : a.displayName.localeCompare(b.displayName);
-  });
-  const shown = ordered.slice(0, maxSeries);
+  const shown = overviewSelection(source.series, maxSeries);
+  const leftOut = source.series.length - shown.length;
   const note =
-    shown.length < source.series.length
-      ? `showing the ${shown.length} most recently measured of ${source.series.length} lab series`
+    leftOut > 0
+      ? `showing ${shown.length} of ${source.series.length} lab series — the most recent result overall, the most recent result in each category, and the longest-running series; the other ${leftOut} series exist in the data and are named in notIncludedSeries`
       : `showing all ${source.series.length} lab series`;
 
   return {
     ...base,
     found: true,
     shownSeries: shown.length,
+    capped: leftOut > 0,
     note,
+    notIncludedSeries: namesNotIn(shown),
     series: shown.map(series => seriesSnapshot(series, 'overview', maxPoints)),
   };
 }

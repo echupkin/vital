@@ -51,6 +51,7 @@ function series(input: {
   seriesKey: string;
   analyteKey?: string;
   displayName: string;
+  category?: string;
   specimen?: 'urine' | 'other';
   registered?: boolean;
   unit?: string | null;
@@ -60,6 +61,7 @@ function series(input: {
     seriesKey: input.seriesKey,
     analyteKey: input.analyteKey ?? input.seriesKey.replace(/~urine$/, ''),
     displayName: input.displayName,
+    category: input.category ?? 'Other',
     specimen: input.specimen ?? (input.seriesKey.endsWith('~urine') ? 'urine' : 'other'),
     registered: input.registered ?? true,
     unit: input.unit ?? null,
@@ -73,6 +75,7 @@ export function labSourceFixture(): LabSourceInput {
     series({
       seriesKey: 'total_cholesterol',
       displayName: 'Total cholesterol',
+      category: 'Lipids',
       unit: 'mg/dL',
       points: [
         observation({ on: '2023-02-01', value: 168, unit: 'mg/dL', refHigh: 200, printedRefText: '<200 mg/dL' }),
@@ -82,6 +85,7 @@ export function labSourceFixture(): LabSourceInput {
     series({
       seriesKey: 'hba1c',
       displayName: 'Haemoglobin A1c',
+      category: 'Metabolic',
       unit: '%',
       points: [
         observation({ on: '2023-02-01', value: 5.2, unit: '%', refLow: 4.0, refHigh: 5.6, printedRefText: '4.0-5.6 %' }),
@@ -91,6 +95,7 @@ export function labSourceFixture(): LabSourceInput {
     series({
       seriesKey: 'egfr',
       displayName: 'Estimated GFR',
+      category: 'Kidney/Electrolytes',
       unit: 'mL/min/1.73 m²',
       points: [observation({ on: '2023-08-01', value: 88, unit: 'mL/min/1.73 m²', refLow: 60, printedRefText: '>60 mL/min/1.73 m²' })],
     }),
@@ -98,12 +103,14 @@ export function labSourceFixture(): LabSourceInput {
     series({
       seriesKey: 'glucose',
       displayName: 'Glucose (blood)',
+      category: 'Metabolic',
       unit: 'mg/dL',
       points: [observation({ on: '2023-08-01', value: 92, unit: 'mg/dL', refLow: 70, refHigh: 99, printedRefText: '70-99 mg/dL' })],
     }),
     series({
       seriesKey: 'glucose~urine',
       displayName: 'Glucose (urine)',
+      category: 'Urinalysis',
       specimen: 'urine',
       unit: null,
       points: [observation({ on: '2023-08-01', valueText: 'NEGATIVE', printedRefText: 'NEGATIVE' })],
@@ -112,6 +119,7 @@ export function labSourceFixture(): LabSourceInput {
       seriesKey: 'leukocyte_esterase~urine',
       analyteKey: 'leukocyte_esterase',
       displayName: 'Leukocyte esterase (urine)',
+      category: 'Urinalysis',
       specimen: 'urine',
       unit: null,
       points: [observation({ on: '2023-08-01', value: 1, valueText: '1+', refHigh: 5, printedRefText: '< OR = 5 /HPF' })],

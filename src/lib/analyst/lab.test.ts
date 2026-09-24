@@ -30,7 +30,7 @@ import {
   collectDisplayStrings,
 } from '@/lib/analyst/systemPrompt';
 import { checkGrounding, citableMetricIds, parseAnalystReply } from '@/lib/analyst/validate';
-import { MAX_LAB_SERIES, buildLabSnapshot, looksLikeLabQuestion, type LabSeriesInput } from '@/lib/analyst/labSnapshot';
+import { MAX_LAB_SERIES, analyteRequestedBy, buildLabSnapshot, looksLikeLabQuestion, type LabSeriesInput } from '@/lib/analyst/labSnapshot';
 import { MAX_POINTS_PER_SERIES } from '@/lib/analyst/retrieval';
 import { labBundleFor, labSnapshotFor, labSourceFixture } from '@/lib/analyst/lab-fixture';
 import type { AnalystAnswer, LabContextSnapshot } from '@/lib/analyst/types';
@@ -101,15 +101,16 @@ describe('the lab context block (SPEC §8)', () => {
     expect(blood.displayName).not.toBe(urine.displayName);
   });
 
-  it('states the bound when more series exist than the block carries', () => {
+  it('states the bound when more series exist than the block carries, and names what it left out', () => {
     const many: LabSeriesInput[] = Array.from({ length: MAX_LAB_SERIES + 5 }, (_, i) => ({
       seriesKey: `synthetic_${i}`,
       analyteKey: `synthetic_${i}`,
       displayName: `Synthetic analyte ${i}`,
-      specimen: 'other',
+      category: 'Other',
+      specimen: 'other' as const,
       registered: false,
       unit: 'unit',
-      points: [{ on: `2023-01-${String((i % 28) + 1).padStart(2, '0')}`, value: 10, valueText: null, unit: 'unit', printedRefText: null, interval: { low: null, high: null, origin: 'none', refText: null, refBasis: null, bandNote: null, band: null }, status: 'unscored_no_range', statusLabel: 'No reference interval', tone: 'neutral' }],
+      points: [{ on: `2023-01-${String((i % 28) + 1).padStart(2, '0')}`, value: 10, valueText: null, unit: 'unit', printedRefText: null, interval: { low: null, high: null, origin: 'none' as const, refText: null, refBasis: null, bandNote: null, band: null }, status: 'unscored_no_range' as const, statusLabel: 'No reference interval', tone: 'neutral' as const }],
     }));
     const capped = buildLabSnapshot(
       { available: true, reason: null, documents: 1, totalObservations: many.length, collisions: 0, series: many },
@@ -117,7 +118,10 @@ describe('the lab context block (SPEC §8)', () => {
     );
     expect(capped.shownSeries).toBe(MAX_LAB_SERIES);
     expect(capped.series).toHaveLength(MAX_LAB_SERIES);
-    expect(capped.note).toBe(`showing the ${MAX_LAB_SERIES} most recently measured of ${MAX_LAB_SERIES + 5} lab series`);
+    expect(capped.capped).toBe(true);
+    expect(capped.notIncludedSeries).toHaveLength(5);
+    expect(capped.note).toContain(`showing ${MAX_LAB_SERIES} of ${MAX_LAB_SERIES + 5} lab series`);
+    expect(capped.note).toContain('notIncludedSeries');
   });
 
   it('states why no lab data is in the context rather than sending an empty set', () => {
@@ -205,7 +209,7 @@ describe('lab retrieval (SPEC §8)', () => {
         totalObservations: points.length,
         collisions: 0,
         series: [
-          { seriesKey: 'total_cholesterol', analyteKey: 'total_cholesterol', displayName: 'Total cholesterol', specimen: 'other', registered: true, unit: 'mg/dL', points },
+          { seriesKey: 'total_cholesterol', analyteKey: 'total_cholesterol', displayName: 'Total cholesterol', category: 'Lipids', specimen: 'other', registered: true, unit: 'mg/dL', points },
         ],
       },
       { question: CHOLESTEROL_QUESTION, spec: { mode: 'analyte' } }
@@ -411,5 +415,319 @@ describe('the lab disclosure and prompt (SPEC §11, §8)', () => {
     expect(prompt).toContain('Quote a QUALITATIVE result exactly as the document printed it');
     expect(prompt).toContain('Never invent a lab figure');
     expect(prompt).toContain('A BLOOD result and a URINE result of the same analyte name are different measurements');
+  });
+});
+
+// ── 5. Gate 29k: a capped snapshot can never become a false absence ──────────
+//
+// Defect: MAX_LAB_SERIES selected the twenty MOST RECENTLY MEASURED series. The
+// owner's documents put ~90 series on one newest date, so the cap showed an
+// arbitrary alphabetical slice of a single day and hid every other series — and
+// an answer about a hidden series reported a selection gap as a property of the
+// data ("no results were found"). These tests pin the three guarantees:
+//
+//   * a question that names an analyte fetches THAT analyte, cap or no cap;
+//   * a capped block NAMES what it left out, and the prompt + the model's message
+//     require "not included" to be told apart from "not recorded";
+//   * the cap spends its budget on a spread (newest overall, newest per category,
+//     longest history), not on one arbitrary day.
+
+/** One synthetic observation, with the shape the loader hands over. */
+function point(on: string, value: number, unit = 'mg/dL') {
+  return {
+    on,
+    value,
+    valueText: null,
+    unit,
+    printedRefText: null,
+    interval: {
+      low: null,
+      high: 200,
+      origin: 'report' as const,
+      refText: '<200 mg/dL',
+      refBasis: null,
+      bandNote: null,
+      band: null,
+    },
+    status: 'in_range' as const,
+    statusLabel: 'In range',
+    tone: 'good' as const,
+  };
+}
+
+function syntheticSeries(input: {
+  seriesKey: string;
+  displayName: string;
+  category: string;
+  points: ReturnType<typeof point>[];
+  unit?: string;
+}): LabSeriesInput {
+  return {
+    seriesKey: input.seriesKey,
+    analyteKey: input.seriesKey,
+    displayName: input.displayName,
+    category: input.category,
+    specimen: 'other',
+    registered: false,
+    unit: input.unit ?? 'mg/dL',
+    points: input.points,
+  };
+}
+
+/** A crowded dataset: many series sharing ONE newest date, plus the target. */
+function crowdedSource(): { source: Parameters<typeof buildLabSnapshot>[0]; target: LabSeriesInput } {
+  const newest = '2026-09-18';
+  const categories = [
+    'Lipids',
+    'Metabolic',
+    'CBC',
+    'Liver',
+    'Kidney/Electrolytes',
+    'Thyroid',
+    'Iron/Vitamins',
+    'Inflammation',
+    'Hormones',
+    'Coagulation',
+    'Cardiac/Muscle',
+    'Urinalysis',
+    'Other',
+  ];
+  const crowded = Array.from({ length: 300 }, (_, i) =>
+    syntheticSeries({
+      seriesKey: `crowded_${String(i).padStart(3, '0')}`,
+      // Every crowded name sorts BEFORE the target's, so a recency fill of the
+      // budget never reaches the target by accident.
+      displayName: `Aaa analyte ${String(i).padStart(3, '0')}`,
+      category: categories[i % categories.length]!,
+      points: [point(newest, 1)],
+    })
+  );
+  // The analyte the question will name: a single reading, on the same crowded
+  // date, whose name sorts last and whose category the cap already covers.
+  const target = syntheticSeries({
+    seriesKey: 'total_cholesterol',
+    displayName: 'Total cholesterol',
+    category: 'Lipids',
+    points: [point(newest, 166)],
+  });
+  return {
+    source: {
+      available: true,
+      reason: null,
+      documents: 1,
+      totalObservations: crowded.length + 1,
+      collisions: 0,
+      series: [...crowded, target],
+    },
+    target,
+  };
+}
+
+describe('gate 29k — a named analyte is fetched cap or no cap (SPEC §8)', () => {
+  it('fetches the named analyte even though the snapshot cap excludes it', () => {
+    const { source, target } = crowdedSource();
+
+    // The overview: capped, and the target is genuinely NOT among the 20 shown.
+    const overview = buildLabSnapshot(source, { question: 'What do my lab results show?' });
+    expect(overview.capped).toBe(true);
+    expect(overview.shownSeries).toBe(MAX_LAB_SERIES);
+    expect(overview.series.some(series => series.seriesKey === target.seriesKey)).toBe(false);
+
+    // The question that names it: the cap is not applied to that analyte at all
+    // (the snapshot it would otherwise have been left out of is bypassed).
+    const named = buildLabSnapshot(source, {
+      question: 'What was my most recent total cholesterol result, with its unit and the date it was measured, and was it in range?',
+    });
+    expect(named.selection).toBe('analyte');
+    expect(named.requestedAnalyte).toBe('total_cholesterol');
+    expect(named.found).toBe(true);
+    expect(named.shownSeries).toBe(1);
+    const series = named.series[0]!;
+    expect(series.seriesKey).toBe('total_cholesterol');
+    expect(series.observations).toBe(1);
+    expect(series.display.latest).toBe('166 mg/dL');
+    expect(series.display.latestOn).toBe('2026-09-18');
+  });
+
+  it('carries the named analyte’s full bounded history, not just its latest value', () => {
+    const target = syntheticSeries({
+      seriesKey: 'total_cholesterol',
+      displayName: 'Total cholesterol',
+      category: 'Lipids',
+      points: [point('2023-08-31', 161), point('2025-03-26', 151), point('2026-04-08', 152), point('2026-09-18', 166)],
+    });
+    const crowded = Array.from({ length: 300 }, (_, i) =>
+      syntheticSeries({
+        seriesKey: `crowded_${String(i).padStart(3, '0')}`,
+        displayName: `Aaa analyte ${String(i).padStart(3, '0')}`,
+        category: 'Other',
+        points: [point('2026-09-18', 1)],
+      })
+    );
+    const named = buildLabSnapshot(
+      { available: true, reason: null, documents: 1, totalObservations: 304, collisions: 0, series: [...crowded, target] },
+      { question: 'How has my total cholesterol changed over time?' }
+    );
+    const series = named.series[0]!;
+    expect(named.selection).toBe('analyte');
+    expect(series.observations).toBe(4);
+    expect(series.history).toHaveLength(4);
+    expect(series.display.history).toContain('166 mg/dL on 2026-09-18');
+    expect(series.display.history).toContain('161 mg/dL on 2023-08-31');
+  });
+
+  it('matches the analyte the way a person says it, from the registry’s own names', () => {
+    // The registry's key+alias layer, not a hand-written list: a short name, an
+    // abbreviation and a case/punctuation variant all resolve to the same series.
+    expect(analyteRequestedBy('What is my HDL?')?.key).toBe('hdl_c');
+    expect(analyteRequestedBy('what is my hdl')?.key).toBe('hdl_c');
+    expect(analyteRequestedBy('What is my A1c?')?.key).toBe('hba1c');
+    expect(analyteRequestedBy('What is my BUN?')?.key).toBe('bun');
+    expect(analyteRequestedBy('What is my eGFR?')?.key).toBe('egfr');
+    expect(analyteRequestedBy('What is my vitamin D level?')?.key).toBe('vitamin_d_25oh');
+    expect(analyteRequestedBy('What is my testosterone?')?.key).toBe('total_testosterone');
+    expect(analyteRequestedBy('How is my total cholesterol?')?.key).toBe('total_cholesterol');
+    // A name that matches nothing returns nothing — never a near-miss analyte.
+    expect(analyteRequestedBy('What was my lipase level?')).toBeNull();
+  });
+});
+
+describe('gate 29k — absence is never reported for a series that exists (SPEC §8)', () => {
+  it('a capped block names every series it left out, so absence cannot be claimed', () => {
+    const { source, target } = crowdedSource();
+    const capped = buildLabSnapshot(source, { question: 'What do my lab results show?' });
+
+    // The block is capped, and it says so in words AND in data.
+    expect(capped.capped).toBe(true);
+    expect(capped.shownSeries).toBeLessThan(capped.totalSeries);
+    expect(capped.note).toContain(`showing ${capped.shownSeries} of ${capped.totalSeries} lab series`);
+    expect(capped.note).toContain('exist in the data');
+    // The series that is NOT shown is named, so "not recorded" cannot be said of it.
+    expect(capped.notIncludedSeries).toContain(target.displayName);
+    expect(capped.notIncludedSeries).toHaveLength(capped.totalSeries - capped.shownSeries);
+    // And a block that carries everything leaves nothing out.
+    const whole = buildLabSnapshot(
+      { available: true, reason: null, documents: 1, totalObservations: 1, collisions: 0, series: [target] },
+      { question: 'What do my lab results show?' }
+    );
+    expect(whole.capped).toBe(false);
+    expect(whole.notIncludedSeries).toEqual([]);
+    expect(whole.note).toBe('showing all 1 lab series');
+  });
+
+  it('puts the left-out name in front of the model, inside the untrusted block', () => {
+    const { source, target } = crowdedSource();
+    const capped = buildLabSnapshot(source, { question: 'What do my lab results show?' });
+    const bundle = { ...retrieve('lab-results', REFERENCE_KEY), lab: capped };
+    const message = buildAnalystUserMessage({ question: 'What do my lab results show?', bundle, system: 'metric' });
+
+    const start = message.indexOf(UNTRUSTED_START);
+    const end = message.indexOf(UNTRUSTED_END);
+    const named = message.indexOf(target.displayName);
+    // The name of the series the cap left out is IN the data the model sees:
+    // claiming the documents do not hold it contradicts the supplied context.
+    expect(named).toBeGreaterThan(start);
+    expect(named).toBeLessThan(end);
+    expect(message).toContain('"notIncludedSeries"');
+    // And the message says how to read it, before the data.
+    expect(message.slice(0, start)).toContain('not included in this selection');
+  });
+
+  it('requires the distinction in the prompt, in the exact words the block uses', () => {
+    const prompt = DEFAULT_ANALYST_SYSTEM_PROMPT;
+    expect(prompt).toContain('notIncludedSeries');
+    expect(prompt).toContain('it EXISTS in the stored documents but was not included in this selection');
+    expect(prompt).toContain('Never say the data does not hold it, that it is not recorded, or that no result is stored for it');
+    expect(prompt).toContain('the stored documents do not record it');
+    expect(prompt).toContain('"capped": true');
+  });
+});
+
+describe('gate 29k — the cap selects a spread, not one arbitrary day (SPEC §8)', () => {
+  const spreadSource = () => {
+    const series: LabSeriesInput[] = [
+      // The newest series overall.
+      syntheticSeries({ seriesKey: 'newest_overall', displayName: 'Newest overall', category: 'Other', points: [point('2030-01-01', 5)] }),
+      // The newest series in two other categories.
+      syntheticSeries({ seriesKey: 'lipids_recent', displayName: 'Lipids recent', category: 'Lipids', points: [point('2029-01-01', 5)] }),
+      syntheticSeries({ seriesKey: 'thyroid_recent', displayName: 'Thyroid recent', category: 'Thyroid', points: [point('2028-01-01', 5)] }),
+      // The longest-running series, whose dates are the oldest.
+      syntheticSeries({
+        seriesKey: 'long_history',
+        displayName: 'Long history',
+        category: 'Other',
+        points: [point('2020-01-01', 1), point('2020-02-01', 2), point('2020-03-01', 3), point('2020-04-01', 4), point('2020-05-01', 5)],
+      }),
+      // Filler, all one reading each, newer than the long history.
+      ...Array.from({ length: 60 }, (_, i) =>
+        syntheticSeries({ seriesKey: `filler_${i}`, displayName: `Filler ${String(i).padStart(2, '0')}`, category: 'Other', points: [point('2027-01-01', 1)] })
+      ),
+    ];
+    return { available: true, reason: null, documents: 1, totalObservations: 200, collisions: 0, series } as Parameters<typeof buildLabSnapshot>[0];
+  };
+
+  it('spends the budget on the newest overall, the newest per category and the longest history', () => {
+    const shown = buildLabSnapshot(spreadSource(), { question: 'What do my lab results show?' });
+    const keys = shown.series.map(series => series.seriesKey);
+    expect(shown.shownSeries).toBe(MAX_LAB_SERIES);
+    expect(new Set(keys).size).toBe(MAX_LAB_SERIES); // no series picked twice
+    // 1. The most recent series overall comes first.
+    expect(keys[0]).toBe('newest_overall');
+    // 2. The most recent series in each category the data holds.
+    expect(keys).toContain('lipids_recent');
+    expect(keys).toContain('thyroid_recent');
+    // 3. The longest-running series, even though its dates are the oldest.
+    expect(keys).toContain('long_history');
+    // Nothing is claimed to be complete: the extra series are named.
+    expect(shown.capped).toBe(true);
+    expect(shown.notIncludedSeries.length).toBe(shown.totalSeries - shown.shownSeries);
+  });
+});
+
+describe('gate 29k — a suggested follow-up must exist (SPEC §8)', () => {
+  const labHandler = () => HANDLERS.find(handler => handler.id === 'lab-results')!;
+
+  it('offers only follow-ups that name an analyte the data holds', () => {
+    const present = new Set(labSourceFixture().series.map(series => series.analyteKey));
+    const questions = [
+      'What do my lab results show?',
+      'How is my cholesterol trending?',
+      'What is my vitamin D level?',
+    ];
+    for (const question of questions) {
+      const answer = labHandler().run({ bundle: labBundleFor('lab-results', question), system: 'metric', refKey: REFERENCE_KEY });
+      expect(answer.followUps.length).toBeGreaterThanOrEqual(1);
+      for (const follow of answer.followUps) {
+        const requested = analyteRequestedBy(follow);
+        // A follow-up may name no analyte (\"What other lab results do I have?\");
+        // when it names one, the documents must actually hold it.
+        if (requested) expect(present.has(requested.key)).toBe(true);
+      }
+      // The synthetic documents hold no C-peptide: never suggest it.
+      expect(answer.followUps.join(' ').toLowerCase()).not.toContain('c-peptide');
+    }
+  });
+
+  it('picks the overview follow-up from the series the block actually carries', () => {
+    const answer = labHandler().run({
+      bundle: labBundleFor('lab-results', 'What do my lab results show?'),
+      system: 'metric',
+      refKey: REFERENCE_KEY,
+    });
+    const requested = analyteRequestedBy(answer.followUps[0]!);
+    expect(requested).not.toBeNull();
+    // The named series is one the block holds.
+    expect(answer.evidence.map(entry => entry.metricId)).toContain(requested!.key);
+  });
+
+  it('states, in the answer, what a capped selection left out', () => {
+    const { source } = crowdedSource();
+    const capped = buildLabSnapshot(source, { question: 'What do my lab results show?' });
+    const bundle = { ...retrieve('lab-results', REFERENCE_KEY), lab: capped };
+    const answer = labHandler().run({ bundle, system: 'metric', refKey: REFERENCE_KEY });
+    const line = answer.observed.find(entry => entry.includes('does not carry every stored series'));
+    expect(line).toBeDefined();
+    expect(line).toContain('Total cholesterol');
+    expect(line).toContain('not an absence of data');
   });
 });

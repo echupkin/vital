@@ -601,6 +601,11 @@ const labResults: AnalystHandler = {
 
     const coverage = `The lab context holds ${lab.documents} document${lab.documents === 1 ? '' : 's'}, ${lab.totalObservations} observations across ${lab.totalSeries} series and ${lab.collisions} date${lab.collisions === 1 ? '' : 's'} carrying more than one observation; ${lab.note}.`;
     const observed: string[] = [coverage];
+    if (lab.capped && lab.notIncludedSeries.length > 0) {
+      observed.push(
+        `This selection does not carry every stored series: ${lab.notIncludedSeries.join(', ')} exist in the documents but are not included here, so their absence from this list is a selection limit and not an absence of data.`
+      );
+    }
     for (const series of lab.series) {
       if (!series.latest) continue;
       observed.push(series.display.line ?? `${series.displayName}: latest ${readingText(series.latest)} on ${series.latest.on}.`);
@@ -643,10 +648,20 @@ const labResults: AnalystHandler = {
         href: `/lab/${series.seriesKey}`,
       }));
 
-    const followUps =
-      lab.selection === 'analyte' && lab.requestedName
-        ? [`How has my ${lab.requestedName.toLowerCase()} changed over time?`, 'What other lab results do I have?']
-        : ['What is my latest cholesterol result?', 'What other lab results do I have?'];
+    // Every follow-up that names an analyte must name one the block actually
+    // holds: a suggestion the data cannot answer ("your latest C-peptide") is a
+    // dead end, and one the documents never recorded would prompt the analyst to
+    // report an absence it does not have data for.
+    const namedSeries =
+      lab.series.find(series => series.latest !== null && series.specimen !== 'urine') ??
+      lab.series.find(series => series.latest !== null) ??
+      null;
+    const followUpAnalyte = lab.selection === 'analyte' && lab.requestedName
+      ? lab.requestedName
+      : namedSeries?.displayName ?? null;
+    const followUps = followUpAnalyte
+      ? [`How has my ${followUpAnalyte.toLowerCase()} changed over time?`, 'What other lab results do I have?']
+      : ['What lab results do I have?', 'What changed this week?'];
 
     return {
       id: 'lab-results',

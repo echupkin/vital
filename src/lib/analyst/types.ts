@@ -201,6 +201,17 @@ export interface LabContextSnapshot {
   found: boolean;
   /** How many series the block actually carries, out of `totalSeries`. */
   shownSeries: number;
+  /** True when series exist that this block does NOT carry (selected < exists). */
+  capped: boolean;
+  /**
+   * The display names of every stored series the block did NOT include.
+   *
+   * This is what lets an answer distinguish "not recorded" from "not included in
+   * this selection": a name in this list EXISTS in the stored documents, so
+   * saying the data does not hold it is forbidden. Empty when the block carries
+   * every series. Names only — no values, no dates.
+   */
+  notIncludedSeries: string[];
   /** The block's stated bound, in words. Never silent truncation. */
   note: string;
   series: LabSnapshotSeries[];
