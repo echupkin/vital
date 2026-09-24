@@ -65,6 +65,22 @@ export function formatDayKeyLong(key: string): string {
   return `${formatDayKeyShort(key)}, ${y}`;
 }
 
+/**
+ * "Sep 16 '26" — the compact year-bearing form, for an axis tick whose slot is
+ * too narrow for `formatDayKeyLong`. A two-digit year is a year; a bare
+ * 'Sep 16' is not, and is never used where a year can be shown at all.
+ */
+export function formatDayKeyCompact(key: string): string {
+  const [y] = key.split('-').map(Number);
+  const year = Number.isFinite(y) ? String(y).slice(-2).padStart(2, '0') : '--';
+  return `${formatDayKeyShort(key)} '${year}`;
+}
+
+/** The calendar year of a day key, as text — '2026'. */
+export function dayKeyYear(key: string): string {
+  return key.slice(0, 4);
+}
+
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export function weekdayName(key: string): string {
