@@ -26,6 +26,7 @@ import type {
   LabRefSource,
 } from '../types';
 import type { DocumentLayout } from './layout';
+import { descriptiveNote, isDescriptiveAnalyte } from '../qualitative';
 import { parsePrintedDate, stripRangeLabel } from './layout';
 
 /** The parser's own version, written into `lab_reports.extraction`. */
@@ -631,7 +632,11 @@ export function interpretLayout(
         });
         continue;
       }
-      if (parsed.value === null) {
+      // A DESCRIPTIVE analyte prints a word because there is no number to print
+      // (COLOR, APPEARANCE). The row is kept as text and carries no warning: the
+      // result is a description the report intended, not a value that went unread.
+      const descriptiveRow = parsed.value === null && isDescriptiveAnalyte(printedName);
+      if (parsed.value === null && !descriptiveRow) {
         warnings.push({
           code: 'non_numeric_result',
           message: `"${printedName}" printed a non-numeric result ("${parsed.valueText}") for one date; it is kept as printed and cannot be charted against a range.`,
@@ -657,7 +662,7 @@ export function interpretLayout(
           refHigh: range ? range.refHigh : null,
           refText: range ? range.refText : block.rangeText,
           refSource: range ? range.refSource : block.rangeText ? 'report' : 'none',
-          refBasis: null,
+          refBasis: descriptiveRow ? descriptiveNote(parsed.valueText, null) : null,
           printedFlag: cell.flag ? parseFlag(cell.flag) : null,
           category: null,
           extractionMethod: 'deterministic',

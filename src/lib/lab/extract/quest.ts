@@ -81,6 +81,8 @@ import type { PdfTextItem } from './pdf-items';
 import { analyteKeyFor, confidenceOf, hasTablePii, parseBoundedCell, parseRangeText, parseValueCell, redact, UNIT_TOKEN } from './parse';
 import type { ParsedValue } from './parse';
 import {
+  descriptiveNote,
+  isDescriptiveAnalyte,
   qualitativeWord,
   resolveQualitative,
   uninterpretedNote,
@@ -345,7 +347,7 @@ export function parseQuestReference(text: string): QuestReference | null {
  * expected one; it is never a number and never a diagnosis.
  */
 export interface QualitativeBasis {
-  status: 'in_range' | 'out_of_expected' | 'unscored_non_numeric';
+  status: 'in_range' | 'out_of_expected' | 'descriptive' | 'unscored_non_numeric';
   /** Says what the judgement rests on. Never a clinical claim. */
   note: string;
 }
@@ -365,7 +367,9 @@ export interface QualitativeBasis {
 export function qualitativeBasisFor(
   valueText: string,
   referenceText: string | null,
-  expected: { upperLimit?: boolean; upperLimitValue?: number | null } = {}
+  expected: { upperLimit?: boolean; upperLimitValue?: number | null } = {},
+  analyteName: string | null = null,
+  printedFlag: string | null = null
 ): QualitativeBasis | null {
   if (valueText.trim() === '') return null;
 
@@ -376,6 +380,12 @@ export function qualitativeBasisFor(
     upperLimitValue: expected.upperLimitValue ?? null,
   });
   if (resolution) return { status: resolution.status, note: resolution.note };
+
+  // A descriptive analyte prints a word because there is no number to print.
+  // The row is imported as text and carries no warning: nothing failed.
+  if (isDescriptiveAnalyte(analyteName)) {
+    return { status: 'descriptive', note: descriptiveNote(valueText, printedFlag) };
+  }
 
   return {
     status: 'unscored_non_numeric',
@@ -900,6 +910,10 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
       }
       const intervalReference = annotationOnly ? null : reference;
 
+      // The COLUMN the value was printed in is the report's own marker. A single
+      // `Result` column prints no in/out distinction, so it records no flag.
+      const printedFlag = cells.value.kind === 'result' ? null : cells.value.label;
+
       const qualitative = parsedValue.value === null
         ? qualitativeBasisFor(
             parsedValue.valueText ?? '',
@@ -913,7 +927,9 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
                 intervalReference.refHigh !== null &&
                 intervalReference.refLow === null,
               upperLimitValue: intervalReference ? intervalReference.refHigh : null,
-            }
+            },
+            printedName,
+            printedFlag
           )
         : null;
       if (qualitative !== null && qualitative.status === 'unscored_non_numeric') {
@@ -925,15 +941,15 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
           page: line.page,
           line: line.lineNo,
         });
-      } else if (qualitative !== null) {
+      } else if (qualitative !== null && qualitative.status !== 'descriptive') {
         // Resolved by the vocabulary: NO per-row warning. The rows are reported
-        // once for the whole document, by `qualitativeSummary` below.
+        // once for the whole document, by `qualitativeSummary` below. A
+        // descriptive row is deliberately NOT counted here: it was not resolved
+        // by the vocabulary, it is not a qualitative call, and the summary
+        // sentence would otherwise claim a call that was never made.
         qualitativeRead += 1;
       }
 
-      // The COLUMN the value was printed in is the report's own marker. A single
-      // `Result` column prints no in/out distinction, so it records no flag.
-      const printedFlag = cells.value.kind === 'result' ? null : cells.value.label;
 
       // No interval may be claimed from a marker-only cell, so such a row is
       // stored with `refText` null and `refSource` `none` — the marker survives

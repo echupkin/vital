@@ -10,6 +10,14 @@
 // Those rows keep their honest unscored behaviour with the reason recorded, and
 // no number is ever invented for them.
 //
+// THE ONE EXCEPTION, AND WHY IT IS NOT AN INTERPRETATION. Two analytes are
+// DESCRIPTIVE rather than measured: `COLOR` and `APPEARANCE`, the pair a
+// urinalysis panel prints as words (`YELLOW`, `CLEAR`) because there is no number
+// to print. Such a row is not a call this module failed to make — the result IS a
+// description — so it is imported as text with a note and raises NO warning.
+// Every other unrecognised word keeps its warning, because beside a measured
+// analyte an unrecognised word really does mean the row could not be scored.
+//
 // WHAT A RESOLUTION MAY REST ON. Exactly three things, and each one is stated in
 // the note so the row can never be read as more than it is:
 //
@@ -36,6 +44,39 @@ export type QualitativeWord = 'positive' | 'negative' | 'none_seen';
 
 /** The vocabulary as the reader sees it, for the wording of every refusal. */
 export const QUALITATIVE_VOCABULARY = 'POSITIVE, NEGATIVE, NONE SEEN';
+
+/**
+ * Analytes whose result is a DESCRIPTION, not a measurement and not a call.
+ *
+ * Closed on purpose, and short on purpose: a name belongs here only when a real
+ * report is observed printing a description for it, and the row then needs no
+ * warning because nothing was misunderstood. Extend it by adding the name a
+ * report actually prints (matched whole, after trim/whitespace/upper-case), not
+ * by guessing at variants.
+ */
+export const DESCRIPTIVE_ANALYTES: readonly string[] = ['COLOR', 'APPEARANCE'];
+
+/** Is this printed analyte name one whose result is a description? */
+export function isDescriptiveAnalyte(printedName: string | null | undefined): boolean {
+  const name = normalise(printedName);
+  return name !== '' && DESCRIPTIVE_ANALYTES.includes(name);
+}
+
+/**
+ * Why a descriptive row is imported but not scored. When the report printed its
+ * own status beside the result, that word is named — it is the report's
+ * statement, quoted as such, never this app's judgement.
+ */
+export function descriptiveNote(
+  valueText: string | null | undefined,
+  printedFlag?: string | null
+): string {
+  const shown = (valueText ?? '').trim();
+  const flag = (printedFlag ?? '').trim();
+  const printed = shown === '' ? 'a description' : quoted(shown);
+  const about = flag === '' ? '' : ` The report printed ${quoted(flag)} in its own status column beside it.`;
+  return `This analyte is described rather than measured: the report prints ${printed}, so the row is kept as text and is not scored — there is no number to score.${about}`;
+}
 
 /** Whitespace collapsed, trimmed, upper-cased — the report's own spelling kept. */
 function normalise(text: string | null | undefined): string {

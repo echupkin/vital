@@ -8,7 +8,10 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  DESCRIPTIVE_ANALYTES,
   QUALITATIVE_VOCABULARY,
+  descriptiveNote,
+  isDescriptiveAnalyte,
   qualitativeWord,
   resolveQualitative,
   stripFieldSuffix,
@@ -139,5 +142,55 @@ describe('the wording of a refusal', () => {
     expect(note).toMatch(/"NEGATIVE"/);
     expect(note).toMatch(/"<5"/);
     expect(note).toMatch(/left unscored rather than guessed at/i);
+  });
+});
+
+// ── The descriptive analytes, which are not an interpretation ────────────────
+
+describe('the descriptive analytes', () => {
+  it('is a short closed list, exactly COLOR and APPEARANCE', () => {
+    expect(DESCRIPTIVE_ANALYTES).toEqual(['COLOR', 'APPEARANCE']);
+  });
+
+  it('matches the printed name whole, case- and spacing-insensitively', () => {
+    expect(isDescriptiveAnalyte('COLOR')).toBe(true);
+    expect(isDescriptiveAnalyte('color')).toBe(true);
+    expect(isDescriptiveAnalyte('  Appearance ')).toBe(true);
+    expect(isDescriptiveAnalyte('APPEARANCE')).toBe(true);
+  });
+
+  it('does not match a name that merely contains the word', () => {
+    // The list is closed and matched whole: a name that happens to end in
+    // "COLOR" is an ordinary measured analyte and keeps its warning.
+    expect(isDescriptiveAnalyte('GAMMA COLOR')).toBe(false);
+    expect(isDescriptiveAnalyte('COLOR TWO')).toBe(false);
+    expect(isDescriptiveAnalyte('URINE COLOR')).toBe(false);
+    expect(isDescriptiveAnalyte('KETONES')).toBe(false);
+    expect(isDescriptiveAnalyte('')).toBe(false);
+    expect(isDescriptiveAnalyte(null)).toBe(false);
+  });
+
+  it('explains that the row is a description, kept as text and not scored', () => {
+    const note = descriptiveNote('YELLOW');
+    expect(note).toMatch(/described rather than measured/i);
+    expect(note).toMatch(/"YELLOW"/);
+    expect(note).toMatch(/kept as text and is not scored/i);
+  });
+
+  it("quotes the report's own status word when one was printed, as the report's statement", () => {
+    const note = descriptiveNote('CLEAR', 'In Range');
+    expect(note).toMatch(/"CLEAR"/);
+    expect(note).toMatch(/The report printed "In Range"/);
+  });
+
+  it('says nothing about a status word that was not printed', () => {
+    expect(descriptiveNote('CLEAR', null)).not.toMatch(/status column/);
+    expect(descriptiveNote('CLEAR', '   ')).not.toMatch(/status column/);
+  });
+
+  it('never turns a description into a number or a call', () => {
+    const note = descriptiveNote('YELLOW', 'In Range');
+    expect(note).not.toMatch(/\d/);
+    expect(note).not.toMatch(/normal|abnormal|positive|negative/i);
   });
 });

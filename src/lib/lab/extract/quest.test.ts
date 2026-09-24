@@ -763,3 +763,43 @@ describe('bounded results, markers and legend blocks', () => {
     expect(byKey('zeta_after')).toBeDefined();
   });
 });
+
+// ── A descriptive row is not a row that failed ───────────────────────────────
+
+describe('a descriptive analyte in the table', () => {
+  const layout = layoutOf(1, [
+    line(1, 1, 760, [['SAMPLE, PERSON', 480], ['Report Status: Final', 20]]),
+    line(1, 2, 730, [['DOB: Jan 1, 1970', 20], ['Specimen: SPEC0000', 230], ['Client #: 00000000', 430]]),
+    line(1, 3, 700, [['SAMPLE CASE', 20], ['Collected: 02/03/2021 / 08:00 CDT', 230], ['Reported: 02/03/2021 / 09:00 CDT', 430]]),
+    line(1, 4, 600, HEADER_RUNS),
+    line(1, 5, 580, [['COLOR', 40], ['YELLOW', 240], ['YELLOW', 404]]),
+    line(1, 6, 560, [['KETONES', 40], ['TRACE', 240], ['NEGATIVE', 404]]),
+  ]);
+  const read = interpretQuest(layout);
+  const color = read.observations.find(observation => observation.printedName === 'COLOR');
+
+  it('imports the row as text, with the report\'s own status kept as its flag', () => {
+    expect(color?.value).toBeNull();
+    expect(color?.valueText).toBe('YELLOW');
+    expect(color?.printedFlag).toBe('In Range');
+    expect(color?.refBasis).toMatch(/described rather than measured/i);
+    expect(color?.refBasis).toMatch(/"In Range"/);
+  });
+
+  it('raises no warning for it: nothing was misunderstood', () => {
+    expect(JSON.stringify(read.warnings)).not.toContain('COLOR');
+  });
+
+  it('does not count it as a qualitative result the vocabulary resolved', () => {
+    expect(read.qualitativeRead).toBe(0);
+    expect(read.qualitativeNote).toBeNull();
+  });
+
+  it('still warns for a MEASURED analyte printing a word it cannot score', () => {
+    const ketones = read.warnings.filter(
+      warning => warning.code === 'non_numeric_result' && warning.message.includes('KETONES')
+    );
+    expect(ketones).toHaveLength(1);
+    expect(ketones[0]?.message).toMatch(/not one of the qualitative values this importer interprets/);
+  });
+});
