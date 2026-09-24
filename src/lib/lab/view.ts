@@ -521,7 +521,15 @@ export function summariseDocuments(reports: LabReportDocument[]): DocumentSummar
 
 // ── Chart model ─────────────────────────────────────────────────────────────
 
-export type LabChartMode = 'trend' | 'range' | 'readings';
+/**
+ * The two shapes one series can honestly take. ONE CHART RENDERS BOTH: a single
+ * observation is drawn by the same trend chart as many, as one dot against the
+ * reference band with its own date on the axis and no line between it and
+ * anything — a line for a single point would imply movement that was never
+ * measured. Only a series with nothing numeric to plot falls back to the
+ * labelled-reading list.
+ */
+export type LabChartMode = 'trend' | 'readings';
 
 export interface ChartBand {
   low: number | null;
@@ -567,15 +575,15 @@ export interface LabChartModel {
 }
 
 /**
- * Decide what can honestly be drawn: a trend across dates for two or more
- * numeric observations, a single range-position chart for exactly one, and a
- * labelled reading list when nothing is numeric at all.
+ * Decide what can honestly be drawn: the trend chart for one or MORE numeric
+ * observations — a single observation is drawn as one dot, never as a line — and
+ * a labelled reading list when nothing is numeric at all.
  */
 export function chartModel(analyte: LabAnalyte): LabChartModel {
   const points = orderedPoints(analyte);
   const numeric = points.filter(isNumericPoint);
   const readings = points.filter(point => !isNumericPoint(point));
-  const mode: LabChartMode = numeric.length >= 2 ? 'trend' : numeric.length === 1 ? 'range' : 'readings';
+  const mode: LabChartMode = numeric.length >= 1 ? 'trend' : 'readings';
 
   const last = numeric.length > 0 ? numeric[numeric.length - 1]! : null;
   // A BAND IS DRAWN ONLY WHEN THE INTERVAL HAS A LIMIT. An interval that is only
@@ -644,7 +652,10 @@ export function chartDescription(analyteName: string, model: LabChartModel): str
     const shown = model.readings.map(point => `${formatReading(point)} on ${point.resultOn}`).join('; ');
     return `${analyteName}: no numeric values were printed, so nothing is plotted. Readings: ${shown}.`;
   }
-  if (model.mode === 'range') {
+  // ONE observation is drawn by the same trend chart as many, as a single dot:
+  // the sentence says how many there are, so the reader is never told a trend
+  // exists. The value's position against its interval is still stated in words.
+  if (model.numeric.length === 1) {
     const point = model.numeric[0]!;
     const band = model.band;
     const inside =

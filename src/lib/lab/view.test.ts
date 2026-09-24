@@ -510,17 +510,26 @@ describe('the stored documents', () => {
 // ── Chart model ─────────────────────────────────────────────────────────────
 
 describe('what the chart can honestly draw', () => {
-  it('charts ONE observation as a range position, never as a one-point trend', () => {
+  it('draws ONE observation through the SAME trend chart, as a single point', () => {
     const analyte = makeAnalyte({
       points: [makePoint({ id: 'p1', on: '2024-01-01', value: 20, ...printed })],
     });
     const model = chartModel(analyte);
-    expect(model.mode).toBe('range');
+    // One observation is NOT a separate chart shape any more: it is the trend
+    // chart with a single point, so 'trend' is the only numeric mode there is.
+    expect(model.mode).toBe('trend');
     expect(model.numeric).toHaveLength(1);
     expect(model.readings).toHaveLength(0);
     expect(model.band!.low).toBe(10);
     expect(model.band!.high).toBe(40);
     expect(model.band!.provenance).toBe('printed on your report');
+    // The axis still spans the band, so the single dot is drawn against it.
+    const domain = chartDomain(model)!;
+    expect(domain[0]).toBeLessThanOrEqual(10);
+    expect(domain[1]).toBeGreaterThanOrEqual(40);
+    // A one-point series must never claim a change: `bandVaries` is false and the
+    // sentence says "one observation", not a trend.
+    expect(model.bandVaries).toBe(false);
     expect(chartDescription('ALT', model)).toContain('one observation');
     expect(chartDescription('ALT', model)).toContain('inside the interval 10 - 40');
   });
@@ -530,7 +539,7 @@ describe('what the chart can honestly draw', () => {
       points: [makePoint({ id: 'p1', on: '2024-01-01', value: 62, ...printed })],
     });
     const model = chartModel(analyte);
-    expect(model.mode).toBe('range');
+    expect(model.mode).toBe('trend');
     expect(chartDescription('ALT', model)).toContain('outside the interval');
   });
 

@@ -21,13 +21,14 @@
 // labelled "optimal": it is the reference interval the document printed (or the
 // cited general interval), and that is the only basis anything here may claim.
 //
-// THREE SHAPES, because three different things are true of these numbers:
+// TWO SHAPES, because two different things are true of these numbers:
 //
-//   * TWO OR MORE numeric observations  → a trend line across the observation
-//     dates, with the reference interval banded behind it;
-//   * EXACTLY ONE numeric observation   → a compact horizontal range-position
-//     chart: the interval band with the value marked inside or outside it. A
-//     one-point trend line would be a lie about change over time;
+//   * ONE OR MORE numeric observations → the SAME trend chart. Many points draw
+//     a trend line across the observation dates; exactly ONE draws a single dot
+//     against the reference band, with that one date stamp on the x-axis and the
+//     unit on the y-axis and no line at all — a line between one point and
+//     nothing would imply movement that was never measured, and recharts draws
+//     none for a single point;
 //   * NO numeric observation            → nothing is plotted. `NEGATIVE`, `TRACE`
 //     and `<0.5` are shown as labelled readings, never as a number.
 //
@@ -127,6 +128,11 @@ function LabTrend({
   }));
   const band = model.band;
   const unit = model.unit && model.unit.trim().length > 0 ? model.unit : null;
+  // ONE observation uses this same chart. It draws a single dot and recharts
+  // emits NO line path for a one-point series (there is nothing to span), so no
+  // line is drawn between a point and nothing.
+  const single = data.length === 1;
+  const only = single ? data[0]! : null;
 
   return (
     <div role="img" aria-label={`${analyteName} trend chart. ${describeTrend(model)}`}>
@@ -226,6 +232,12 @@ function LabTrend({
           />
         </LineChart>
       </ResponsiveContainer>
+      {only && (
+        <p className="text-xs text-text-secondary mt-1">
+          One observation, so there is no trend to draw: the value is shown against the interval it was scored
+          against. Recorded {formatDayKeyLong(only.date)} · {only.statusLabel}.
+        </p>
+      )}
       <ChartFootnote model={model} />
     </div>
   );
@@ -233,8 +245,15 @@ function LabTrend({
 
 function describeTrend(model: LabChartModel): string {
   const values = model.numeric.map(point => point.value as number);
-  const first = model.numeric[0]!;
   const last = model.numeric[model.numeric.length - 1]!;
+  // ONE observation is a dot, not a trend: the sentence names the single date
+  // and the value instead of claiming a span the chart does not draw.
+  if (model.numeric.length === 1) {
+    return `One observation on ${formatDayKeyLong(last.resultOn)}, ${formatReading(last)}${
+      model.unit ? ` (unit ${model.unit})` : ''
+    }: ${last.statusLabel}. ${bandSentence(model)}`;
+  }
+  const first = model.numeric[0]!;
   return `${model.numeric.length} observations from ${formatDayKeyLong(first.resultOn)} to ${formatDayKeyLong(
     last.resultOn
   )}, values ${formatNumber(Math.min(...values))} to ${formatNumber(Math.max(...values))}${
@@ -242,113 +261,6 @@ function describeTrend(model: LabChartModel): string {
   }. ${bandSentence(model)} Latest ${formatReading(last)} on ${formatDayKeyLong(
     last.resultOn
   )}: ${last.statusLabel}.`;
-}
-
-// ── The range-position chart (exactly one numeric observation) ──────────────
-
-function LabRangePosition({ model, analyteName }: { model: LabChartModel; analyteName: string }) {
-  const point = model.numeric[0]!;
-  const band = model.band;
-  const unit = model.unit && model.unit.trim().length > 0 ? model.unit : null;
-  const domain = rangeDomain(model);
-  const [min, max] = domain;
-  const span = max - min || 1;
-  const pct = (value: number) => ((value - min) / span) * 100;
-
-  const bandLeft = band?.low !== null && band?.low !== undefined ? pct(band.low) : 0;
-  const bandRight = band?.high !== null && band?.high !== undefined ? pct(band.high) : 100;
-  const inside =
-    band && band.low !== null && band.high !== null
-      ? (point.value as number) >= band.low && (point.value as number) <= band.high
-      : null;
-  const markerPct = Math.min(98, Math.max(2, pct(point.value as number)));
-
-  return (
-    <figure className="mt-1">
-      <figcaption className="sr-only">
-        {`${analyteName} range position. One observation, ${formatReading(point)} on ${formatDayKeyLong(
-          point.resultOn
-        )}. ${positionSentence(inside, band?.text ?? null)} ${bandSentence(model)}`}
-      </figcaption>
-      <div
-        className="relative h-20 rounded-control border border-border bg-surface-muted/40 overflow-hidden"
-        role="img"
-        aria-label={`${analyteName}: one observation, ${formatReading(point)}, recorded ${formatDayKeyLong(
-          point.resultOn
-        )}. ${positionSentence(inside, band?.text ?? null)} ${bandSentence(model)} Status: ${
-          point.statusLabel
-        }.`}
-      >
-        {/* The interval band, shaded. Drawn only when an interval actually applies. */}
-        {band && (
-          <div
-            className="absolute inset-y-3 bg-accent-tint"
-            style={{ left: `${bandLeft}%`, width: `${Math.max(2, bandRight - bandLeft)}%` }}
-            aria-hidden="true"
-          />
-        )}
-        {/* Both limits: a DASHED line, each LABELLED with its number and unit. */}
-        {band?.low !== null && band?.low !== undefined && (
-          <div className="absolute inset-y-0" style={{ left: `${bandLeft}%` }} aria-hidden="true">
-            <div className="w-0 h-full border-l border-dashed border-text-secondary" />
-            <span className="absolute -translate-x-1/2 top-0 px-1 text-[10px] tnum text-text-secondary bg-surface">
-              {limitLabel(band.low, unit)}
-            </span>
-          </div>
-        )}
-        {band?.high !== null && band?.high !== undefined && (
-          <div className="absolute inset-y-0" style={{ left: `${bandRight}%` }} aria-hidden="true">
-            <div className="w-0 h-full border-l border-dashed border-text-secondary" />
-            <span className="absolute -translate-x-1/2 bottom-0 px-1 text-[10px] tnum text-text-secondary bg-surface">
-              {limitLabel(band.high, unit)}
-            </span>
-          </div>
-        )}
-        {/* The observed value. */}
-        <div className="absolute inset-y-0" style={{ left: `${markerPct}%` }} aria-hidden="true">
-          <div className="w-px h-full" style={{ backgroundColor: TONE_COLOR[point.tone] }} />
-          <div className="absolute -translate-x-1/2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] tnum whitespace-nowrap bg-surface border border-border text-text-primary">
-            {formatNumber(point.value as number)}
-            {inside === false ? ' · outside' : ''}
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 mt-1 text-[10px] text-text-secondary tnum">
-        <span>{formatNumber(min)}</span>
-        <span>
-          reference interval {band?.text ?? 'none'}
-          {band?.source ? ` · ${band.source}` : ''}
-        </span>
-        <span>{formatNumber(max)}</span>
-      </div>
-      <ChartFootnote model={model} />
-      <p className="text-xs text-text-secondary mt-1">
-        One observation, so there is no trend to draw: the value is shown against the interval it was scored
-        against. Recorded {formatDayKeyLong(point.resultOn)} · {point.statusLabel}.
-      </p>
-    </figure>
-  );
-}
-
-function positionSentence(inside: boolean | null, intervalText: string | null): string {
-  if (inside === null) return `No reference interval applies, so its position in a range is not known.`;
-  return `It falls ${inside ? 'inside' : 'outside'} the interval ${intervalText ?? ''}`.trim() + '.';
-}
-
-/** Bounds for the position chart, always wide enough to hold the band. */
-function rangeDomain(model: LabChartModel): [number, number] {
-  const value = model.numeric[0]!.value as number;
-  const values = [value];
-  if (model.band?.low !== null && model.band?.low !== undefined) values.push(model.band.low);
-  if (model.band?.high !== null && model.band?.high !== undefined) values.push(model.band.high);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  if (min === max) {
-    const pad = Math.abs(min) > 0 ? Math.abs(min) * 0.2 : 1;
-    return [min - pad, max + pad];
-  }
-  const pad = (max - min) * 0.15;
-  return [min - pad, max + pad];
 }
 
 // ── The labelled readings (nothing numeric to plot) ─────────────────────────
@@ -391,9 +303,9 @@ export function LabChart({
     return <p className="text-xs text-text-secondary">No observation is stored for this analyte.</p>;
   }
   if (model.mode === 'readings') return <LabReadings model={model} analyteName={analyteName} />;
-  if (model.mode === 'range') return <LabRangePosition model={model} analyteName={analyteName} />;
-  // The axis always spans the interval band as well as the values, so a band is
-  // never silently clipped by an auto-scaled axis.
+  // ONE observation draws through the SAME chart as many — one dot, no line. The
+  // axis always spans the interval band as well as the values, so a band is never
+  // silently clipped by an auto-scaled axis.
   return (
     <LabTrend
       model={model}
