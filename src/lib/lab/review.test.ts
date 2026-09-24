@@ -322,6 +322,27 @@ describe('the status shown beside a row', () => {
     const status = statusForRow(rowFrom({ value: '', valueText: '', refLow: '', refHigh: '', refText: '' }), { dateOfBirth: null, sex: null });
     expect(status.warning).toContain('neither a numeric value nor printed text');
   });
+
+  it('carries the bound on a bounded row through to an unscored verdict', () => {
+    // A value printed as `>10` against `0-5`: a region with no upper end cannot
+    // be shown to lie inside the interval, so it is never called out of range.
+    const above = statusForRow(
+      rowFrom({ analyteKey: 'estradiol', printedName: 'Estradiol', value: '10', valueText: '>10', refLow: '0', refHigh: '5', refText: '0-5' }),
+      { dateOfBirth: null, sex: null }
+    );
+    expect(above.status).toBe('unscored_bound');
+    expect(above.label).toBe('Bounded result');
+    expect(above.tone).toBe('neutral');
+    expect(above.notes.join(' ')).toMatch(/no upper end/);
+
+    // The same interval with an upper bound whose whole region is inside it.
+    const below = statusForRow(
+      rowFrom({ analyteKey: 'estradiol', printedName: 'Estradiol', value: '3', valueText: '<3', refLow: '0', refHigh: '5', refText: '0-5' }),
+      { dateOfBirth: null, sex: null }
+    );
+    expect(below.status).toBe('in_range');
+    expect(below.notes.join(' ')).toMatch(/bound/);
+  });
 });
 
 describe('what a commit may claim it stored', () => {

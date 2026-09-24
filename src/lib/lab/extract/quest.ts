@@ -44,6 +44,15 @@
 //
 // NOTHING HERE IS A JUDGEMENT. A value, unit, interval or date is only ever what
 // the document printed; anything unreadable stays null with the reason recorded.
+//
+// TWO KINDS OF CELL ARE NOT VALUES. A NOTICE token ("SEE NOTE:", "D:") is a
+// pointer to a comment block or a legend, and a reference cell that is only a
+// marker ("(calc)") is not an interval: neither may ever become a stored value
+// or interval, and both are refused or left null rather than guessed at. A
+// BOUNDED result (`<30`, `> OR = 60`, the urinalysis grade `2+`) IS stored — the
+// number the document printed, its printed text verbatim and its bound — because
+// a bound the reader cannot see is worse than a bound that is explicitly
+// unscored; see ../status.ts for how a bounded value is scored.
 
 import type {
   ExtractedObservation,
@@ -54,7 +63,7 @@ import type {
 import type { DocumentLayout, LayoutLine } from './layout';
 import { joinedText } from './layout';
 import type { PdfTextItem } from './pdf-items';
-import { analyteKeyFor, confidenceOf, parseRangeText, parseValueCell, redact, UNIT_TOKEN } from './parse';
+import { analyteKeyFor, confidenceOf, parseBoundedCell, parseRangeText, parseValueCell, redact, UNIT_TOKEN } from './parse';
 import type { ParsedValue } from './parse';
 
 /** The header labels, exactly as the reports print them. */
@@ -195,31 +204,57 @@ export const QUEST_KIND_REASON =
 const TRAILING_FLAG = /(?:\s+)(?:h\*|l\*|hh|ll|h|l|aa|a|high|low)$/i;
 
 /**
+ * A token the report prints IN PLACE OF a result: a pointer to a note, a legend
+ * letter, or a bare colon. These are NOT results, and a comment block or legend
+ * laid out in the table's own columns must never have its token stored as a
+ * value — the row is refused with a recorded reason instead.
+ */
+export const QUEST_NOTICE_TOKEN = /^(?:see\s+note:?|note:|d:|i:|:)$/i;
+
+/**
  * Parse one result cell of this layout: a value printed in a result column.
+ *
  * A trailing High/Low marker is stripped first, so `44.7 L` is the number 44.7
- * and not a unit of litres; everything else is the shared result-cell grammar.
+ * and not a unit of litres. A NOTICE/ANNOTATION token returns null: it is never
+ * a value. A cell that carries a BOUND (`<30`, `>39`, `1+`) keeps the number the
+ * document printed together with an explicit bound flag and the printed text
+ * verbatim; everything else is the shared result-cell grammar.
  */
 export function parseQuestValueCell(text: string): ParsedValue | null {
-  const withoutFlag = text.trim().replace(TRAILING_FLAG, '').trim();
+  const raw = text.trim();
+  if (raw === '' || QUEST_NOTICE_TOKEN.test(raw)) return null;
+  const withoutFlag = raw.replace(TRAILING_FLAG, '').trim();
   if (withoutFlag === '') return null;
-  return parseValueCell(withoutFlag) ?? parseValueCell(text.trim());
+  return (
+    parseBoundedCell(withoutFlag) ??
+    parseBoundedCell(raw) ??
+    parseValueCell(withoutFlag) ??
+    parseValueCell(raw)
+  );
 }
 
 /** A printed reference cell of this layout. */
 export interface QuestReference {
   refLow: number | null;
   refHigh: number | null;
-  /** The cell EXACTLY as printed, including any `(calc)` suffix. */
-  refText: string;
+  /** The cell EXACTLY as printed, including any `(calc)` suffix; null for a bare marker. */
+  refText: string | null;
   /** The unit the cell carried inline, when it carried one. */
   unit: string | null;
-  /** `range` = an interval was read; `unit` = the cell was only a unit; `text` = a printed expected value. */
-  form: 'range' | 'unit' | 'text';
+  /**
+   * `range` = an interval was read; `unit` = the cell was only a unit;
+   * `text` = a printed expected value; `annotation` = the cell was nothing but a
+   * marker such as `(calc)`, so there is no interval to read and none is
+   * invented. An `annotation` is NOT a failure and raises no warning.
+   */
+  form: 'range' | 'unit' | 'text' | 'annotation';
 }
 
 /** A suffix the report appends to a calculated interval. Never a number, never a unit. */
 const ANNOTATION = /\(?\b(?:calc|calculated)\b\)?/gi;
 const UNIT_ONLY = new RegExp(String.raw`^${UNIT_TOKEN}$`);
+/** A printed EXPECTATION that carries a per-field unit: `NONE SEEN /HPF`, `NONE SEEN /LPF`. */
+const EXPECTATION_WITH_UNIT = new RegExp(String.raw`^([A-Za-z][A-Za-z ]*?)\s+(${UNIT_TOKEN})$`);
 
 /**
  * Parse one reference cell.
@@ -232,7 +267,9 @@ const UNIT_ONLY = new RegExp(String.raw`^${UNIT_TOKEN}$`);
  *
  * The printed cell is kept verbatim in `refText`. Null means the cell matched no
  * known form: the caller records `unparsable_range` and stores no interval rather
- * than guessing one.
+ * than guessing one. A cell that is ONLY an annotation (`(calc)`) is a printed
+ * marker, not a failure: it comes back as `form: 'annotation'` with `refText`
+ * null, so no interval and no warning is invented for it.
  */
 export function parseQuestReference(text: string): QuestReference | null {
   const printed = text.replace(/\s+/g, ' ').trim();
@@ -257,11 +294,20 @@ export function parseQuestReference(text: string): QuestReference | null {
     if (asResult && asResult.value === null) {
       return { refLow: null, refHigh: null, refText: printed, unit: null, form: 'text' };
     }
+    // The same, with the per-field unit printed beside it: `NONE SEEN /HPF`.
+    const expectation = EXPECTATION_WITH_UNIT.exec(core);
+    if (expectation) {
+      const expected = parseValueCell(expectation[1]);
+      if (expected && expected.value === null) {
+        return { refLow: null, refHigh: null, refText: printed, unit: null, form: 'text' };
+      }
+    }
   }
   if (normalised === '' && /calc/i.test(printed)) {
-    // A calculated row whose interval was printed on a footnote line: nothing here
-    // is an interval, and nothing is invented to fill the gap.
-    return null;
+    // A calculated row whose interval was printed on a footnote line. The marker
+    // is recognised AS a marker — nothing here is an interval, and nothing is
+    // invented to fill the gap.
+    return { refLow: null, refHigh: null, refText: null, unit: null, form: 'annotation' };
   }
   return null;
 }
@@ -633,6 +679,15 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
         continue;
       }
 
+      if (QUEST_NOTICE_TOKEN.test(cells.value.text.trim())) {
+        // The result column carried a NOTICE/ANNOTATION token ("SEE NOTE:", "D:")
+        // — a pointer to a comment block or a legend, never a result. The row is
+        // refused whole; the token is never stored as a value.
+        if (pending.length) flushPending();
+        refuse(line, 'notice_line');
+        continue;
+      }
+
       const nameX = nameItems.length ? nameItems[0].x : 0;
       const held = pending.length === 1 ? pending[0] : null;
       let printedName = name;
@@ -677,8 +732,19 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
         });
         continue;
       }
+      if (parsedValue.value === null && (parsedValue.valueText ?? '').trim() === '') {
+        // A row with NO usable value is refused, never stored: an empty value
+        // beside a printed interval is a legend or a comment, not a result.
+        if (pending.length) flushPending();
+        refuse(line, 'notice_line');
+        continue;
+      }
 
       const reference = cells.reference === null ? null : parseQuestReference(cells.reference);
+      // A cell that is only a marker (`(calc)`) carries no interval, so nothing is
+      // stored for it and no `unparsable_range` warning is raised: the marker is
+      // kept in the row's own text instead.
+      const annotationOnly = reference !== null && reference.form === 'annotation';
       if (cells.reference !== null && reference === null) {
         warnings.push({
           code: 'unparsable_range',
@@ -687,9 +753,10 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
           line: line.lineNo,
         });
       }
+      const intervalReference = annotationOnly ? null : reference;
 
       const qualitative = parsedValue.value === null
-        ? qualitativeBasisFor(parsedValue.valueText ?? '', reference ? reference.refText : null)
+        ? qualitativeBasisFor(parsedValue.valueText ?? '', intervalReference ? intervalReference.refText : null)
         : null;
       if (qualitative) {
         warnings.push({
@@ -704,6 +771,12 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
       // `Result` column prints no in/out distinction, so it records no flag.
       const printedFlag = cells.value.kind === 'result' ? null : cells.value.label;
 
+      // No interval may be claimed from a marker-only cell, so such a row is
+      // stored with `refText` null and `refSource` `none` — the marker survives
+      // in the row's own printed text (`sourceLine`), which is the note for it.
+      const referenceUnit = intervalReference ? intervalReference.unit : null;
+      const refText = reference ? reference.refText : cells.reference;
+
       candidates.push({
         page: line.page,
         y: line.y,
@@ -715,11 +788,11 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
           resultOn,
           value: parsedValue.value,
           valueText: parsedValue.valueText,
-          unit: parsedValue.unit ?? reference?.unit ?? null,
-          refLow: reference ? reference.refLow : null,
-          refHigh: reference ? reference.refHigh : null,
-          refText: reference ? reference.refText : cells.reference,
-          refSource: cells.reference === null ? 'none' : 'report',
+          unit: parsedValue.unit ?? referenceUnit ?? null,
+          refLow: intervalReference ? intervalReference.refLow : null,
+          refHigh: intervalReference ? intervalReference.refHigh : null,
+          refText,
+          refSource: cells.reference === null || annotationOnly ? 'none' : 'report',
           refBasis: qualitative ? qualitative.note : null,
           printedFlag,
           category: null,
@@ -727,8 +800,8 @@ export function interpretQuest(layout: DocumentLayout): QuestInterpretation {
           confidence: confidenceOf({
             name: printedName,
             hasValue: parsedValue.value !== null || parsedValue.valueText !== null,
-            unit: parsedValue.unit ?? reference?.unit ?? null,
-            range: reference ? reference.refText : cells.reference,
+            unit: parsedValue.unit ?? referenceUnit ?? null,
+            range: intervalReference ? intervalReference.refText : annotationOnly ? null : cells.reference,
           }),
           sourceLine: redact(
             [printedName, cells.value.text, cells.reference ?? ''].filter(part => part !== '').join(' | ')

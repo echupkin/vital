@@ -13,7 +13,7 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
 endobj
 5 0 obj
-<< /Length 2713 >>
+<< /Length 2716 >>
 stream
 BT /F1 12 Tf 1 0 0 1 36.00 750.00 Tm (Sample Quest Diagnostics Report) Tj ET
 BT /F1 9 Tf 1 0 0 1 480.00 764.00 Tm (Report Status: Final) Tj ET
@@ -52,7 +52,7 @@ BT /F1 9 Tf 1 0 0 1 40.00 532.00 Tm (GAMMA COLOR) Tj ET
 BT /F1 9 Tf 1 0 0 1 240.00 532.00 Tm (YELLOW) Tj ET
 BT /F1 9 Tf 1 0 0 1 404.00 532.00 Tm (YELLOW) Tj ET
 BT /F1 9 Tf 1 0 0 1 40.00 512.00 Tm (DELTA KETONES) Tj ET
-BT /F1 9 Tf 1 0 0 1 316.00 512.00 Tm (1+) Tj ET
+BT /F1 9 Tf 1 0 0 1 316.00 512.00 Tm (TRACE) Tj ET
 BT /F1 9 Tf 1 0 0 1 404.00 512.00 Tm (NEGATIVE) Tj ET
 BT /F1 9 Tf 1 0 0 1 20.00 40.00 Tm (CLIENT SERVICES: \(000\) 000-0000) Tj ET
 BT /F1 9 Tf 1 0 0 1 230.00 40.00 Tm (SPECIMEN: SPEC0000) Tj ET
@@ -64,7 +64,7 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
 endobj
 7 0 obj
-<< /Length 2563 >>
+<< /Length 3719 >>
 stream
 BT /F1 12 Tf 1 0 0 1 36.00 750.00 Tm (Sample Quest Diagnostics Report) Tj ET
 BT /F1 9 Tf 1 0 0 1 480.00 764.00 Tm (Report Status: Final) Tj ET
@@ -102,6 +102,27 @@ BT /F1 9 Tf 1 0 0 1 404.00 512.00 Tm (1.0-5.0) Tj ET
 BT /F1 9 Tf 1 0 0 1 40.00 492.00 Tm (ETA BARE) Tj ET
 BT /F1 9 Tf 1 0 0 1 240.00 492.00 Tm (5.5) Tj ET
 BT /F1 9 Tf 1 0 0 1 404.00 492.00 Tm (5.0-8.0) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 472.00 Tm (THETA GRADE) Tj ET
+BT /F1 9 Tf 1 0 0 1 316.00 472.00 Tm (2+) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 472.00 Tm (NEGATIVE) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 452.00 Tm (IOTA NOTE) Tj ET
+BT /F1 9 Tf 1 0 0 1 240.00 452.00 Tm (SEE NOTE:) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 452.00 Tm (1.0-2.0) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 432.00 Tm (KAPPA CALC) Tj ET
+BT /F1 9 Tf 1 0 0 1 240.00 432.00 Tm (5.0) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 432.00 Tm (\(calc\)) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 412.00 Tm (LAMBDA CELLS) Tj ET
+BT /F1 9 Tf 1 0 0 1 240.00 412.00 Tm (NONE SEEN) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 412.00 Tm (NONE SEEN /HPF) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 392.00 Tm (MU BOUND) Tj ET
+BT /F1 9 Tf 1 0 0 1 240.00 392.00 Tm (<3) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 392.00 Tm (0-5) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 372.00 Tm (NU ABOVE) Tj ET
+BT /F1 9 Tf 1 0 0 1 316.00 372.00 Tm (>10) Tj ET
+BT /F1 9 Tf 1 0 0 1 404.00 372.00 Tm (0-5) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 352.00 Tm (Legend Low: <0 ng/mL) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 332.00 Tm (Legend Mid: 0 - 5 ng/mL) Tj ET
+BT /F1 9 Tf 1 0 0 1 40.00 312.00 Tm (Legend High: > or = 5 ng/mL) Tj ET
 BT /F1 9 Tf 1 0 0 1 20.00 40.00 Tm (CLIENT SERVICES: \(000\) 000-0000) Tj ET
 BT /F1 9 Tf 1 0 0 1 230.00 40.00 Tm (SPECIMEN: SPEC0000) Tj ET
 BT /F1 9 Tf 1 0 0 1 20.00 26.00 Tm (Quest, Quest Diagnostics and the associated logo are the trademarks of Quest Diagnostics.) Tj ET
@@ -116,10 +137,10 @@ xref
 0000000127 00000 n
 0000000224 00000 n
 0000000350 00000 n
-0000003114 00000 n
-0000003240 00000 n
+0000003117 00000 n
+0000003243 00000 n
 trailer
 << /Size 8 /Root 1 0 R >>
 startxref
-5854
+7013
 %%EOF

@@ -3,6 +3,7 @@ import {
   allowanceFor,
   ageOn,
   bandForObservation,
+  boundOf,
   flagDirection,
   isScored,
   labelFor,
@@ -106,6 +107,94 @@ describe('unscored outcomes', () => {
   });
 });
 
+// ── Bounded results ─────────────────────────────────────────────────────────
+//
+// A bound is NOT a measurement. The rules below are deliberately conservative:
+// the region a bound describes has to be provably INSIDE the interval before the
+// row may be called in range, and a region with no end on one side never is.
+
+describe('the bound a printed result carries', () => {
+  it('reads every printed bound form, including the stranded `or`', () => {
+    expect(boundOf('<30')).toBe('<');
+    expect(boundOf('<=200')).toBe('<=');
+    expect(boundOf('>39')).toBe('>');
+    expect(boundOf('>=40')).toBe('>=');
+    expect(boundOf('< OR = 0.2')).toBe('<=');
+    expect(boundOf('> OR = 60')).toBe('>=');
+    expect(boundOf('1+')).toBe('+');
+    expect(boundOf('2+')).toBe('+');
+  });
+
+  it('is null for a plain value and for printed text', () => {
+    expect(boundOf('12.1')).toBeNull();
+    expect(boundOf(null)).toBeNull();
+    expect(boundOf('NEGATIVE')).toBeNull();
+    expect(boundOf('NONE SEEN')).toBeNull();
+  });
+});
+
+describe('scoring a bounded result', () => {
+  it('calls an upper bound in range only when the whole region is inside the interval', () => {
+    // region (-inf, 30] inside [0, 100]
+    const result = score({ value: 30, valueText: '<30', refLow: 0, refHigh: 100 });
+    expect(result.status).toBe('in_range');
+    expect(result.notes.join(' ')).toMatch(/bound/);
+  });
+
+  it('accepts an interval that is open at the bottom, as the report prints it', () => {
+    expect(score({ value: 30, valueText: '<30', refLow: null, refHigh: 39 }).status).toBe('in_range');
+  });
+
+  it('leaves an upper bound UNSCORED when its region reaches past the interval', () => {
+    const result = score({ value: 30, valueText: '<30', refLow: 0, refHigh: 20 });
+    expect(result.status).toBe('unscored_bound');
+    expect(result.tone).toBe('neutral');
+    expect(isScored(result.status)).toBe(false);
+    expect(result.notes.join(' ')).toMatch(/reaches outside/);
+  });
+
+  it('leaves an upper bound UNSCORED when the interval has a non-zero lower end', () => {
+    // (-inf, 30] cannot be shown to be inside [10, 100]
+    expect(score({ value: 30, valueText: '<30', refLow: 10, refHigh: 100 }).status).toBe('unscored_bound');
+  });
+
+  it('leaves an upper bound UNSCORED when the interval has no upper end printed', () => {
+    const result = score({ value: 30, valueText: '<30', refLow: 40 });
+    expect(result.status).toBe('unscored_bound');
+    expect(result.notes.join(' ')).toMatch(/no upper end/);
+  });
+
+  it('never calls a lower bound in range: the region has no upper end', () => {
+    for (const valueText of ['>10', '>=10', '2+']) {
+      const result = score({ value: 10, valueText, refLow: 0, refHigh: 100 });
+      expect(result.status, valueText).toBe('unscored_bound');
+      expect(result.notes.join(' ')).toMatch(/no upper end/);
+    }
+  });
+
+  it('never calls a bounded row out of range, however far the bound sits', () => {
+    expect(score({ value: 500, valueText: '>500', refLow: 0, refHigh: 10 }).status).toBe('unscored_bound');
+    expect(score({ value: 0, valueText: '<0', refLow: 100, refHigh: 200 }).status).toBe('unscored_bound');
+  });
+
+  it('scores a bounded row against a fallback band too, and says which interval it used', () => {
+    const openBand: LabBand = { ...twoSided, low: 0, high: 100, refText: '0-100' };
+    const result = score({ value: 15, valueText: '<15', refLow: null, refHigh: null, band: openBand });
+    expect(result.status).toBe('in_range');
+    expect(result.interval.origin).toBe('reference_table');
+    expect(result.notes.join(' ')).toContain('general reference interval');
+    // A band with a non-zero lower end cannot contain the whole bound region.
+    expect(score({ value: 15, valueText: '<15', refLow: null, refHigh: null, band: twoSided }).status).toBe(
+      'unscored_bound'
+    );
+  });
+
+  it('still reports no-range for a bounded row when nothing at all is known', () => {
+    const result = score({ value: 30, valueText: '<30' });
+    expect(result.status).toBe('unscored_no_range');
+  });
+});
+
 describe('the printed interval wins over a fallback band', () => {
   it('uses the printed interval and ignores the band', () => {
     const interval = resolveIntervalFor({ refLow: 4, refHigh: 6, band: twoSided });
@@ -190,6 +279,7 @@ describe('labels and tones', () => {
       'out_high',
       'unscored_no_range',
       'unscored_non_numeric',
+      'unscored_bound',
     ] as const) {
       expect(labelFor(status).length).toBeGreaterThan(0);
       expect(['good', 'caution', 'attention', 'neutral']).toContain(toneFor(status));

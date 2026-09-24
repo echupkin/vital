@@ -40,6 +40,19 @@ const COMPARATOR = String.raw`<=|>=|<|>`;
  */
 export const UNIT_TOKEN = String.raw`\/?[A-Za-z%µ][A-Za-z0-9%µ^/.\-]*`;
 
+/**
+ * A comparator a printed RESULT cell carries when the report BOUNDED the value
+ * instead of measuring it (`<30`, `<=200`, `>39`, `>=40`), or the urinalysis
+ * grade `+` a report appends to a count (`1+`, `2+`).
+ *
+ * A `+` grade is a LOWER bound: the result is that grade or more and nothing is
+ * known above it. It is listed here rather than among the qualitative words
+ * because a bounded result is not a measurement and must never be charted as
+ * one — see `scoreResult` in ../status.ts, which leaves every bounded value
+ * unscored unless the whole bound region is provably inside the interval.
+ */
+export type PrintedBound = '<' | '<=' | '>' | '>=' | '+';
+
 /** A parsed result cell. At least one of `value`/`valueText` is non-null. */
 export interface ParsedValue {
   value: number | null;
@@ -47,6 +60,13 @@ export interface ParsedValue {
   valueText: string | null;
   /** The unit exactly as printed, or null. Never invented, never copied. */
   unit: string | null;
+  /**
+   * The comparator the cell carried, when it carried one. Set only by
+   * `parseBoundedCell` (the Quest path); a plain number leaves it undefined, so
+   * the trend-matrix path is untouched. A value that carries a bound is ALWAYS
+   * labelled by it in `valueText` as well — the printed text is the evidence.
+   */
+  bound?: PrintedBound | null;
 }
 
 /**
@@ -93,6 +113,56 @@ export function parseValueCell(text: string): ParsedValue | null {
   }
 
   return null;
+}
+
+/**
+ * Parse a result cell that carries a BOUND rather than a measurement.
+ *
+ * Understood forms, all taken from the documents:
+ *   upper   `<30`  `<=200`  `< OR = 0.2 mg/dL`
+ *   lower   `>39`  `>=40`   `> OR = 60 mL/min/1.73m2`
+ *   grade   `1+`  `2+`     (urinalysis: the printed grade or more)
+ *
+ * THE PRINTED TEXT IS KEPT VERBATIM in `valueText`, including the report's own
+ * stranded `OR =` spelling, and any unit stays in `unit`. The number is the one
+ * the document PRINTED — nothing is inferred from it and no endpoint is
+ * invented. Returns null for anything that is not one of these forms, so a
+ * caller can fall back to the shared grammar without a bound being half-read.
+ */
+export function parseBoundedCell(text: string): ParsedValue | null {
+  const raw = text.trim();
+  if (raw === '') return null;
+
+  const comparator = new RegExp(
+    String.raw`^((?:<=|>=|<|>)(?:\s*or\s*=)?)\s*(${NUM})(?:\s*(${UNIT_TOKEN}))?$`,
+    'i'
+  ).exec(raw);
+  if (comparator) {
+    const value = toNumber(comparator[2]);
+    if (value === null) return null;
+    const unit = comparator[3] ? comparator[3].trim() : null;
+    // The unit is split off; everything before it is the printed bound verbatim.
+    const valueText = unit ? raw.slice(0, raw.length - comparator[3].length).trim() : raw;
+    return { value, valueText, unit, bound: normaliseBound(comparator[1]) };
+  }
+
+  const grade = new RegExp(String.raw`^(${NUM})\+\s*(${UNIT_TOKEN})?$`).exec(raw);
+  if (grade) {
+    const value = toNumber(grade[1]);
+    if (value === null) return null;
+    const unit = grade[2] ? grade[2].trim() : null;
+    const valueText = unit ? raw.slice(0, raw.length - grade[2].length).trim() : raw;
+    return { value, valueText, unit, bound: '+' };
+  }
+
+  return null;
+}
+
+/** `< OR =` is the report's spelling of `<=`; everything else is read as written. */
+function normaliseBound(token: string): PrintedBound {
+  const compact = token.replace(/\s+/g, '').replace(/or/i, '');
+  if (compact.startsWith('<')) return compact.endsWith('=') ? '<=' : '<';
+  return compact.endsWith('=') ? '>=' : '>';
 }
 
 /** A printed reference interval. */

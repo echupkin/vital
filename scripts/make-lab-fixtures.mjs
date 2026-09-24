@@ -345,7 +345,7 @@ function questResults() {
   one.push(run(referenceX, 532, 'YELLOW'));
   // A QUALITATIVE result that does NOT match it.
   one.push(run(rowX, 512, 'DELTA KETONES'));
-  one.push(run(outOfRangeX, 512, '1+'));
+  one.push(run(outOfRangeX, 512, 'TRACE'));
   one.push(run(referenceX, 512, 'NEGATIVE'));
   footer(one, 1);
 
@@ -369,6 +369,37 @@ function questResults() {
   two.push(run(rowX, 492, 'ETA BARE'));
   two.push(run(inRangeX, 492, '5.5'));
   two.push(run(referenceX, 492, '5.0-8.0'));
+  // A urinalysis GRADE: `2+` is a lower bound (that grade or more), not a plain
+  // number. It is kept with the number the report printed and its bound.
+  two.push(run(rowX, 472, 'THETA GRADE'));
+  two.push(run(outOfRangeX, 472, '2+'));
+  two.push(run(referenceX, 472, 'NEGATIVE'));
+  // A NOTICE token in the result column: a pointer to a comment block, never a
+  // result. The row must be refused, and the token never stored.
+  two.push(run(rowX, 452, 'IOTA NOTE'));
+  two.push(run(inRangeX, 452, 'SEE NOTE:'));
+  two.push(run(referenceX, 452, '1.0-2.0'));
+  // A reference cell that is ONLY a marker: no interval, and no invented one.
+  two.push(run(rowX, 432, 'KAPPA CALC'));
+  two.push(run(inRangeX, 432, '5.0'));
+  two.push(run(referenceX, 432, '(calc)'));
+  // A printed textual EXPECTATION carrying a per-field unit.
+  two.push(run(rowX, 412, 'LAMBDA CELLS'));
+  two.push(run(inRangeX, 412, 'NONE SEEN'));
+  two.push(run(referenceX, 412, 'NONE SEEN /HPF'));
+  // A BOUNDED result whose whole region is inside the printed interval.
+  two.push(run(rowX, 392, 'MU BOUND'));
+  two.push(run(inRangeX, 392, '<3'));
+  two.push(run(referenceX, 392, '0-5'));
+  // A BOUNDED result with no upper end: it can never be shown to be inside.
+  two.push(run(rowX, 372, 'NU ABOVE'));
+  two.push(run(outOfRangeX, 372, '>10'));
+  two.push(run(referenceX, 372, '0-5'));
+  // An INTERPRETATION block: legend lines, mixed case, printed where a row's
+  // name would be. They carry no result and must be refused, never imported.
+  two.push(run(rowX, 352, 'Legend Low: <0 ng/mL'));
+  two.push(run(rowX, 332, 'Legend Mid: 0 - 5 ng/mL'));
+  two.push(run(rowX, 312, 'Legend High: > or = 5 ng/mL'));
   footer(two, 2);
 
   return buildPdf([one.join(''), two.join('')]);

@@ -137,10 +137,27 @@ describe('printed values in this layout', () => {
   });
 
   it('keeps a qualitative result as printed', () => {
-    expect(parseQuestValueCell('1+')).toEqual({ value: null, valueText: '1+', unit: null });
     expect(parseQuestValueCell('NONE SEEN')).toEqual({ value: null, valueText: 'NONE SEEN', unit: null });
-    expect(parseQuestValueCell('SEE NOTE:')).toEqual({ value: null, valueText: 'SEE NOTE:', unit: null });
     expect(parseQuestValueCell('YELLOW')).toEqual({ value: null, valueText: 'YELLOW', unit: null });
+  });
+
+  it('never reads a notice or annotation token as a value', () => {
+    for (const token of ['SEE NOTE:', 'SEE NOTE', 'NOTE:', 'D:', 'I:', ':']) {
+      expect(parseQuestValueCell(token), token).toBeNull();
+    }
+  });
+
+  it('reads a printed BOUND as the number plus an explicit bound, verbatim in valueText', () => {
+    expect(parseQuestValueCell('<30')).toEqual({ value: 30, valueText: '<30', unit: null, bound: '<' });
+    expect(parseQuestValueCell('<=200')).toEqual({ value: 200, valueText: '<=200', unit: null, bound: '<=' });
+    expect(parseQuestValueCell('>39 mg/dL')).toEqual({ value: 39, valueText: '>39', unit: 'mg/dL', bound: '>' });
+    expect(parseQuestValueCell('>=40')).toEqual({ value: 40, valueText: '>=40', unit: null, bound: '>=' });
+    // The report's own stranded `or`, kept verbatim in the printed text.
+    expect(parseQuestValueCell('< OR = 5 /HPF')).toEqual({ value: 5, valueText: '< OR = 5', unit: '/HPF', bound: '<=' });
+    expect(parseQuestValueCell('> OR = 60')).toEqual({ value: 60, valueText: '> OR = 60', unit: null, bound: '>=' });
+    // A urinalysis grade: the printed grade or more, labelled as printed.
+    expect(parseQuestValueCell('2+')).toEqual({ value: 2, valueText: '2+', unit: null, bound: '+' });
+    expect(parseQuestValueCell('1+')).toEqual({ value: 1, valueText: '1+', unit: null, bound: '+' });
   });
 
   it('refuses a cell it cannot read rather than guessing one', () => {
@@ -175,7 +192,18 @@ describe('printed reference cells in this layout', () => {
     expect(parseQuestReference('<5.0 (calc)')).toMatchObject({ refLow: null, refHigh: 5, form: 'range' });
     expect(parseQuestReference('> OR = 60 mL/min/1.73m2')).toMatchObject({ refLow: 60, refHigh: null });
     expect(parseQuestReference('< OR = 0.2 mg/dL')).toMatchObject({ refLow: null, refHigh: 0.2 });
-    expect(parseQuestReference('NONE SEEN /HPF')).toBeNull();
+    expect(parseQuestReference('< OR = 5 /HPF')).toMatchObject({ refLow: null, refHigh: 5, unit: '/HPF' });
+  });
+
+  it('reads a printed textual expectation, with or without a per-field unit', () => {
+    expect(parseQuestReference('NONE SEEN /HPF')).toEqual({
+      refLow: null,
+      refHigh: null,
+      refText: 'NONE SEEN /HPF',
+      unit: null,
+      form: 'text',
+    });
+    expect(parseQuestReference('NONE SEEN /LPF')).toMatchObject({ refText: 'NONE SEEN /LPF', form: 'text' });
   });
 
   it('recognises a cell that is only a unit, and one that is only expected text', () => {
@@ -190,8 +218,14 @@ describe('printed reference cells in this layout', () => {
     });
   });
 
-  it('returns null for a cell that is an annotation and nothing else', () => {
-    expect(parseQuestReference('(calc)')).toBeNull();
+  it('keeps a marker that is nothing but an annotation out of the interval', () => {
+    expect(parseQuestReference('(calc)')).toEqual({
+      refLow: null,
+      refHigh: null,
+      refText: null,
+      unit: null,
+      form: 'annotation',
+    });
     expect(parseQuestReference('')).toBeNull();
   });
 });
@@ -265,7 +299,8 @@ describe('reading a page of this layout', () => {
     // A name that wraps onto the line its value is printed on.
     line(1, 10, 480, [['DELTA LONG', 40]]),
     line(1, 11, 460, [['NAME TEST', 52], ['3.0', 240], ['1.0-5.0', 404]]),
-    // A calculated interval, and a row that prints an interval but no value.
+    // A calculated interval, and a row whose result column carried a NOTICE
+    // token — a pointer to a comment block, never a value.
     line(1, 12, 440, [['EPSILON NOTE', 40], ['SEE NOTE:', 240], ['6-22 (calc)', 404]]),
     line(1, 13, 420, [['ZETA REFONLY', 40], ['1.0-2.0', 404]]),
     // A cell that is not a result in any known form.
@@ -361,21 +396,15 @@ describe('reading a page of this layout', () => {
         source: 'report',
         method: 'deterministic',
       },
-      {
-        key: 'epsilon_note',
-        name: 'EPSILON NOTE',
-        on: '2021-02-03',
-        value: null,
-        valueText: 'SEE NOTE:',
-        unit: null,
-        low: 6,
-        high: 22,
-        refText: '6-22 (calc)',
-        flag: 'In Range',
-        source: 'report',
-        method: 'deterministic',
-      },
     ]);
+  });
+
+  it('refuses a row whose result column carried a notice token, and never stores it', () => {
+    expect(read.observations.some(observation => observation.analyteKey === 'epsilon_note')).toBe(false);
+    const refused = read.rejections.find(rejection => rejection.reason === 'notice_line');
+    expect(refused?.text).toContain('EPSILON NOTE');
+    // The token is nowhere in a stored field, in any form.
+    expect(JSON.stringify(read.observations)).not.toContain('SEE NOTE');
   });
 
   it('records the textual basis for a qualitative match and says why a mismatch is unscored', () => {
@@ -467,5 +496,75 @@ describe('a page carrying no results table', () => {
     );
     expect(read.observations).toEqual([]);
     expect(read.rejections.map(rejection => rejection.reason)).toEqual(['identity_line', 'not_a_result_line']);
+  });
+});
+
+// ── Bounds, markers, legends and interpretation blocks ───────────────────────
+
+describe('bounded results, markers and legend blocks', () => {
+  const layout = layoutOf(1, [
+    line(1, 1, 700, [['Collected: 02/03/2021 / 08:00 CDT', 230], ['Reported: 02/03/2021 / 09:00 CDT', 430]]),
+    line(1, 2, 600, HEADER_RUNS),
+    // A bound whose whole region is inside the interval, and one that is not.
+    line(1, 3, 580, [['ALPHA BOUND', 40], ['<3', 240], ['0-5', 404]]),
+    line(1, 4, 560, [['BETA ABOVE', 40], ['>10', 320], ['0-5', 404]]),
+    // A urinalysis grade: a lower bound, not a measurement.
+    line(1, 5, 540, [['GAMMA GRADE', 40], ['2+', 320], ['NEGATIVE', 404]]),
+    // A reference cell that is ONLY a marker.
+    line(1, 6, 520, [['DELTA CALC', 40], ['5.0', 240], ['(calc)', 404]]),
+    // A printed textual expectation carrying a per-field unit.
+    line(1, 7, 500, [['EPSILON CELLS', 40], ['NONE SEEN', 240], ['NONE SEEN /HPF', 404]]),
+    // An INTERPRETATION block: legend lines where a row's name would be.
+    line(1, 8, 480, [['Legend Low: <10 ng/mL', 40]]),
+    line(1, 9, 460, [['Legend Mid: 10 - 20 ng/mL', 40]]),
+    line(1, 10, 440, [['Legend High: > or = 20 ng/mL', 40]]),
+    line(1, 11, 420, [['ZETA AFTER', 40], ['4.0', 240], ['1.0-8.0', 404]]),
+  ]);
+  const read = interpretQuest(layout);
+  const byKey = (key: string) => read.observations.find(observation => observation.analyteKey === key);
+
+  it('stores a bound with the number the document printed and its printed text', () => {
+    expect(byKey('alpha_bound')).toMatchObject({
+      value: 3,
+      valueText: '<3',
+      refLow: 0,
+      refHigh: 5,
+      refText: '0-5',
+      refSource: 'report',
+    });
+    expect(byKey('beta_above')).toMatchObject({ value: 10, valueText: '>10', refHigh: 5 });
+    expect(byKey('gamma_grade')).toMatchObject({ value: 2, valueText: '2+', refText: 'NEGATIVE' });
+  });
+
+  it('stores no interval for a marker-only reference cell, and raises no range warning', () => {
+    expect(byKey('delta_calc')).toMatchObject({
+      value: 5,
+      refLow: null,
+      refHigh: null,
+      refText: null,
+      refSource: 'none',
+    });
+    expect(read.warnings.some(warning => warning.code === 'unparsable_range')).toBe(false);
+    // The marker itself survives in the row's own printed text.
+    expect(byKey('delta_calc')?.sourceLine).toContain('(calc)');
+  });
+
+  it('captures a printed textual expectation instead of calling it unparsable', () => {
+    expect(byKey('epsilon_cells')).toMatchObject({ valueText: 'NONE SEEN', refText: 'NONE SEEN /HPF' });
+    expect(read.warnings.some(warning => warning.code === 'unparsable_range')).toBe(false);
+  });
+
+  it('refuses every line of an interpretation block, and imports none of it', () => {
+    expect(read.observations.some(observation => /legend/i.test(observation.printedName))).toBe(false);
+    const refused = read.rejections.filter(rejection => /^Legend /i.test(rejection.text));
+    expect(refused.map(rejection => rejection.text)).toEqual([
+      'Legend Low: <10 ng/mL',
+      'Legend Mid: 10 - 20 ng/mL',
+      'Legend High: > or = 20 ng/mL',
+    ]);
+    expect(refused.every(rejection => rejection.reason === 'notice_line')).toBe(true);
+    // The rows around the block are still read.
+    expect(byKey('alpha_bound')).toBeDefined();
+    expect(byKey('zeta_after')).toBeDefined();
   });
 });

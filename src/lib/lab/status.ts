@@ -20,6 +20,12 @@
 // verdict on its own, and when it disagrees with the interval it never silently
 // overrides it: the interval's verdict is kept and the disagreement is recorded
 // as a note.
+//
+// A BOUND IS NOT A MEASUREMENT. When a result was printed as a bound (`<30`,
+// `> OR = 60`, the urinalysis grade `2+`) only a REGION is known. The row is
+// `in_range` only when that whole region is provably inside the interval, and is
+// otherwise `unscored_bound` — never `out_of_range` (a bound does not say the
+// value is outside anything) and never silently `in_range` by assumption.
 
 import type { BandSex, LabBand } from './analytes';
 
@@ -40,10 +46,45 @@ export type ResultStatus =
   | 'out_low'
   | 'out_high'
   | 'unscored_no_range'
-  | 'unscored_non_numeric';
+  | 'unscored_non_numeric'
+  /** The result was printed as a bound (`<30`, `>39`, `1+`): the truth is unknown. */
+  | 'unscored_bound';
 
 /** The tone the UI pairs with the verdict, so colour is never the only signal. */
 export type StatusTone = 'good' | 'caution' | 'attention' | 'neutral';
+
+/**
+ * A comparator the report printed instead of a plain value: `valueText` carries
+ * these forms verbatim and the numeric `value` is the endpoint the document
+ * PRINTED. `+` is the urinalysis grade (`1+`, `2+`) — a LOWER bound only.
+ *
+ * The extractor labels every bounded value: it stores the printed text in
+ * `valueText` (e.g. `<30`, `> OR = 60`, `2+`) and the bound region is scored
+ * conservatively by `scoreResult` below. The vocabulary is deliberately tiny and
+ * is re-read here rather than trusted from any other field, because a bound that
+ * cannot be read back is a bound that would silently be charted as a point.
+ */
+export type ValueBound = '<' | '<=' | '>' | '>=' | '+';
+
+/**
+ * The bound a printed result text carries, or null when it is a plain value.
+ * Recognises the report's own stranded spelling (`< OR = 5` ⇒ `<=`).
+ */
+export function boundOf(valueText: string | null | undefined): ValueBound | null {
+  const text = (valueText ?? '').trim();
+  if (text === '') return null;
+  // The comparator is matched case-insensitively because a report prints the
+  // stranded spelling either way (`< OR = 0.2`, `< or = 18.4`).
+  const prefixed = /^((?:<=|>=|<|>)(?:\s*or\s*=)?)\s*[\d.,]/i.exec(text);
+  if (prefixed) {
+    const compact = prefixed[1].replace(/\s+/g, '').replace(/or/i, '');
+    if (compact.startsWith('<')) return compact.endsWith('=') ? '<=' : '<';
+    return compact.endsWith('=') ? '>=' : '>';
+  }
+  // A urinalysis grade: the printed grade or more, unbounded above.
+  if (/^[\d.,]+\+$/.test(text)) return '+';
+  return null;
+}
 
 /** A resolved interval and where it came from. */
 export interface ResolvedInterval {
@@ -159,6 +200,16 @@ export function scoreResult(input: StatusInput): StatusResult {
     };
   }
 
+  // A BOUNDED result is not a measurement. A `<X` region can be called in range
+  // only when the WHOLE region is inside the interval; a region with no end on
+  // one side can never be shown to be inside a finite interval. Either way the
+  // truth is unknown, and it is reported as unknown — never `out_of_range`, and
+  // never silently `in_range`.
+  const bound = boundOf(input.valueText);
+  if (bound) {
+    return boundedResult(bound, input.value as number, input.valueText ?? '', interval);
+  }
+
   const value = input.value;
   const low = interval.low;
   const high = interval.high;
@@ -216,6 +267,62 @@ export function scoreResult(input: StatusInput): StatusResult {
   return { status, label: labelFor(status), tone: toneFor(status), interval, notes };
 }
 
+/**
+ * Score a BOUNDED result. PURE, and deliberately conservative.
+ *
+ * The row is `in_range` ONLY when the entire region the bound describes is
+ * provably inside the interval: an upper bound `<X` with the interval open at
+ * the bottom (`low` absent or 0) and `X` at or below `high`. Anything else — a
+ * bound region that reaches past an endpoint, or a region with no end on one
+ * side at all — is `unscored_bound`, with the reason recorded. It is never
+ * `out_of_range` (a bound does not say the value is outside anything) and never
+ * `in_range` by assumption.
+ */
+function boundedResult(
+  bound: ValueBound,
+  value: number,
+  shown: string,
+  interval: ResolvedInterval
+): StatusResult {
+  const notes: string[] = [];
+  const intervalText = interval.refText ?? 'the interval it carries';
+  const verdict: ResultStatus = 'unscored_bound';
+
+  if (bound === '<' || bound === '<=') {
+    const opening = interval.low === null || interval.low === 0;
+    const inside = opening && interval.high !== null && value <= interval.high;
+    if (inside) {
+      notes.push(
+        `The result was printed as a bound ("${shown}"), so the value is known only to be at or below ${value}. Every value in that region lies inside the interval (${intervalText}), so the row is called in range — the basis is the printed bound, not a measurement.`
+      );
+      if (interval.origin === 'reference_table') {
+        notes.push(
+          'This interval is a general reference interval, not the interval printed on the report. It is a population range, not a personal target.'
+        );
+      }
+      return { status: 'in_range', label: labelFor('in_range'), tone: toneFor('in_range'), interval, notes };
+    }
+    notes.push(
+      interval.high === null
+        ? `The result was printed as a bound ("${shown}") and the interval (${intervalText}) has no upper end printed, so the row cannot be scored: a region without an upper end cannot be compared with an interval that has none.`
+        : `The result was printed as a bound ("${shown}"), so only a range of values is known: everything at or below ${value}. That region reaches outside the interval (${intervalText}), so part of it may lie outside the range and the row is left unscored rather than called out of range.`
+    );
+  } else {
+    // `>` `>=` and the urinalysis grade `+`: the region has no upper end.
+    notes.push(
+      `The result was printed as a bound ("${shown}"), so the value is known only to be ${
+        bound === '+' ? `the printed grade or more` : `at or beyond ${value}`
+      }. The region the bound describes has no upper end, so it cannot be shown to lie inside the interval (${intervalText}); the row is left unscored rather than called out of range.`
+    );
+  }
+  if (interval.origin === 'reference_table') {
+    notes.push(
+      'This interval is a general reference interval, not the interval printed on the report. It is a population range, not a personal target.'
+    );
+  }
+  return { status: verdict, label: labelFor(verdict), tone: toneFor(verdict), interval, notes };
+}
+
 /** The human label for a verdict. Never a verdict word like "dangerous". */
 export function labelFor(status: ResultStatus): string {
   switch (status) {
@@ -233,6 +340,8 @@ export function labelFor(status: ResultStatus): string {
       return 'No reference interval';
     case 'unscored_non_numeric':
       return 'Not a number';
+    case 'unscored_bound':
+      return 'Bounded result';
   }
 }
 
@@ -249,13 +358,14 @@ export function toneFor(status: ResultStatus): StatusTone {
       return 'attention';
     case 'unscored_no_range':
     case 'unscored_non_numeric':
+    case 'unscored_bound':
       return 'neutral';
   }
 }
 
 /** True when the status is a numeric verdict against an interval. */
 export function isScored(status: ResultStatus): boolean {
-  return status !== 'unscored_no_range' && status !== 'unscored_non_numeric';
+  return status !== 'unscored_no_range' && status !== 'unscored_non_numeric' && status !== 'unscored_bound';
 }
 
 // ── Interval resolution ─────────────────────────────────────────────────────

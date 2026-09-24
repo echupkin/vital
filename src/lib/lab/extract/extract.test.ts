@@ -397,7 +397,7 @@ describe('a Quest Diagnostics results report', () => {
     expect(result.labName).toBe('Quest Diagnostics');
     // The document's own date, read from the LAST `Reported:` field it printed.
     expect(result.documentDate).toBe('2021-01-03');
-    expect(result.observations).toHaveLength(7);
+    expect(result.observations).toHaveLength(12);
 
     expect(
       result.observations.map(observation => ({
@@ -467,7 +467,7 @@ describe('a Quest Diagnostics results report', () => {
         printedName: 'DELTA KETONES',
         resultOn: '2021-01-02',
         value: null,
-        valueText: '1+',
+        valueText: 'TRACE',
         unit: null,
         refLow: null,
         refHigh: null,
@@ -521,7 +521,111 @@ describe('a Quest Diagnostics results report', () => {
         printedFlag: 'In Range',
         extractionMethod: 'deterministic',
       },
+      // A urinalysis grade: the number the report printed, plus its bound.
+      {
+        analyteKey: 'theta_grade',
+        printedName: 'THETA GRADE',
+        resultOn: '2021-01-03',
+        value: 2,
+        valueText: '2+',
+        unit: null,
+        refLow: null,
+        refHigh: null,
+        refText: 'NEGATIVE',
+        refSource: 'report',
+        printedFlag: 'Out Of Range',
+        extractionMethod: 'deterministic',
+      },
+      // A reference cell that is ONLY a marker: no interval is stored for it.
+      {
+        analyteKey: 'kappa_calc',
+        printedName: 'KAPPA CALC',
+        resultOn: '2021-01-03',
+        value: 5,
+        valueText: null,
+        unit: null,
+        refLow: null,
+        refHigh: null,
+        refText: null,
+        refSource: 'none',
+        printedFlag: 'In Range',
+        extractionMethod: 'deterministic',
+      },
+      // A printed textual expectation carrying a per-field unit.
+      {
+        analyteKey: 'lambda_cells',
+        printedName: 'LAMBDA CELLS',
+        resultOn: '2021-01-03',
+        value: null,
+        valueText: 'NONE SEEN',
+        unit: null,
+        refLow: null,
+        refHigh: null,
+        refText: 'NONE SEEN /HPF',
+        refSource: 'report',
+        printedFlag: 'In Range',
+        extractionMethod: 'deterministic',
+      },
+      // A bound whose whole region is inside the printed interval.
+      {
+        analyteKey: 'mu_bound',
+        printedName: 'MU BOUND',
+        resultOn: '2021-01-03',
+        value: 3,
+        valueText: '<3',
+        unit: null,
+        refLow: 0,
+        refHigh: 5,
+        refText: '0-5',
+        refSource: 'report',
+        printedFlag: 'In Range',
+        extractionMethod: 'deterministic',
+      },
+      // A bound with no upper end: it can never be shown to be inside.
+      {
+        analyteKey: 'nu_above',
+        printedName: 'NU ABOVE',
+        resultOn: '2021-01-03',
+        value: 10,
+        valueText: '>10',
+        unit: null,
+        refLow: 0,
+        refHigh: 5,
+        refText: '0-5',
+        refSource: 'report',
+        printedFlag: 'Out Of Range',
+        extractionMethod: 'deterministic',
+      },
     ]);
+  });
+
+  it('labels every bounded result with the bound the document printed', async () => {
+    const result = await extractLabDocument(fixture('quest-results.pdf'), { filename: 'quest-results.pdf' });
+    const bounded = result.observations.filter(observation => observation.valueText && /^[<>]|^[\d.]+\+$/.test(observation.valueText));
+    const labels = bounded.map(observation => ({ key: observation.analyteKey, value: observation.value, text: observation.valueText }));
+    expect(labels).toEqual([
+      { key: 'theta_grade', value: 2, text: '2+' },
+      { key: 'mu_bound', value: 3, text: '<3' },
+      { key: 'nu_above', value: 10, text: '>10' },
+    ]);
+    // A bound is never stored without its printed label.
+    expect(bounded.every(observation => observation.value !== null && observation.valueText !== null)).toBe(true);
+  });
+
+  it('refuses the row whose result column carried a notice token, and stores the token nowhere', async () => {
+    const result = await extractLabDocument(fixture('quest-results.pdf'), { filename: 'quest-results.pdf' });
+    expect(result.observations.some(observation => observation.analyteKey === 'iota_note')).toBe(false);
+    const refused = result.rejections.filter(rejection => rejection.reason === 'notice_line');
+    expect(refused.map(rejection => rejection.text)).toContain('IOTA NOTE SEE NOTE: 1.0-2.0');
+    expect(JSON.stringify(result.observations)).not.toContain('SEE NOTE');
+  });
+
+  it('refuses the interpretation block, and imports no line of it', async () => {
+    const result = await extractLabDocument(fixture('quest-results.pdf'), { filename: 'quest-results.pdf' });
+    const legend = result.rejections.filter(rejection => /^Legend /i.test(rejection.text));
+    expect(legend).toHaveLength(3);
+    expect(legend.every(rejection => rejection.reason === 'notice_line')).toBe(true);
+    expect(result.observations.some(observation => /legend/i.test(observation.printedName))).toBe(false);
   });
 
   it('records the textual basis for a qualitative match, and why a mismatch is unscored', async () => {
