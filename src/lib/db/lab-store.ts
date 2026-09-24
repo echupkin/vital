@@ -576,6 +576,15 @@ export interface SeriesPoint {
   /** The panel heading this row was printed under, or null when the page had none. */
   panel: string | null;
   printedFlag: string | null;
+  /**
+   * The reference cell EXACTLY as the document printed it, e.g. "<200 mg/dL",
+   * "136-145" or the expected word for a qualitative result ("NEGATIVE"). It is
+   * what the Lab surfaces show beside the value, and it is what a qualitative
+   * result is interpreted against — carried here so a reader (the Lab page, and
+   * now the analyst's context) can state the interval the document printed,
+   * rather than only the interval the app scored against.
+   */
+  refText: string | null;
   /** The interval that was scored against, and where it came from. */
   interval: ResolvedInterval;
   status: ResultStatus;
@@ -728,6 +737,7 @@ export async function getSeries(
         unit: row.unit,
         panel: row.panel,
         printedFlag: row.printedFlag,
+        refText: row.refText,
         interval: scored.interval,
         status: scored.status,
         statusLabel: scored.label,
@@ -823,4 +833,32 @@ export function keyForPrintedName(printedName: string): { key: string; fallback:
  */
 export function storeClient(env: NodeJS.ProcessEnv = process.env): SqlClient | null {
   return getPool(env);
+}
+
+const SELECT_PROFILE_FACTS = `
+  SELECT to_char(date_of_birth, 'YYYY-MM-DD') AS date_of_birth, sex
+    FROM profile
+   WHERE id = 1
+`;
+
+/**
+ * The owner's facts that choose a reference band, read from the one profile row.
+ *
+ * A read failure (or no profile row yet) is reported as `null` rather than
+ * throwing: the caller then serves every result unscored, which is the honest
+ * outcome — a missing profile must not hide the results, and no sex or age is
+ * ever assumed from a document. This is the one implementation of that query;
+ * the lab summary route imports it too.
+ */
+export async function readSeriesProfile(client: SqlClient): Promise<SeriesProfile | null> {
+  try {
+    const result = await client.query(SELECT_PROFILE_FACTS);
+    const row = result.rows[0];
+    if (!row) return null;
+    const sex = row.sex === 'male' || row.sex === 'female' ? row.sex : null;
+    const dateOfBirth = typeof row.date_of_birth === 'string' ? row.date_of_birth : null;
+    return { dateOfBirth, sex };
+  } catch {
+    return null;
+  }
 }

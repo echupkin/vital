@@ -10,34 +10,13 @@
 // used and the result stays unscored, with a warning — see status.ts.
 
 import { NextResponse } from 'next/server';
-import { getSeries, storeClient, type SeriesProfile } from '@/lib/db/lab-store';
+import { getSeries, readSeriesProfile, storeClient } from '@/lib/db/lab-store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const NO_STORE = { 'Cache-Control': 'no-store, private' } as const;
-
-const SELECT_PROFILE_FACTS = `
-  SELECT to_char(date_of_birth, 'YYYY-MM-DD') AS date_of_birth, sex
-    FROM profile
-   WHERE id = 1
-`;
-
-async function readProfileFacts(client: NonNullable<ReturnType<typeof storeClient>>): Promise<SeriesProfile | null> {
-  try {
-    const result = await client.query(SELECT_PROFILE_FACTS);
-    const row = result.rows[0];
-    if (!row) return null;
-    const sex = row.sex === 'male' || row.sex === 'female' ? row.sex : null;
-    const dateOfBirth = typeof row.date_of_birth === 'string' ? row.date_of_birth : null;
-    return { dateOfBirth, sex };
-  } catch {
-    // A profile read failure must not hide the results: the series is served
-    // unscored rather than not at all.
-    return null;
-  }
-}
 
 export async function GET() {
   const client = storeClient();
@@ -55,7 +34,7 @@ export async function GET() {
     );
   }
 
-  const profile = await readProfileFacts(client);
+  const profile = await readSeriesProfile(client);
   const series = await getSeries(client, profile);
 
   return NextResponse.json(
