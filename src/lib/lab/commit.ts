@@ -24,6 +24,7 @@ import type {
   LabRefSource,
   LabCategory,
 } from './types';
+import { MAX_PRINTED_FLAG_LENGTH } from './types';
 import { resolveAnalyte } from './analytes';
 import type { NewReportInput } from '@/lib/db/lab-store';
 
@@ -283,9 +284,13 @@ export function validateCommitPayload(body: unknown): CommitValidation {
       return { ok: false, status: 400, error: `${at}.confidence must be a number in [0,1] or null.` };
     }
 
-    const printedFlag = stringOrNull(row.printedFlag, 8);
+    const printedFlag = stringOrNull(row.printedFlag, MAX_PRINTED_FLAG_LENGTH);
     if (printedFlag === undefined) {
-      return { ok: false, status: 400, error: `${at}.printedFlag must be a short string or null.` };
+      return {
+        ok: false,
+        status: 400,
+        error: `${at}.printedFlag must be a string of at most ${MAX_PRINTED_FLAG_LENGTH} characters or null.`,
+      };
     }
 
     const sourceLine = stringOrNull(row.sourceLine, 200);

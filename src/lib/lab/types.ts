@@ -33,6 +33,24 @@ export type LabRefSource = 'report' | 'reference_table' | 'manual' | 'none';
 /** Which pass produced a row. Mirrors the column's CHECK in 0004. */
 export type LabExtractionMethod = 'deterministic' | 'model' | 'manual';
 
+/**
+ * The longest printed flag a result row may carry.
+ *
+ * A flag is the short status word a report prints in its OWN column beside the
+ * result — `H`, `L`, `High`, `Out Of Range`. It is evidence, kept verbatim so the
+ * row can be read back as the report printed it, so this limit exists to reject a
+ * malformed value, not to police the report's wording.
+ *
+ * It was 8 (inline, at the commit validator) until a real Quest Diagnostics
+ * results document showed what that cost: Quest prints `In Range` (8) and
+ * `Out Of Range` (12) in that column, so every out-of-range row failed
+ * validation and the WHOLE document was refused with
+ * `results[6].printedFlag must be a short string or null.` The longest status
+ * word these reports are known to print is 12 characters; 32 leaves room for a
+ * longer wording without letting junk through.
+ */
+export const MAX_PRINTED_FLAG_LENGTH = 32;
+
 /** Which pass produced the observations of a document. */
 export type LabExtractionPass = 'deterministic' | 'model' | 'none';
 

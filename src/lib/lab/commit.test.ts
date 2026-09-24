@@ -1,4 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
+
+import { extractLabDocument } from './extract';
+import { MAX_PRINTED_FLAG_LENGTH } from './types';
 import { buildDraft, isIsoDate, isPdf, validateCommitPayload } from './commit';
 import type { ExtractionResult } from './types';
 
@@ -214,5 +219,77 @@ describe('the draft is reviewable and not persisted', () => {
     expect(draft.rows).toHaveLength(2);
     expect(draft.persisted).toBe(false);
     expect(draft.kind).toBe('results');
+  });
+});
+
+// ── The chain the import actually walks ──────────────────────────────────────
+//
+// These cases exist because of a real document that was refused. The extractor
+// read Quest Diagnostics' own status column verbatim — `In Range`, `Out Of
+// Range` — while the validator capped `printedFlag` at 8 characters, a limit
+// written for a one-letter `H`/`L` flag. Every out-of-range row therefore failed
+// and the WHOLE report was rejected with `results[6].printedFlag must be a short
+// string or null.` The extractor's output had never been fed to the validator in
+// a test, so neither side noticed; the shipped synthetic Quest fixture contains
+// four `Out Of Range` rows and would have failed the same way.
+
+/** The payload the client sends back, built from what the extractor read. */
+async function payloadFromFixture(name: string) {
+  const bytes = new Uint8Array(readFileSync(join(process.cwd(), 'src', 'lib', 'lab', '__fixtures__', name)));
+  const extraction = await extractLabDocument(bytes);
+  return {
+    extraction,
+    payload: {
+      kind: extraction.kind,
+      documentDate: extraction.documentDate,
+      sourceFilename: name,
+      sourceSha256: extraction.sourceSha256,
+      sourceBytes: extraction.sourceBytes,
+      pageCount: extraction.pageCount,
+      results: extraction.observations,
+    } as Record<string, unknown>,
+  };
+}
+
+describe('what the extractor read can be committed', () => {
+  it('accepts the status word a real report prints in its flag column', async () => {
+    const { extraction, payload } = await payloadFromFixture('quest-results.pdf');
+
+    // The fixture must genuinely carry the long flag, or the case proves nothing.
+    const longFlags = extraction.observations.filter(row => row.printedFlag === 'Out Of Range');
+    expect(longFlags.length).toBeGreaterThan(0);
+    expect('Out Of Range'.length).toBeGreaterThan(8);
+
+    const result = validateCommitPayload(payload);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // Kept verbatim: the flag is evidence of what the report printed.
+      expect(result.results.filter(row => row.printedFlag === 'Out Of Range')).toHaveLength(longFlags.length);
+    }
+  });
+
+  it('never lets a flag longer than the stated limit through', async () => {
+    const { extraction, payload } = await payloadFromFixture('quest-results.pdf');
+    const longest = Math.max(...extraction.observations.map(row => (row.printedFlag ?? '').length));
+    expect(longest).toBeLessThanOrEqual(MAX_PRINTED_FLAG_LENGTH);
+  });
+
+  it('names the limit when it refuses a flag, so the message is actionable', () => {
+    const tooLong = 'x'.repeat(MAX_PRINTED_FLAG_LENGTH + 1);
+    const result = validateCommitPayload(
+      basePayload({ results: [{ printedName: 'Cholesterol, Total', resultOn: '2024-03-03', value: 180, printedFlag: tooLong }] })
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain(String(MAX_PRINTED_FLAG_LENGTH));
+      expect(result.error).not.toBe('results[0].printedFlag must be a short string or null.');
+    }
+  });
+
+  it('still accepts a row with no flag at all', () => {
+    const result = validateCommitPayload(
+      basePayload({ results: [{ printedName: 'Cholesterol, Total', resultOn: '2024-03-03', value: 180, printedFlag: null }] })
+    );
+    expect(result.ok).toBe(true);
   });
 });
