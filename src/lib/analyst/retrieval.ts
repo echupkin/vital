@@ -43,10 +43,27 @@ interface PairSpec {
 interface WorkoutSpec {
   days: number;
 }
+
+/**
+ * How the lab block is selected for a question.
+ *
+ * `overview` carries one compact line per series (latest + previous observation)
+ * for the most recently measured series. `analyte` carries the bounded HISTORY
+ * of the analyte the question named (≤ MAX_POINTS_PER_SERIES points), so "is it
+ * moving?" is answerable; it falls back to `overview` when the question names no
+ * analyte. The actual rows are read asynchronously by the service (they live in
+ * Postgres, not in the metric dataset) — this spec is the declaration of what a
+ * handler is allowed to see, exactly like the summary specs above.
+ */
+export interface LabSpec {
+  mode: 'overview' | 'analyte';
+}
+
 interface RetrievalSpec {
   summaries?: SummarySpec[];
   pairs?: PairSpec[];
   workouts?: WorkoutSpec;
+  lab?: LabSpec;
 }
 
 /** Exactly what each handler is allowed to see. */
@@ -83,6 +100,10 @@ export const RETRIEVAL_SPECS: Record<string, RetrievalSpec> = {
     ],
     pairs: [{ x: 'sleep_analysis', y: 'heart_rate_variability', alignment: 'same-day', days: 90, splitByX: true }],
   },
+  // Lab questions select the lab block and NOTHING from the metric dataset: a
+  // lab analyte is not a wearable metric, and mixing the two would let an answer
+  // blur a blood test with a daily reading. See labSnapshot.ts.
+  'lab-results': { lab: { mode: 'analyte' } },
 };
 
 function aggregationWord(metricId: string, accumulating: boolean): string {
@@ -264,14 +285,36 @@ function buildBundle(handlerId: string, spec: RetrievalSpec, refKey: string): Re
   }
 
   const metricIds = [...new Set(summaries.map(s => s.metricId))];
-  const note =
-    metricIds.length + pairs.length + (workouts ? 1 : 0) === 0
-      ? 'No dataset context was selected for this question.'
-      : `Selected ${metricIds.length} metric summar${metricIds.length === 1 ? 'y' : 'ies'}${
-          pairs.length ? `, ${pairs.length} paired comparison${pairs.length === 1 ? '' : 's'}` : ''
-        }${workouts ? ' and the workout log' : ''}; ${recordsRead} records read. The rest of the dataset was not sent anywhere.`;
+  const selections: string[] = [];
+  if (metricIds.length > 0) selections.push(`${metricIds.length} metric summar${metricIds.length === 1 ? 'y' : 'ies'}`);
+  if (pairs.length > 0) selections.push(`${pairs.length} paired comparison${pairs.length === 1 ? '' : 's'}`);
+  if (workouts) selections.push('the workout log');
+  if (spec.lab) selections.push('the lab results');
 
-  return { handlerId, refKey, summaries, pairs, workouts, recordsRead, note };
+  const note =
+    selections.length === 0
+      ? 'No dataset context was selected for this question.'
+      : metricIds.length + pairs.length + (workouts ? 1 : 0) === 0
+        ? // Lab-only selection: nothing was read out of the metric dataset, and
+          // saying "0 records read" would read as "nothing was selected".
+          'The metric dataset was not read for this question; no dataset records read. The selected context is the lab results.'
+        : `Selected ${joinSentences(selections)}; ${recordsRead} records read. The rest of the dataset was not sent anywhere.`;
+
+  return { handlerId, refKey, summaries, pairs, workouts, lab: null, recordsRead, note };
+}
+
+/** "a, b and c" — the list wording the selection note has always used. */
+function joinSentences(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+/** The lab selection used when a handler declares none: the bounded overview. */
+export const DEFAULT_LAB_SPEC: LabSpec = { mode: 'overview' };
+
+/** The lab selection a handler declared, or null when it declared none. */
+export function labSpecOf(handlerId: string): LabSpec | null {
+  return RETRIEVAL_SPECS[handlerId]?.lab ?? null;
 }
 
 /** Select the summaries and bounded windows a handler is allowed to see. */

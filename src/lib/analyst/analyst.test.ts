@@ -7,9 +7,21 @@ import { GENERAL_HANDLER_ID, GENERAL_RETRIEVAL_METRICS, MAX_POINTS_PER_SERIES, R
 import { DEMO_LABEL, resolveProvider } from '@/lib/analyst/provider';
 import { publicConfigState, readAnalystConfig } from '@/lib/analyst/config';
 import { SUPPORTED_PROMPTS } from '@/lib/analyst/prompts';
+import { labBundleFor } from '@/lib/analyst/lab-fixture';
 
 const TOTAL_DATASET_RECORDS =
   availableMetricIds().reduce((a, id) => a + seriesFor(id).length, 0) + workoutList().length;
+
+/**
+ * The bundle a handler is exercised with. In production the service attaches the
+ * lab block to every context; here the lab handler is handed the synthetic one,
+ * so its answer is checked exactly like the metric handlers' answers.
+ */
+function bundleFor(handler: { id: string; prompt: string }) {
+  return handler.id === 'lab-results'
+    ? labBundleFor(handler.id, handler.prompt)
+    : retrieve(handler.id, REFERENCE_KEY);
+}
 
 describe('analyst handlers (SPEC §8)', () => {
   it('backs every supported question with a registered handler', () => {
@@ -24,7 +36,7 @@ describe('analyst handlers (SPEC §8)', () => {
 
   it('separates observed measurements, interpretation and uncertainty in every answer', () => {
     for (const handler of HANDLERS) {
-      const bundle = retrieve(handler.id, REFERENCE_KEY);
+      const bundle = bundleFor(handler);
       const answer = handler.run({ bundle, system: 'metric', refKey: REFERENCE_KEY });
       expect(answer.observed.length).toBeGreaterThan(0);
       expect(answer.interpretation.length).toBeGreaterThan(0);
@@ -37,7 +49,7 @@ describe('analyst handlers (SPEC §8)', () => {
 
   it('carries metric, window, aggregation, sample count and a link on every evidence card', () => {
     for (const handler of HANDLERS) {
-      const bundle = retrieve(handler.id, REFERENCE_KEY);
+      const bundle = bundleFor(handler);
       const answer = handler.run({ bundle, system: 'metric', refKey: REFERENCE_KEY });
       for (const ev of answer.evidence) {
         expect(ev.metricId).toBeTruthy();
@@ -45,20 +57,20 @@ describe('analyst handlers (SPEC §8)', () => {
         expect(ev.windowLabel).toMatch(/\d{4}-\d{2}-\d{2}|[A-Z][a-z]{2} \d+/);
         expect(ev.aggregation.length).toBeGreaterThan(3);
         expect(ev.sampleCount).toMatch(/\d+/);
-        expect(ev.href).toMatch(/^\/(metric|trends|workouts|insights)/);
+        expect(ev.href).toMatch(/^\/(metric|trends|workouts|insights|lab)/);
       }
     }
   });
 
   it('puts a number and its unit in every observed line that makes a numeric claim', () => {
     for (const handler of HANDLERS) {
-      const bundle = retrieve(handler.id, REFERENCE_KEY);
+      const bundle = bundleFor(handler);
       const answer = handler.run({ bundle, system: 'metric', refKey: REFERENCE_KEY });
       for (const line of answer.observed) {
         if (!/\d/.test(line)) continue;
         // A figure must be accompanied by a unit, a count, or an explicit window.
         const hasUnit =
-          /(bpm|ms|min|kcal|kg|ml\/kg\/min|breaths\/min|mg|mL|%|\d+h \d+m|K\b|steps|minutes|calories|night|day|reading|coefficient|association|observations)/.test(
+          /(bpm|ms|min|kcal|kg|ml\/kg\/min|breaths\/min|mg|mL|%|\d+h \d+m|K\b|steps|minutes|calories|night|day|reading|coefficient|association|observations|mg\/dL|g\/dL|ng\/dL|pg\/mL|ng\/mL|mIU\/L|mEq\/L|U\/L|mL\/min|\/HPF|\d{4}-\d{2}-\d{2})/.test(
             line
           );
         expect(hasUnit).toBe(true);
@@ -84,7 +96,7 @@ describe('retrieval selects only what the question needs (SPEC §8)', () => {
       const spec = RETRIEVAL_SPECS[handler.id];
       expect(spec).toBeDefined();
       const metrics = (spec?.summaries ?? []).map(s => s.metricId);
-      expect(metrics.length + (spec?.pairs?.length ?? 0) + (spec?.workouts ? 1 : 0)).toBeGreaterThan(0);
+      expect(metrics.length + (spec?.pairs?.length ?? 0) + (spec?.workouts ? 1 : 0) + (spec?.lab ? 1 : 0)).toBeGreaterThan(0);
       // Never the whole registry.
       expect(metrics.length).toBeLessThan(getAllMetrics().length);
     }
@@ -92,7 +104,7 @@ describe('retrieval selects only what the question needs (SPEC §8)', () => {
 
   it('reads a bounded number of records and says so', () => {
     for (const handler of HANDLERS) {
-      const bundle = retrieve(handler.id, REFERENCE_KEY);
+      const bundle = bundleFor(handler);
       expect(bundle.recordsRead).toBeGreaterThan(0);
       expect(bundle.recordsRead).toBeLessThan(TOTAL_DATASET_RECORDS);
       for (const summary of bundle.summaries) {

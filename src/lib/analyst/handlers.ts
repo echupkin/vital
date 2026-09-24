@@ -14,7 +14,8 @@ import { proseName } from '../metrics/prose';
 import { describeCoefficient, MIN_PAIRED_OBSERVATIONS, ASSOCIATION_NOTE } from '../analytics/relationships';
 import { windowRangeLabel } from '../analytics/windows';
 import type { AnalystAnswer, AnalystEvidence, AnalystChart, RetrievedSummary, RetrievalBundle } from './types';
-import { everySummary, pairOf, summaryOf } from './retrieval';
+import { everySummary, pairOf, summaryOf, MAX_POINTS_PER_SERIES } from './retrieval';
+import { LAB_TOPIC_RE, looksLikeLabQuestion, readingText } from './labSnapshot';
 import { SUPPORTED_PROMPTS, SUPPORTED_QUESTIONS } from './prompts';
 
 export const BOUNDARY_NOTE =
@@ -543,6 +544,124 @@ const whatChangedThisWeek: AnalystHandler = {
   },
 };
 
+// ── 9. Lab results ──────────────────────────────────────
+
+/**
+ * The lab block's answer, composed from `bundle.lab` only.
+ *
+ * It reports what the Lab page reports — the latest value with its unit and
+ * observation date, the interval the document printed and its basis, the
+ * previous observation and the change — and it never turns a qualitative result
+ * (NEGATIVE, NONE SEEN, 1+) into a number. When the question names an analyte
+ * the data does not hold, it says the data is absent rather than substituting
+ * one. Every figure carries its unit and its own observation date.
+ */
+const labResults: AnalystHandler = {
+  id: 'lab-results',
+  prompt: 'What do my lab results show?',
+  matches: q => LAB_TOPIC_RE.test(q) || looksLikeLabQuestion(q),
+  run: ({ bundle }) => {
+    const lab = bundle.lab ?? null;
+    if (!lab || !lab.available) {
+      return {
+        id: 'lab-results',
+        title: 'Lab results',
+        observed: [
+          'No lab results could be selected for this question, so no lab figure can be reported.',
+        ],
+        interpretation: [],
+        uncertainty: [
+          lab?.reason ??
+            'The lab results were not part of the selected context, so nothing about them can be reported.',
+        ],
+        evidence: [],
+        charts: [],
+        followUps: [],
+        boundaryNote: BOUNDARY_NOTE,
+      };
+    }
+
+    if (lab.selection === 'analyte' && !lab.found) {
+      return {
+        id: 'lab-results',
+        title: `Lab results for ${lab.requestedName ?? 'that analyte'}`,
+        observed: [
+          `No lab results for "${lab.requestedName}" were found among the ${lab.totalSeries} stored lab series (${lab.documents} document${lab.documents === 1 ? '' : 's'}, ${lab.totalObservations} observations).`,
+        ],
+        interpretation: [],
+        uncertainty: [
+          'The stored documents do not hold this analyte, so no figure is given for it. Nothing is substituted from another analyte.',
+        ],
+        evidence: [],
+        charts: [],
+        followUps: ['What lab results do I have?', 'What changed this week?'],
+        boundaryNote: BOUNDARY_NOTE,
+      };
+    }
+
+    const coverage = `The lab context holds ${lab.documents} document${lab.documents === 1 ? '' : 's'}, ${lab.totalObservations} observations across ${lab.totalSeries} series and ${lab.collisions} date${lab.collisions === 1 ? '' : 's'} carrying more than one observation; ${lab.note}.`;
+    const observed: string[] = [coverage];
+    for (const series of lab.series) {
+      if (!series.latest) continue;
+      observed.push(series.display.line ?? `${series.displayName}: latest ${readingText(series.latest)} on ${series.latest.on}.`);
+    }
+
+    const movingSeries = lab.series.filter(
+      series => series.latest !== null && series.previous !== null && series.latest.value !== null && series.previous.value !== null
+    );
+    const interpretation = [
+      lab.selection === 'analyte'
+        ? `This answer describes the analyte the question named, from the observations the documents hold for it. A trend over a handful of results is a short basis for describing movement.`
+        : 'These are the analytes most recently measured in the stored documents; a lab panel is a snapshot of the day it was taken, and the intervals it prints are the ones the laboratory used.',
+      movingSeries.length > 0
+        ? `${movingSeries.length} of the series shown compare the latest observation with the one before it; that comparison is stated line by line above, and where there is no earlier observation the line says so.`
+        : 'No series shown has an earlier observation to compare the latest one with, so no movement is described.',
+    ];
+    if (lab.selection === 'analyte' && lab.series[0]?.truncated) {
+      interpretation.push(
+        `Only the most recent observations are carried here (${lab.series[0].display.historyTruncated ?? 'the series is bounded'}), so the whole history of this analyte is not shown.`
+      );
+    }
+
+    const uncertainty = [
+      'A reference interval is the range the laboratory printed on the report, or a general fallback interval where the report printed none. It is a screening range, not a diagnosis: a value outside it is not a diagnosis, and a value inside it does not rule anything out.',
+      'Every result is paired with its unit and the date it was observed. A qualitative result (for example NEGATIVE or NONE SEEN) is quoted as the document printed it and is never turned into a number.',
+      lab.selection === 'analyte'
+        ? 'A urine result and a blood result of the same name are kept apart and are never compared with one another.'
+        : 'A urine series is labelled (urine) where an analyte has both a urine and a blood series; the two are different measurements and are never combined.',
+      'The results are what the uploaded documents printed. A result that was not in those documents cannot be reported, and nothing here is estimated to fill a gap.',
+    ];
+
+    const evidence: AnalystEvidence[] = lab.series
+      .filter(series => series.latest !== null)
+      .map(series => ({
+        metricId: series.seriesKey,
+        metricName: series.displayName,
+        windowLabel: `latest observation ${series.latest!.on} (${series.observations} observation${series.observations === 1 ? '' : 's'})`,
+        aggregation: lab.selection === 'analyte' ? `latest observation, with up to the last ${MAX_POINTS_PER_SERIES} observations shown` : 'latest and previous observation',
+        sampleCount: `${series.observations} observation${series.observations === 1 ? '' : 's'}; ${series.shownPoints} in this context`,
+        href: `/lab/${series.seriesKey}`,
+      }));
+
+    const followUps =
+      lab.selection === 'analyte' && lab.requestedName
+        ? [`How has my ${lab.requestedName.toLowerCase()} changed over time?`, 'What other lab results do I have?']
+        : ['What is my latest cholesterol result?', 'What other lab results do I have?'];
+
+    return {
+      id: 'lab-results',
+      title: lab.selection === 'analyte' && lab.requestedName ? `Latest lab results for ${lab.requestedName}` : 'Your most recent lab results',
+      observed,
+      interpretation,
+      uncertainty,
+      evidence,
+      charts: [],
+      followUps,
+      boundaryNote: BOUNDARY_NOTE,
+    };
+  },
+};
+
 // ── Registry ────────────────────────────────────────────
 
 export const HANDLERS: AnalystHandler[] = [
@@ -554,6 +673,8 @@ export const HANDLERS: AnalystHandler[] = [
   stepsVsBaseline,
   workoutFrequency,
   whatChangedThisWeek,
+  // Last, so a lab question can never shadow a metric handler.
+  labResults,
 ];
 
 /** Every supported question is backed by a registered handler. */

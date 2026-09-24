@@ -48,13 +48,27 @@ export {
   GENERAL_HANDLER_ID,
   GENERAL_RETRIEVAL_DAYS,
   GENERAL_RETRIEVAL_METRICS,
+  DEFAULT_LAB_SPEC,
+  labSpecOf,
   retrieve,
   retrieveGeneral,
   summaryOf,
   pairOf,
   everySummary,
   AnalysisNotAvailable,
+  type LabSpec,
 } from './retrieval';
+
+export {
+  MAX_LAB_SERIES,
+  LAB_TOPIC_RE,
+  analyteRequestedBy,
+  looksLikeLabQuestion,
+  readingText,
+  buildLabSnapshot,
+} from './labSnapshot';
+
+export { loadLabSnapshot, type LabLoader } from './labContext';
 
 export {
   DEMO_LABEL,

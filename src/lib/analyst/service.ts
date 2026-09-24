@@ -21,7 +21,15 @@ import type { UnitSystem } from '../prefs';
 import { getMetric } from '../metrics/registry';
 import { selectHandler, selectHandlerStrict } from './handlers';
 import { SUPPORTED_PROMPTS } from './prompts';
-import { AnalysisNotAvailable, GENERAL_HANDLER_ID, retrieve, retrieveGeneral } from './retrieval';
+import {
+  AnalysisNotAvailable,
+  DEFAULT_LAB_SPEC,
+  GENERAL_HANDLER_ID,
+  labSpecOf,
+  retrieve,
+  retrieveGeneral,
+} from './retrieval';
+import { loadLabSnapshot, type LabLoader } from './labContext';
 import { AnalystProviderError, createProvider, DEMO_LABEL } from './provider';
 import { readAnalystConfig, type AnalystConfig } from './config';
 import { checkGrounding, parseAnalystReply } from './validate';
@@ -32,6 +40,7 @@ import type {
   AnalystRequest,
   AnalystResponse,
   AnalystStatus,
+  LabContextSnapshot,
   RetrievalBundle,
 } from './types';
 
@@ -131,6 +140,16 @@ function baseResponse(config: AnalystConfig, status: AnalystStatus, fields: Part
   };
 }
 
+/**
+ * The lab half of the selection note. It states, in words, what the block
+ * carries and why — never silently omitting that lab data exists or that none
+ * could be read.
+ */
+function labSentence(lab: LabContextSnapshot): string {
+  if (!lab.available) return ` Lab results are not in this context: ${lab.reason}`;
+  return ` Lab results: ${lab.note}; ${lab.documents} document${lab.documents === 1 ? '' : 's'} and ${lab.totalObservations} lab observation${lab.totalObservations === 1 ? '' : 's'} across ${lab.totalSeries} series were read.`;
+}
+
 function retrievalSummary(bundle: RetrievalBundle | null): AnalystResponse['retrieval'] {
   if (!bundle) return { recordsRead: 0, note: 'No dataset context was selected.', metrics: [] };
   return {
@@ -156,7 +175,7 @@ function retrievalSummary(bundle: RetrievalBundle | null): AnalystResponse['retr
  */
 export async function askAnalyst(
   request: AnalystRequest,
-  deps: { env?: NodeJS.ProcessEnv } = {}
+  deps: { env?: NodeJS.ProcessEnv; labLoader?: LabLoader } = {}
 ): Promise<AnalystResponse> {
   const config = readAnalystConfig(deps.env ?? process.env);
   const validated = validateQuery(request?.query);
@@ -210,6 +229,27 @@ export async function askAnalyst(
     throw error;
   }
   const handlerId = matched?.id ?? GENERAL_HANDLER_ID;
+
+  // The bounded lab block. Its data lives in Postgres, not in the metric
+  // dataset, so it is loaded here — after retrieval, before the provider — and
+  // attached to EVERY analyst context. A lab read failure never fails the
+  // question: it becomes an unavailable block whose reason the answer states,
+  // and the lab rows actually read are counted in `recordsRead`.
+  const labSpec = labSpecOf(handlerId) ?? DEFAULT_LAB_SPEC;
+  let lab: LabContextSnapshot | null = null;
+  try {
+    lab = await (deps.labLoader ?? loadLabSnapshot)(validated.query, labSpec);
+  } catch {
+    lab = null;
+  }
+  if (lab) {
+    bundle = {
+      ...bundle,
+      lab,
+      recordsRead: bundle.recordsRead + (lab.available ? lab.totalObservations : 0),
+      note: `${bundle.note}${labSentence(lab)}`,
+    };
+  }
 
   let provider;
   try {
