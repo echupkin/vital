@@ -16,9 +16,10 @@
 // The hook also runs for the edge runtime and for the production build; the
 // live adapter is Node-only, so both are skipped.
 //
-// It warms the live dataset only. A briefing warm-up lives in the Overview
-// route instead (src/lib/briefing/kick.ts): Next runs this hook in its own
-// module graph, so a briefing cached here is not the one `/api/briefing` reads.
+// It warms the live dataset only. The briefing writer lives in the Overview
+// route's own graph instead (src/lib/briefing/scheduler.ts): Next runs this hook
+// in its own module graph, so a briefing cached here is not the one
+// `/api/briefing` reads.
 
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === 'edge') return;

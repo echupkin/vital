@@ -167,8 +167,10 @@ services:
     # override is needed. If the name ever stops resolving from inside the bridge,
     # add:  extra_hosts: ["your-export-host:host-gateway"]
     healthcheck:
-      # Probes the app's own overview route, not just process liveness.
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1"]
+      # Liveness only: /api/health is a trivial JSON route that touches no
+      # briefing, model, dataset or database, so a 30-second probe generates no
+      # model traffic and a database blip does not mark the container unhealthy.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3

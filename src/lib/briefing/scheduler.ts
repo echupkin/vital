@@ -5,18 +5,22 @@
 //
 // Why it has to be armed from here rather than from `instrumentation.ts`: that
 // hook runs in its own module graph, so a briefing written there is not the one
-// the routes read (see the note in ./kick). This module is imported by the
-// Overview route, which is the bundle that actually answers requests — and the
-// container's healthcheck GETs `/` every 30 seconds, so the timer is armed from
-// shortly after startup without anyone opening the app.
+// the routes read (see the note in ./index). This module is imported by the
+// Overview route, which is the bundle that actually answers requests, so the
+// timer is armed by the first request that reaches `/`. It is deliberately NOT
+// armed by the container healthcheck: that probes /api/health, which touches no
+// briefing at all (see src/app/api/health/route.ts).
 //
 // Honest limits, stated rather than hidden:
-//   * the process must be running at the hour. If the container was down at
-//     08:00, nothing is written then; the first request after it comes back
-//     writes that day's briefing, and the hero labels the late write.
+//   * the process must be running at the hour, and the Overview route must have
+//     been reached at least once before it, for the timer to be armed. If the
+//     container was down at 08:00, nothing is written then; the first request
+//     after it comes back writes that day's briefing once (a catch-up attempt),
+//     and the hero labels the late write.
 //   * this is one timer per process. With more than one replica, each would arm
-//     its own; the day-keyed cache and Postgres row make the write idempotent, so
-//     the worst case is a duplicate attempt, not a duplicate briefing.
+//     its own; the day-keyed cache, the day-terminal attempt record and the
+//     Postgres row make the write idempotent, so the worst case is a duplicate
+//     attempt, not a duplicate briefing.
 //
 // A profile change (hour, timezone) is picked up on the next firing: the profile
 // is re-read before each write, so the schedule follows the setting.
@@ -96,7 +100,7 @@ async function fire(): Promise<void> {
       outcome.ok
         ? `wrote the briefing at the configured hour (${system}${outcome.engine ? `, ${outcome.engine}` : ''}${outcome.model ? `, ${outcome.model}` : ''}).`
         : `could not write the briefing at the configured hour: ${outcome.reason ?? 'unknown reason'}. ` +
-          'The next request will retry, and the hero reports the computed briefing in the meantime.'
+          'The day is terminal: it is not attempted again, and the hero reports the computed briefing and the reason.'
     );
   } catch (error) {
     // A generation failure must never take the process down or stop the schedule:

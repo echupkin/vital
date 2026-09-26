@@ -44,7 +44,7 @@ browser ──── HTTP ────┐
 | Surface | Lives in | What it is |
 |---|---|---|
 | UI | `src/app/*/page.tsx` | 12 routes. Each page is a thin server file (metadata + a mounted component); interactivity lives in client components. |
-| API | `src/app/api/**/route.ts` | 7 route handlers / 14 methods: analyst chat and its saved conversations, the daily briefing, pipeline status, preferences, profile. |
+| API | `src/app/api/**/route.ts` | 14 route handlers / 23 methods: analyst chat and its saved conversations, the daily briefing, lab reports, pipeline status, preferences, profile, and a trivial `/api/health` liveness probe (no briefing, model, dataset or database). |
 | Domain | `src/lib/**` | Every rule: source normalization, source de-duplication, day aggregation, the metric registry and its formatters, briefing generation, the analyst, persistence. |
 
 Both surfaces call `src/lib` directly, in-process. Server-rendered pages do not make HTTP requests to
@@ -59,8 +59,10 @@ else that wants a machine-readable view of what the app shows.
   de-duplicated, then aggregated per day and cached in the running process. The health API token never
   reaches the browser; the browser never calls the health API.
 - **The daily briefing scheduler and its cache.** The briefing for a day is written once, at the
-  configured hour, and cached in the process. A restart clears that cache, so the first request after a
-  restart past the configured hour triggers a fresh write.
+  configured hour, by the scheduler, and cached in the process. The request path only reads: it may
+  fill a day the scheduler has not yet attempted (after a restart past the hour, say), but at most
+  one automatic attempt is made per day — a failed attempt makes the day terminal too, and only the
+  explicit `Regenerate` control writes again.
 - **All model calls.** The briefing and the analyst both run server-side, which is why their keys are
   configuration the client never sees.
 
@@ -398,17 +400,21 @@ records, and the request is bounded.
   day: it describes the last seven days against the seven before them and the previous month, none
   of which changes within a day. There is no cache TTL to tune any more, because the day key is the
   authority (the TTL knob was removed rather than left doing nothing).
-- **The briefing hour is configurable.** A new day's briefing is written lazily, by the first request
-  at or after the profile's `briefingHour` (Settings → Account, default 06:00) — there is no
-  scheduler and no background job; a lazy read-through fill is not a job. The boot warm-up primes
-  only when that hour has already passed and the day is not yet cached.
+- **The briefing hour is configurable.** The briefing is written by a scheduler that arms a timer for
+  the profile's `briefingHour` (Settings → Account, default 06:00), so it is written at the hour with
+  nobody visiting. If the process was down at the hour, the first request afterwards fills that day
+  once (a catch-up attempt) and the hero labels the late write.
+- **At most one automatic model connection per day.** A day is attempted at most once: after an
+  attempt — successful *or* failed — the day is terminal, and a page view, a refresh, the container
+  healthcheck and the browser's follow-up reads all serve the cached (or computed) briefing without
+  opening another model connection. There is no failure cooldown to tune; the day-terminal record is
+  the brake. The one thing that writes again is the explicit `Regenerate` control.
 - **Before the hour, the previous day stays on screen.** The hero is labelled with the day it covers
   (`Briefing for Sep 17`) and the generation time, so it is never blank and never claims to be a day
   it is not.
 - **`Regenerate` is the one explicit control.** It replaces the current day's briefing once, from the
   hero, so a failed or unwanted day is not stuck until tomorrow. It says what it does and never
-  loops. If the model cannot be reached the computed briefing stays, with the reason, and no
-  per-request model calls are made (one generation is suppressed for 15 minutes after a failure).
+  loops. If the model cannot be reached the computed briefing stays, with the reason.
 - **The page never waits on the model.** The hero renders the computed briefing in the SSR HTML and
   swaps in the written one when the background read returns it.
 - **The profile feeds the prompt.** Name, an age derived from the date of birth, and the free-text
@@ -417,7 +423,9 @@ records, and the request is bounded.
 - **Preferring a local model for the briefing only.** When `VITAL_LLM_BASE_URL` is set *and*
   reachable, the briefing uses it instead of the analyst provider; if it is unset or unreachable the
   briefing falls back to the `ANALYST_*` provider. `VITAL_LLM_MODEL=auto` resolves to the first model
-  id the local server advertises. A local server on the host is reachable as `host.docker.internal`
+  id the local server advertises. The local server is resolved once per day (the `GET /v1/models`
+  response is memoized in the process for the day), so a retry does not re-probe it; the explicit
+  `Regenerate` re-probes. A local server on the host is reachable as `host.docker.internal`
   (`extra_hosts` is already set in `docker-compose.yml`); `VITAL_LLM_API_KEY` is optional for a
   loopback/LAN server. This switch affects the briefing only — the analyst keeps using `ANALYST_*`.
 

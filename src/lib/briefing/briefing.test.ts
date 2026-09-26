@@ -19,17 +19,19 @@ import { buildBriefingContext, type BriefingContext } from '@/lib/briefing/conte
 import { resolveBriefingEngine, DEFAULT_BRIEFING_MAX_TOKENS, DEFAULT_BRIEFING_TIMEOUT_MS } from '@/lib/briefing/engine';
 import { parseBriefingReply } from '@/lib/briefing/validate';
 import {
-  BRIEFING_FAILURE_COOLDOWN_MS,
   COMPUTED_ATTRIBUTION,
   awaitBriefingIdle,
   briefingCacheKey,
   briefingSchedule,
   clearBriefingCache,
+  hasBriefingAttempt,
   readBriefing,
   regenerateBriefing,
   warmBriefing,
+  type BriefingModelTextLike,
   type BriefingView,
 } from '@/lib/briefing';
+import { resetBriefingEngineMemo } from '@/lib/briefing/engine';
 import { defaultProfile, type VitalProfile } from '@/lib/profile/types';
 
 const REAL_FETCH = globalThis.fetch;
@@ -204,12 +206,14 @@ function publishedText(view: BriefingView): string {
 
 beforeEach(() => {
   clearBriefingCache();
+  resetBriefingEngineMemo();
   resetToDemoDataset();
 });
 
 afterEach(() => {
   globalThis.fetch = REAL_FETCH;
   clearBriefingCache();
+  resetBriefingEngineMemo();
   resetToDemoDataset();
 });
 
@@ -288,6 +292,62 @@ describe('resolving the briefing engine', () => {
     });
     expect(serialized).not.toContain('local-secret-key');
     expect(serialized).not.toContain('«redacted:sk-…»');
+  });
+});
+
+describe('resolving the local model engine once a day', () => {
+  it('probes the model server once per day and reuses the answer', async () => {
+    let probes = 0;
+    const fetchImpl = stubFetch({
+      models: ['qwen3-8b'],
+      onCall: url => {
+        if (url.endsWith('/models')) probes += 1;
+      },
+    });
+
+    const first = await resolveBriefingEngine({ env: LOCAL_ENV, fetchImpl, day: '2026-09-18' });
+    const second = await resolveBriefingEngine({ env: LOCAL_ENV, fetchImpl, day: '2026-09-18' });
+
+    expect(first.kind).toBe('local');
+    expect(second.model).toBe('qwen3-8b');
+    // One GET /models for the whole day, not one per resolution.
+    expect(probes).toBe(1);
+  });
+
+  it('re-probes when the day changes', async () => {
+    let probes = 0;
+    const fetchImpl = stubFetch({
+      models: ['qwen3-8b'],
+      onCall: url => {
+        if (url.endsWith('/models')) probes += 1;
+      },
+    });
+
+    await resolveBriefingEngine({ env: LOCAL_ENV, fetchImpl, day: '2026-09-18' });
+    await resolveBriefingEngine({ env: LOCAL_ENV, fetchImpl, day: '2026-09-19' });
+    expect(probes).toBe(2);
+  });
+
+  it('does not let a memoized "unavailable" mask a recovery for the regenerate path', async () => {
+    // Day one: the local server is down, so the engine is the analyst fallback.
+    const down = stubFetch({ probeFails: true });
+    const before = await resolveBriefingEngine({ env: { ...LOCAL_ENV, ...ANALYST_ENV }, fetchImpl: down, day: '2026-09-18' });
+    expect(before.kind).toBe('analyst');
+
+    // The server comes back. An automatic resolution still sees the memo…
+    const up = stubFetch({ models: ['qwen3-8b'] });
+    const cached = await resolveBriefingEngine({ env: { ...LOCAL_ENV, ...ANALYST_ENV }, fetchImpl: up, day: '2026-09-18' });
+    expect(cached.kind).toBe('analyst');
+
+    // …but an explicit re-probe (the Regenerate control) recovers it.
+    const forced = await resolveBriefingEngine({
+      env: { ...LOCAL_ENV, ...ANALYST_ENV },
+      fetchImpl: up,
+      day: '2026-09-18',
+      forceProbe: true,
+    });
+    expect(forced.kind).toBe('local');
+    expect(forced.model).toBe('qwen3-8b');
   });
 });
 
@@ -616,6 +676,108 @@ describe('one briefing per local day', () => {
   });
 });
 
+describe('a day is terminal after one attempt (the whole point)', () => {
+  /**
+   * The generator seam: it is the ONLY thing that would reach the model, so
+   * counting its calls is counting model connections. It returns a complete,
+   * attributed payload so the success path is exercised for real.
+   */
+  function spyGenerate(): {
+    calls: () => number;
+    generate: (context: BriefingContext, engine: unknown) => Promise<BriefingModelTextLike>;
+  } {
+    let calls = 0;
+    return {
+      calls: () => calls,
+      generate: async (context: BriefingContext) => {
+        calls += 1;
+        const rhr = context.metrics.find(m => m.metricId === 'resting_heart_rate')!;
+        return {
+          headline: 'A written briefing.',
+          body: `Resting heart rate averaged ${rhr.mean7!.display} over the last week.`,
+          recommendations: ['Keep recording.'],
+          model: 'test-model',
+          latencyMs: 12,
+          traceability: { checked: 1, unmatched: [] },
+          adjustments: [],
+        };
+      },
+    };
+  }
+
+  it('a second read after a FAILED attempt starts no second generation', async () => {
+    let calls = 0;
+    const failing = async (): Promise<BriefingModelTextLike> => {
+      calls += 1;
+      throw new Error('The provider could not be reached.');
+    };
+
+    // Two synchronous reads, as two page renders (or two route reads) would be.
+    const first = readBriefing(deps({ generate: failing }));
+    const second = readBriefing(deps({ generate: failing }));
+    await awaitBriefingIdle();
+
+    // Both reads served the computed briefing, and only ONE generation ran.
+    expect(first.kind).toBe('computed');
+    expect(second.kind).toBe('computed');
+    expect(calls).toBe(1);
+
+    // A later read — long after the failure — still starts nothing.
+    const third = readBriefing(deps({ generate: failing }));
+    await awaitBriefingIdle();
+    expect(calls).toBe(1);
+    expect(third.kind).toBe('computed');
+    // The failure is visible, not swallowed.
+    expect(third.reason).toMatch(/could not be reached/);
+    expect(third.pending).toBe(false);
+  });
+
+  it('a SUCCESSFUL day is never regenerated by a later render', async () => {
+    const spy = spyGenerate();
+
+    readBriefing(deps({ generate: spy.generate }));
+    await awaitBriefingIdle();
+    expect(spy.calls()).toBe(1);
+
+    const written = readBriefing(deps({ generate: spy.generate }));
+    expect(written.kind).toBe('model');
+    expect(written.attribution).toBe('Written by test-model');
+    expect(written.cached).toBe(true);
+
+    // Many later renders, same day: the cache answers and nothing regenerates.
+    readBriefing(deps({ generate: spy.generate }));
+    readBriefing(deps({ generate: spy.generate }));
+    await awaitBriefingIdle();
+    expect(spy.calls()).toBe(1);
+  });
+
+  it('the explicit regenerate still generates even when the day is terminal', async () => {
+    // A FAILED day: the first automatic attempt is terminal.
+    let autoCalls = 0;
+    const failing = async (): Promise<BriefingModelTextLike> => {
+      autoCalls += 1;
+      throw new Error('The provider could not be reached.');
+    };
+    readBriefing(deps({ generate: failing }));
+    await awaitBriefingIdle();
+    expect(autoCalls).toBe(1);
+    expect(hasBriefingAttempt(briefingCacheKey(briefingSchedule(PROFILE, MIDDAY()), 'metric', PROFILE))).toBe(true);
+
+    // The user's explicit Regenerate ignores the day-terminal rule and writes.
+    const spy = spyGenerate();
+    const replaced = await regenerateBriefing(deps({ generate: spy.generate }));
+    expect(spy.calls()).toBe(1);
+    expect(replaced.kind).toBe('model');
+    expect(replaced.headline).toBe('A written briefing.');
+
+    // The day is now cached; a later render serves the replacement, still once.
+    const after = readBriefing(deps({ generate: spy.generate }));
+    expect(after.cached).toBe(true);
+    await awaitBriefingIdle();
+    expect(spy.calls()).toBe(1);
+  });
+});
+
 describe('manual regeneration', () => {
   it('replaces the current day once, with new text, and does not loop', async () => {
     const context = buildBriefingContext('metric');
@@ -659,8 +821,8 @@ describe('manual regeneration', () => {
   });
 });
 
-describe('failure handling', () => {
-  it('does not retry a dead provider on every view', async () => {
+describe('failure handling — a day is attempted at most once', () => {
+  it('does not retry a dead provider on every view, and the failure is visible', async () => {
     const counter = counting({ chatFails: true });
     installFetch(counter.options);
 
@@ -668,12 +830,13 @@ describe('failure handling', () => {
     await awaitBriefingIdle();
     expect(counter.calls()).toBe(1);
 
-    // Inside the cooldown window, asking again must not open another request.
+    // The day is TERMINAL after the failed attempt: asking again — however many
+    // times, however long after — must not open another request. There is no
+    // cooldown that would allow a second attempt later the same day.
     readBriefing(deps());
     readBriefing(deps());
     await awaitBriefingIdle();
     expect(counter.calls()).toBe(1);
-    expect(BRIEFING_FAILURE_COOLDOWN_MS).toBeGreaterThan(0);
 
     // The failed attempt is on record, and the hero says why it is computed.
     const view = readBriefing(deps());

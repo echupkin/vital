@@ -60,9 +60,12 @@ USER nextjs
 
 EXPOSE 3000
 
-# Real probe against the app's own overview route (busybox wget ships with alpine).
+# Liveness probe: a trivial JSON route that touches no briefing, no model, no
+# dataset and no database (busybox wget ships with alpine). Pointing this at `/`
+# server-rendered the Overview every 30 seconds and, before this change, could
+# start a briefing generation; /api/health cannot.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1
+  CMD wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1
 
 # Migrate, then serve. With no database configured the migration step prints the
 # reason and exits non-zero, so the container refuses to start: this deployment

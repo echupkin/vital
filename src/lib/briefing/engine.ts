@@ -83,6 +83,18 @@ export class BriefingEngineError extends Error {
 export interface EngineDeps {
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
+  /**
+   * The local calendar day the engine is being resolved for. Supplied by the
+   * briefing layer so the probe below can be memoized per day (see
+   * `memoizedProbe`). Omitted, every resolution probes afresh.
+   */
+  day?: string;
+  /**
+   * Probe again even when a result is already memoized for the day. Set ONLY by
+   * the explicit regenerate path: a memoized "unavailable" must not mask a
+   * recovery for a user-triggered write.
+   */
+  forceProbe?: boolean;
 }
 
 // ── Local seam ──────────────────────────────────────────
@@ -163,6 +175,57 @@ export async function probeLocalModelServer(baseUrl: string, deps: EngineDeps = 
   }
 }
 
+// ── The probe memo (per day, per process) ───────────────
+//
+// `probeLocalModelServer` sends a GET /v1/models whose body is ~700 KB, and the
+// local model has to be resolved once before each generation. Resolving it once
+// per DAY is enough: the answer (which model, or none) does not change within a
+// day, and a fresh 700 KB request per attempt is exactly the traffic this file
+// avoids.
+//
+// The memo lives on `globalThis`, NOT in a module-level variable: Next.js builds
+// the page and the route handlers as separate server bundles, so a module-level
+// Map would be one copy per bundle and each bundle would still probe (the same
+// trap documented at the top of ./index). It is cleared when the day changes, so
+// a new day probes once and the rest of that day reuses the answer.
+//
+// An "unavailable" probe is memoized like any other: a generation is attempted
+// at most once a day, so a single probe decides the whole day. The ONE caller
+// that may probe again is the explicit regenerate path (`forceProbe`), because
+// that is a deliberate user action, not an automatic attempt.
+interface ProbeMemo {
+  day: string;
+  probe: LocalProbe;
+}
+
+const ENGINE_MEMO_KEY = Symbol.for('vital.briefing.engine-memo');
+
+function engineMemoStore(): { probes: Map<string, ProbeMemo> } {
+  const g = globalThis as unknown as Record<symbol, { probes: Map<string, ProbeMemo> } | undefined>;
+  if (!g[ENGINE_MEMO_KEY]) g[ENGINE_MEMO_KEY] = { probes: new Map() };
+  return g[ENGINE_MEMO_KEY] as { probes: Map<string, ProbeMemo> };
+}
+
+/** Resolve the local server once per day; `forceProbe` (regenerate) probes afresh. */
+async function memoizedProbe(baseUrl: string, deps: EngineDeps): Promise<LocalProbe> {
+  // No day to key on: behave exactly as before and probe.
+  if (!deps.day) return probeLocalModelServer(baseUrl, deps);
+
+  const store = engineMemoStore();
+  const key = baseUrl.trim().replace(/\/+$/, '');
+  const memo = store.probes.get(key);
+  if (!deps.forceProbe && memo && memo.day === deps.day) return memo.probe;
+
+  const probe = await probeLocalModelServer(baseUrl, deps);
+  store.probes.set(key, { day: deps.day, probe });
+  return probe;
+}
+
+/** Test seam: forget the memoized probes so a suite starts clean. */
+export function resetBriefingEngineMemo(): void {
+  engineMemoStore().probes.clear();
+}
+
 /** Configuration for a local OpenAI-compatible server, with the transient fields filled in. */
 function localConfig(env: NodeJS.ProcessEnv, baseUrl: string, model: string): AnalystConfig | null {
   const endpoint = normalizeEndpoint(baseUrl, 'openai');
@@ -206,7 +269,7 @@ export async function resolveBriefingEngine(deps: EngineDeps = {}): Promise<Brie
   let localDetail = 'VITAL_LLM_BASE_URL is not set, so the local model seam was not probed.';
 
   if (localUrl) {
-    const probe = await probeLocalModelServer(localUrl, deps);
+    const probe = await memoizedProbe(localUrl, deps);
     localDetail = probe.detail;
     if (probe.ok) {
       const configured = env.VITAL_LLM_MODEL?.trim();

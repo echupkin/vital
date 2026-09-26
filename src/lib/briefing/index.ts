@@ -4,10 +4,31 @@
 //
 //   * a briefing already written for the current day → served as-is;
 //   * nothing written yet, at/after the profile's briefing hour → the computed
-//     briefing is served now and one generation runs behind it (single-flight);
+//     briefing is served now and ONE generation runs behind it (single-flight);
 //   * before the briefing hour → the PREVIOUS day's briefing stays on screen,
 //     labelled with the day it covers. Today's briefing is deliberately not
 //     generated yet.
+//
+// ── At most one model connection per day ────────────────
+//
+// A day is ATTEMPTED AT MOST ONCE. Alongside the day-keyed payload cache there
+// is an explicit per-day ATTEMPT record, and an automatic generation only starts
+// when ALL of these hold:
+//
+//   * the briefing hour has passed (`schedule.allowed`), AND
+//   * today's key has no cached payload, AND
+//   * today's key has no attempt recorded yet, AND
+//   * no generation for that key is already in flight.
+//
+// Once an attempt has been made — SUCCEEDED or FAILED — the day is TERMINAL:
+// later reads serve the computed briefing and never start another attempt. A
+// cached success was always terminal; a failure is terminal now too. This is
+// what stops a page view, a refresh, the container healthcheck and the browser's
+// follow-up polls from each opening a model connection.
+//
+// The failure stays VISIBLE: `readBriefing` returns `reason` from the recorded
+// failure so the page can state why there is no written briefing, and `pending`
+// stays honest (true only while a generation is genuinely in flight).
 //
 // Generation happens ONCE PER LOCAL CALENDAR DAY, and the cache key says so:
 //
@@ -20,15 +41,15 @@
 // day — so new data arriving mid-day must not replace a briefing already written
 // for that day.
 //
-// There is no scheduler and no background job. A new day's briefing is written
-// lazily, by the first request at/after `briefingHour`; that is a read-through
-// fill, not a job, and the panel's honesty about having no ingestion job stays
-// intact. The boot warm-up obeys the same rule: it primes only when the hour has
-// already passed and the day is not yet cached.
+// The SCHEDULER (./scheduler) is the intended writer: it arms a timer for the
+// configured hour and calls `warmBriefing` ONCE, with nobody visiting. The
+// request path is a reader that only fills a day the scheduler has not yet
+// attempted (a restart after the hour, for instance) — and then at most once.
 //
 // `Regenerate` is the one explicit control: it drops the current day's entry and
-// writes it again, once, so a failed or unwanted day is not stuck until
-// tomorrow.
+// writes it again, once. It is a user action, so it deliberately bypasses the
+// day-terminal rule (and re-probes the model engine), otherwise a failed or
+// unwanted day would be stuck until tomorrow.
 //
 // Attribution is mandatory and is decided by who actually wrote the text:
 //   model    → `Written by <model>`
@@ -106,9 +127,10 @@ export type { BriefingSchedule };
 // day key is authoritative and an entry lives until the day rolls over (which
 // changes the key) or an explicit regenerate clears it. A TTL knob on top of a
 // day key would be a second, weaker answer to the same question.
-
-/** How long a failed generation suppresses another attempt for the same day. */
-export const BRIEFING_FAILURE_COOLDOWN_MS = 15 * 60 * 1000;
+//
+// There is also no failure COOLDOWN: the day-terminal attempt record below is
+// the brake. A cooldown would allow a second attempt later the same day, which
+// is exactly the per-day model connection this policy forbids.
 
 interface CachedBriefing {
   payload: BriefingPayload;
@@ -129,11 +151,18 @@ interface FailureRecord {
 // API served 08:02 written by the fallback, while the hero showed 10:39 written
 // by the local model — the same module-graph trap `instrumentation.ts` warns
 // about). `globalThis` is per process, so anchoring the state there gives every
-// bundle one cache, one in-flight fill and one failure record.
+// bundle one cache, one in-flight fill, one failure record and one attempt
+// record.
 interface BriefingStore {
   entries: Map<string, CachedBriefing>;
   inFlight: Map<string, Promise<BriefingPayload>>;
   failures: Map<string, FailureRecord>;
+  /**
+   * Days that have had a generation ATTEMPTED (success or failure). This is the
+   * day-terminal record: once a key is present here, no automatic path starts
+   * another generation for it.
+   */
+  attempts: Set<string>;
   hits: number;
   misses: number;
 }
@@ -147,6 +176,7 @@ function processStore(): BriefingStore {
       entries: new Map(),
       inFlight: new Map(),
       failures: new Map(),
+      attempts: new Set(),
       hits: 0,
       misses: 0,
     };
@@ -187,6 +217,26 @@ export function clearBriefingCache(): void {
   state.entries.clear();
   state.inFlight.clear();
   state.failures.clear();
+  state.attempts.clear();
+}
+
+/**
+ * Has this day already had a generation attempted? Once true, the day is
+ * terminal for the automatic path — a failed day must not be retried on every
+ * render.
+ */
+export function hasBriefingAttempt(key: string): boolean {
+  return state.attempts.has(key);
+}
+
+/**
+ * Record that a generation has been attempted for `key`, exactly once, before
+ * the model is reached. Recording it up front (rather than only on completion)
+ * is what makes a failed day terminal and closes the gap between "attempt
+ * started" and "attempt finished".
+ */
+function markAttempt(key: string): void {
+  state.attempts.add(key);
 }
 
 export function briefingCacheStats(): { keys: string[]; inFlight: number; hits: number; misses: number } {
@@ -315,14 +365,24 @@ function payloadFromModel(
 /**
  * Run one generation for a day. Throws on any failure — the cache keeps whatever
  * it already held, so a failed attempt can never blank the hero.
+ *
+ * The ATTEMPT is recorded before the model is reached, so a failure leaves the
+ * day terminal just as a success does. `forceProbe` lets the explicit regenerate
+ * path re-probe the engine rather than trust a memoized "unavailable".
  */
 async function generateFor(
   key: string,
   context: BriefingContext,
   deps: BriefingDeps,
-  schedule: BriefingSchedule
+  schedule: BriefingSchedule,
+  options: { forceProbe?: boolean } = {}
 ): Promise<BriefingPayload> {
-  const engine = await resolveBriefingEngine(deps as EngineDeps);
+  markAttempt(key);
+  const engine = await resolveBriefingEngine({
+    ...(deps as EngineDeps),
+    day: schedule.todayKey,
+    forceProbe: options.forceProbe ?? false,
+  });
   try {
     const text = deps.generate
       ? await deps.generate(context, engine)
@@ -340,7 +400,14 @@ async function generateFor(
   }
 }
 
-/** Start today's generation unless one is running or a recent failure is in cooldown. */
+/**
+ * Start today's generation, at most ONCE per day.
+ *
+ * The day-terminal rule: this is a no-op unless the hour has passed, the day has
+ * nothing cached, the day has never been attempted, and nothing for it is in
+ * flight. A failed day is therefore terminal — the reason it failed is reported
+ * by the read path, and no render opens another model connection.
+ */
 function startGeneration(
   key: string,
   context: BriefingContext,
@@ -348,8 +415,10 @@ function startGeneration(
   schedule: BriefingSchedule
 ): void {
   if (state.inFlight.has(key)) return;
-  const last = state.failures.get(key);
-  if (last && Date.now() - last.at < BRIEFING_FAILURE_COOLDOWN_MS) return;
+  if (state.attempts.has(key)) return;
+  markAttempt(key);
+  // Record the attempt BEFORE awaiting, so a failure cannot leave the day
+  // un-attempted and let the next render try again.
   prefetch(key, () => generateFor(key, context, deps, schedule));
 }
 
@@ -400,6 +469,11 @@ export function readBriefing(deps: BriefingDeps = {}): BriefingView {
 
   // Before the hour there is nothing to write: the previous day's briefing is
   // what stays on screen, and if the process has none it says so honestly.
+  //
+  // At/after the hour, `startGeneration` applies the day-terminal rule: it only
+  // starts an attempt for a day that has none recorded, so a page view, a
+  // refresh, the healthcheck and the browser's follow-up polls cannot each open
+  // a model connection.
   if (schedule.allowed) startGeneration(key, context, deps, schedule);
   const failure = lastBriefingFailure(key);
   return {
@@ -417,12 +491,16 @@ export function readBriefing(deps: BriefingDeps = {}): BriefingView {
  * The one explicit control: it drops the day's entry (and any recorded failure)
  * and generates a replacement, so a failed or unwanted day is not stuck until
  * tomorrow. It is a single awaited generation — never a loop.
+ *
+ * This is a USER ACTION, so it deliberately bypasses the day-terminal rule and
+ * re-probes the model engine (`forceProbe`): an automatic "unavailable" result
+ * memoized for the day must not disable a deliberate regenerate.
  */
 export async function regenerateBriefing(deps: BriefingDeps = {}): Promise<BriefingView> {
   const { schedule, key, context } = resolve(deps);
   state.entries.delete(key);
   state.failures.delete(key);
-  const payload = await startLoad(key, () => generateFor(key, context, deps, schedule));
+  const payload = await startLoad(key, () => generateFor(key, context, deps, schedule, { forceProbe: true }));
   return { ...payload, pending: state.inFlight.size > 0, cached: false };
 }
 
@@ -433,13 +511,15 @@ export type BriefingWarmOutcome =
   | { ok: false; reason: string };
 
 /**
- * Fill today's briefing cache once, at process start.
+ * Fill today's briefing cache ONCE, at the configured hour.
  *
- * It primes ONLY when the profile's briefing hour has already passed today and
- * the day is not yet cached; otherwise it does nothing at all and says why. The
- * caller may ignore the promise: this is a read-only cache fill like the live
- * dataset warm-up, with no timer and no schedule. A failure is returned as an
- * outcome, never thrown.
+ * This is the SCHEDULER's entry point and the intended writer for the day: it
+ * primes only when the profile's briefing hour has already passed, the day is
+ * not yet cached, and the day has not already been attempted; otherwise it does
+ * nothing at all and says why. It may be called more than once (a boot after the
+ * hour, say), but it starts at most one generation per day. The caller may
+ * ignore the promise: this is a single cache fill, with no loop. A failure is
+ * returned as an outcome, never thrown.
  */
 export async function warmBriefing(deps: BriefingDeps = {}): Promise<BriefingWarmOutcome> {
   const { schedule, key, context } = resolve(deps);
@@ -458,7 +538,21 @@ export async function warmBriefing(deps: BriefingDeps = {}): Promise<BriefingWar
     return { ok: true, model: existing.model, engine: existing.engine ?? 'none', latencyMs: existing.latencyMs };
   }
 
-  const engine = await resolveBriefingEngine(deps as EngineDeps);
+  // The day-terminal rule applies here too: a day already attempted (and
+  // therefore, with no payload, one that FAILED) is not attempted again.
+  if (state.attempts.has(key)) {
+    const failure = lastBriefingFailure(key);
+    return {
+      ok: false,
+      reason:
+        failure?.reason ??
+        'Today’s briefing was already attempted this day; it is not attempted again.',
+    };
+  }
+
+  // The same day key as the generation below, so the engine is probed through
+  // the per-day memo rather than twice.
+  const engine = await resolveBriefingEngine({ ...(deps as EngineDeps), day: schedule.todayKey });
   if (engine.kind === 'none' && !deps.generate) {
     return { ok: false, reason: engine.detail };
   }
