@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { REFERENCE_KEY, workoutList } from '@/lib/adapters/dataset';
-import { dayKey } from '@/lib/analytics/windows';
+import { FIXTURES, REFERENCE_KEY, resetToDemoDataset, setActiveDataset, workoutList } from '@/lib/adapters/dataset';
+import { clockLabel, dayKey } from '@/lib/analytics/windows';
 import {
   filterWorkouts,
   MIN_COMPARABLE_WORKOUTS,
@@ -28,6 +28,31 @@ describe('workout day keys (dataset timezone, not UTC slices)', () => {
       expect(view.key).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(view.key >= '2026-03-21' && view.key <= REFERENCE_KEY).toBe(true);
     }
+  });
+});
+
+describe('workout clocks follow the active dataset timezone', () => {
+  it('re-reads the zone after the dataset changes instead of keeping the one at import', () => {
+    const start = '2026-04-06T01:27:00.000Z';
+    const chicago = workoutViews().find(v => v.start_time === start);
+    expect(chicago?.startClock).toBe('8:27 PM');
+
+    setActiveDataset({ ...FIXTURES, timezone: 'America/New_York' }, { mode: 'demo' });
+    try {
+      const newYork = workoutViews().find(v => v.start_time === start);
+      expect(newYork?.startClock).toBe('9:27 PM');
+      expect(newYork?.key).toBe('2026-04-05');
+    } finally {
+      resetToDemoDataset();
+    }
+  });
+});
+
+describe('clockLabel', () => {
+  it('formats an instant as a wall-clock time in the given zone', () => {
+    expect(clockLabel('2026-09-28T03:27:00.000Z', 'America/New_York')).toBe('11:27 PM');
+    expect(clockLabel('2026-09-28T03:27:00.000Z', 'UTC')).toBe('3:27 AM');
+    expect(clockLabel(new Date('2026-01-15T14:05:00.000Z'), 'America/New_York')).toBe('9:05 AM');
   });
 });
 

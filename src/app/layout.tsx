@@ -18,7 +18,7 @@ import { DatasetProvider } from '@/components/data/DatasetProvider';
 import { ConnectionErrorState } from '@/components/data/ConnectionErrorState';
 import { FALLBACK_CLIENT_META } from '@/components/data/fallback-meta';
 import { LiveDataUnavailableError, resolveDataset, type ResolvedDataset } from '@/lib/adapters/runtime';
-import { readProfile } from '@/lib/profile/store';
+import { readProfileState } from '@/lib/profile/store';
 import { LEGACY_STORAGE_KEY, preferencesCacheKey } from '@/lib/prefs/types';
 import PrefsSync from '@/components/prefs/PrefsSync';
 
@@ -84,7 +84,7 @@ export default async function RootLayout({
   // Read server-side, per request: the greeting, the avatar and the briefing all
   // read one profile, and the browser never needs to fetch it to render. The
   // read is awaitable because the record may live in Postgres.
-  const profile = await readProfile();
+  const { profile, stored: profileStored } = await readProfileState();
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -96,7 +96,7 @@ export default async function RootLayout({
           {/* Starts the server-backed settings sync (theme/units) and re-applies
               the theme when the server's value differs from this device's cache. */}
           <PrefsSync />
-          <AppShell profile={profile}>
+          <AppShell profile={profile} profileStored={profileStored}>
             {failure ? (
               <ConnectionErrorState
                 title={failure.title}

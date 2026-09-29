@@ -10,7 +10,7 @@
 import type { WorkoutRecord } from '../metrics/types';
 import { REFERENCE_TZ, REFERENCE_KEY, workoutList } from '../adapters/dataset';
 import { mean, sum } from './stats';
-import { containsDay, dayKey, addDays, formatDayKeyLong, trailingWindow, windowRangeLabel, type DayWindow } from './windows';
+import { clockLabel, containsDay, dayKey, addDays, formatDayKeyLong, trailingWindow, windowRangeLabel, type DayWindow } from './windows';
 
 export type WorkoutSort = 'date-desc' | 'date-asc' | 'duration' | 'calories' | 'distance';
 
@@ -44,13 +44,6 @@ export const MIN_COMPARABLE_WORKOUTS = 4;
 export const WORKOUT_COMPARISON_RULE =
   `Similar workouts are compared only when the same activity type has at least ${MIN_COMPARABLE_WORKOUTS} recorded sessions; a field (distance, average heart rate, maximum heart rate) is compared only when at least ${MIN_COMPARABLE_WORKOUTS} sessions of that type recorded it.`;
 
-const CLOCK = new Intl.DateTimeFormat('en-US', {
-  timeZone: REFERENCE_TZ,
-  hour: 'numeric',
-  minute: '2-digit',
-  hour12: true,
-});
-
 export function workoutDayKey(record: Pick<WorkoutRecord, 'start_time'>): string {
   return /^\d{4}-\d{2}-\d{2}$/.test(record.start_time)
     ? record.start_time
@@ -61,8 +54,8 @@ export function workoutViews(records: WorkoutRecord[] = workoutList()): WorkoutV
   return records.map(r => ({
     ...r,
     key: workoutDayKey(r),
-    startClock: CLOCK.format(new Date(r.start_time)),
-    endClock: CLOCK.format(new Date(r.end_time)),
+    startClock: clockLabel(r.start_time, REFERENCE_TZ),
+    endClock: clockLabel(r.end_time, REFERENCE_TZ),
     hasDistance: typeof r.distance_km === 'number',
     hasHeartRate: typeof r.avg_heart_rate === 'number' && typeof r.max_heart_rate === 'number',
   }));

@@ -4,13 +4,15 @@ import {
   LiveHealthDataAdapter,
   LIVE_LOOKBACK_DAYS,
   fetchLiveDatasetUncached,
+  liveCacheKey,
   loadLiveDataset,
   upstreamWindow,
   warmLiveDataset,
 } from '@/lib/adapters/live';
 import { HaeError, fetchMetricRecords, probeHae, readHaeConfig } from '@/lib/adapters/hae';
 import { liveCache, setCacheTtlForTests } from '@/lib/adapters/cache';
-import { resetToDemoDataset } from '@/lib/adapters/dataset';
+import { resetToDemoDataset, setActiveDataset } from '@/lib/adapters/dataset';
+import { workoutDayKey } from '@/lib/analytics/workouts';
 
 const TOKEN = 'test-read-token-do-not-log';
 const ENV = {
@@ -182,6 +184,47 @@ describe('live dataset assembly', () => {
     await expect(
       fetchLiveDatasetUncached({ env: ENV, fetchImpl: failing, now: () => NOW, bypassCache: true })
     ).rejects.toBeInstanceOf(HaeError);
+  });
+});
+
+describe('live dataset timezone', () => {
+  // 02:00 UTC on Sep 18 is still the evening of Sep 17 in New York.
+  const EVENING = new Date('2026-09-18T02:00:00.000Z');
+
+  it("cuts the days in the caller's timezone, not UTC", async () => {
+    const utc = await fetchLiveDatasetUncached({ ...DEPS, now: () => EVENING });
+    const local = await fetchLiveDatasetUncached({ ...DEPS, now: () => EVENING, timezone: 'America/New_York' });
+    expect(utc.timezone).toBe('UTC');
+    expect(utc.referenceKey).toBe('2026-09-18');
+    expect(local.timezone).toBe('America/New_York');
+    expect(local.dataset.timezone).toBe('America/New_York');
+    expect(local.referenceKey).toBe('2026-09-17');
+  });
+
+  it('puts an evening workout on its local day', async () => {
+    const local = await fetchLiveDatasetUncached({ ...DEPS, timezone: 'America/New_York' });
+    const evening = local.dataset.workouts.find(w => w.start_time === '2026-09-16T01:05:26.000Z');
+    expect(evening).toBeDefined();
+    setActiveDataset(local.dataset, { mode: 'live' });
+    try {
+      // 21:05 EDT on Sep 15 — the next day in UTC.
+      expect(workoutDayKey(evening!)).toBe('2026-09-15');
+    } finally {
+      resetToDemoDataset();
+    }
+  });
+
+  it('rebuilds on a timezone change and holds only the current zone', async () => {
+    liveCache.clear();
+    setCacheTtlForTests(60_000);
+    const { impl, calls } = recordingFetch();
+    const deps = { env: ENV, fetchImpl: impl, now: () => NOW };
+    await loadLiveDataset({ ...deps, timezone: 'America/Chicago' });
+    const onePass = calls.length;
+    const moved = await loadLiveDataset({ ...deps, timezone: 'America/New_York' });
+    expect(moved.timezone).toBe('America/New_York');
+    expect(calls.length).toBe(onePass * 2);
+    expect(liveCache.stats().keys).toEqual([liveCacheKey('America/New_York')]);
   });
 });
 

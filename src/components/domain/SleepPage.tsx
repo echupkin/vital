@@ -14,6 +14,7 @@ import {
 } from '@/lib/adapters/dataset';
 import {
   buildSeriesSummary,
+  clockLabel,
   formatDayKeyLong,
   formatDayKeyShort,
   median,
@@ -510,16 +511,9 @@ interface BedtimeStats {
   stdMinutes: number;
 }
 
-const CLOCK = new Intl.DateTimeFormat('en-US', {
-  timeZone: REFERENCE_TZ,
-  hour: 'numeric',
-  minute: '2-digit',
-  hour12: true,
-});
-
 /** Local wall-clock time of an ISO instant in the dataset timezone. */
 function localTime(iso: string): string {
-  return CLOCK.format(new Date(iso));
+  return clockLabel(iso, REFERENCE_TZ);
 }
 
 /**

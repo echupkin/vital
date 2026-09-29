@@ -12,8 +12,9 @@
 // WINDOW SEMANTICS (verified against the live source): `from` is inclusive, and
 // the upstream `to` is a calendar boundary that EXCLUDES records dated on that
 // day. A caller wanting the LAST day D must therefore send `to` = D + 1 day.
-// With no `from`/`to` the route defaults to the last 30 days ending today (UTC);
-// see `resolveWindow` in `@/lib/medications/window`.
+// With no `from`/`to` the route defaults to the last 30 days ending today in the
+// profile's timezone; see `resolveWindow` in `@/lib/medications/window`. Each
+// record's day is attributed in that same zone.
 //
 // A Next.js route file may export ONLY its handlers and the route segment
 // config, so the window resolution and the source label live in that module
@@ -31,6 +32,7 @@ import { NextResponse } from 'next/server';
 import { HaeError } from '@/lib/adapters/hae';
 import { loadMedications } from '@/lib/adapters/medications';
 import { MEDICATIONS_SOURCE, resolveWindow } from '@/lib/medications/window';
+import { readProfile } from '@/lib/profile/store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,13 +41,14 @@ export const revalidate = 0;
 const NO_STORE = { 'Cache-Control': 'no-store, private' } as const;
 
 export async function GET(request: Request) {
-  const window = resolveWindow(new URL(request.url).searchParams);
+  const { timezone } = await readProfile();
+  const window = resolveWindow(new URL(request.url).searchParams, new Date(), timezone);
   if (typeof window === 'string') {
     return NextResponse.json({ error: window }, { status: 400, headers: NO_STORE });
   }
 
   try {
-    const result = await loadMedications(window);
+    const result = await loadMedications(window, { timezone });
     return NextResponse.json(
       {
         available: true,

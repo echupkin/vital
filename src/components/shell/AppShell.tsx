@@ -7,6 +7,7 @@ import { MobileNav } from './MobileNav';
 import { CommandPaletteProvider } from '@/components/ui/CommandPalette';
 import { UnitsProvider } from '@/components/ui/UnitsProvider';
 import { ProfileProvider } from '@/components/profile/ProfileProvider';
+import { TimezoneDefault } from '@/components/profile/TimezoneDefault';
 import type { VitalProfile } from '@/lib/profile/types';
 
 interface AppShellProps {
@@ -16,11 +17,14 @@ interface AppShellProps {
    * other server-rendered surface) is right in the first HTML.
    */
   profile: VitalProfile;
+  /** True when the profile was read from storage rather than defaulted. */
+  profileStored: boolean;
 }
 
-export function AppShell({ children, profile }: AppShellProps) {
+export function AppShell({ children, profile, profileStored }: AppShellProps) {
   return (
-    <ProfileProvider initialProfile={profile}>
+    <ProfileProvider initialProfile={profile} initialStored={profileStored}>
+      <TimezoneDefault />
       <UnitsProvider>
         <CommandPaletteProvider>
           <div className="min-h-screen bg-page overflow-x-hidden">

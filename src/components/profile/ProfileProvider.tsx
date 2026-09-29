@@ -25,6 +25,11 @@ import { defaultProfile, type VitalProfile } from '@/lib/profile/types';
 
 interface ProfileContextValue {
   profile: VitalProfile;
+  /**
+   * True once a profile has been stored. False on first run, when `profile`
+   * holds the documented defaults.
+   */
+  stored: boolean;
   /** True while a save is in flight. */
   saving: boolean;
   /** The last save error, or null. */
@@ -37,6 +42,7 @@ interface ProfileContextValue {
 
 const ProfileContext = createContext<ProfileContextValue>({
   profile: defaultProfile(),
+  stored: false,
   saving: false,
   error: null,
   save: async () => {},
@@ -45,12 +51,15 @@ const ProfileContext = createContext<ProfileContextValue>({
 
 export function ProfileProvider({
   initialProfile,
+  initialStored,
   children,
 }: {
   initialProfile: VitalProfile;
+  initialStored: boolean;
   children: ReactNode;
 }) {
   const [profile, setProfile] = useState<VitalProfile>(initialProfile);
+  const [stored, setStored] = useState(initialStored);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +68,9 @@ export function ProfileProvider({
   useEffect(() => {
     setProfile(initialProfile);
   }, [initialProfile]);
+  useEffect(() => {
+    setStored(initialStored);
+  }, [initialStored]);
 
   const refresh = useCallback(async () => {
     try {
@@ -85,6 +97,7 @@ export function ProfileProvider({
       // Adopt the server's copy, never the local draft: what is stored is what
       // is shown.
       setProfile({ ...payload });
+      setStored(true);
       setError(null);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'The profile could not be saved.';
@@ -96,7 +109,7 @@ export function ProfileProvider({
   }, []);
 
   return (
-    <ProfileContext.Provider value={{ profile, saving, error, save, refresh }}>
+    <ProfileContext.Provider value={{ profile, stored, saving, error, save, refresh }}>
       {children}
     </ProfileContext.Provider>
   );

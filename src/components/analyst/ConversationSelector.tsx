@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, MessageSquarePlus, Pencil, RefreshCw, Trash2, X } from 'lucide-react';
 import { Badge, Button, Card, Dialog } from '@/components/ui/primitives';
 import type { ConversationAvailability, ConversationSummary } from '@/lib/analyst/conversation-types';
+import { useUnits } from '@/components/ui/UnitsProvider';
 
 export interface ConversationSelectorProps {
   availability: ConversationAvailability;
@@ -34,12 +35,15 @@ export interface ConversationSelectorProps {
   onRefresh: () => void;
 }
 
-/** A stable, deterministic "when" — UTC so the server and the client agree. */
-export function formatWhen(iso: string): string {
+/**
+ * A stable, deterministic "when" in the profile's timezone — the same zone on
+ * the server and the client, so the two agree.
+ */
+export function formatWhen(iso: string, timeZone: string = 'UTC'): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return 'unknown time';
-  const day = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
-  const time = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+  const day = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone });
+  const time = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone });
   return `${day}, ${time}`;
 }
 
@@ -55,6 +59,7 @@ export function ConversationSelector({
   onDelete,
   onRefresh,
 }: ConversationSelectorProps) {
+  const { timezone } = useUnits();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState('');
@@ -184,7 +189,7 @@ export function ConversationSelector({
                       >
                         <span className="block text-xs text-text-primary truncate">{conversation.title}</span>
                         <span className="block text-[10px] text-text-secondary truncate tnum">
-                          {conversation.messageCount} {conversation.messageCount === 1 ? 'turn' : 'turns'} · {formatWhen(conversation.updatedAt)}
+                          {conversation.messageCount} {conversation.messageCount === 1 ? 'turn' : 'turns'} · {formatWhen(conversation.updatedAt, timezone)}
                         </span>
                       </button>
                       <button

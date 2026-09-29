@@ -293,13 +293,6 @@ function metricFact(metricId: string, system: UnitSystem): BriefingMetricFact | 
 
 // ── Sleep ───────────────────────────────────────────────
 
-const CLOCK = new Intl.DateTimeFormat('en-US', {
-  timeZone: REFERENCE_TZ,
-  hour: 'numeric',
-  minute: '2-digit',
-  hour12: true,
-});
-
 /**
  * Minutes since noon, so 11:30pm and 12:15am stay close together on the clock
  * instead of reading as 23 hours apart. Same convention as the Sleep page.

@@ -16,11 +16,8 @@
 // NOTHING IS PERSISTED. Health data never reaches the database; this reads the
 // API at request time and holds the result only for the life of the call.
 
-import {
-  fetchMedications,
-  MEDICATION_DAY_TIMEZONE,
-  type MedicationRecord,
-} from '@/lib/adapters/medications';
+import { fetchMedications, type MedicationRecord } from '@/lib/adapters/medications';
+import { readProfile } from '@/lib/profile/store';
 import type { RequestDeps } from '@/lib/adapters/hae';
 import {
   medicationsWindow,
@@ -61,10 +58,12 @@ function reasonFrom(error: unknown): string {
  */
 export async function loadMedicationSnapshot(
   _question: string,
-  deps: { env?: NodeJS.ProcessEnv; fetchImpl?: RequestDeps['fetchImpl'] } = {}
+  deps: { env?: NodeJS.ProcessEnv; fetchImpl?: RequestDeps['fetchImpl']; timezone?: string } = {}
 ): Promise<MedicationContextSnapshot> {
   const now = deps.env?.VITAL_REFERENCE_NOW ?? new Date().toISOString();
-  const referenceDay = dayKey(new Date(now), MEDICATION_DAY_TIMEZONE);
+  // Days are attributed in the profile's timezone, as on the Medications page.
+  const timezone = deps.timezone ?? (await readProfile(deps.env)).timezone;
+  const referenceDay = dayKey(new Date(now), timezone);
   const window = medicationsWindow(referenceDay, MEDICATIONS_LOOKBACK_DAYS);
 
   let records: MedicationRecord[];
@@ -73,6 +72,7 @@ export async function loadMedicationSnapshot(
   try {
     const result = await fetchMedications(window, {
       env: deps.env,
+      timezone,
       ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
     });
     records = result.records;

@@ -373,8 +373,14 @@ configuration:
   than 500-ing the app.
 - **One timezone.** `timezone` used to be a `localStorage` preference as well, which meant the
   browser and the server could disagree about what day it was. That duplicate has been removed:
-  the profile's timezone is now the only one, and it drives both the client's window labelling
-  (`useUnits().timezone`) and the server's day boundaries and briefing day.
+  the profile's timezone is now the only one. It cuts the live dataset's calendar days (sleep
+  waking dates, workout days, daily totals, "today"), the clock times every page shows, the
+  medication days, the client's window labelling (`useUnits().timezone`) and the briefing day.
+- **The browser's timezone is the default, not an override.** While no profile is stored, the
+  first browser visit stores that browser's timezone. From then on the timezone is whatever
+  Settings → Account says; a browser in another zone never changes it (Settings offers a one-click
+  "use this browser's timezone"). `VITAL_TIMEZONE` is only the server's fallback before a profile
+  exists.
 - **Notes are data, never instructions.** The briefing prompt states it where every other rule
   lives, and the user message repeats it: a note that reads like a command is not followed.
 - **Nothing else is stored locally.** Theme, units and the notification flags stay in

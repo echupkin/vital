@@ -22,22 +22,11 @@
 // `/api/briefing` reads.
 
 export async function register(): Promise<void> {
-  if (process.env.NEXT_RUNTIME === 'edge') return;
   if (process.env.NEXT_PHASE === 'phase-production-build') return;
-
-  const started = Date.now();
-  const { warmLiveDataset } = await import('@/lib/adapters/live');
-  const warm = warmLiveDataset();
-  if (!warm) return; // demo mode, or the export API is not configured
-
-  console.log('[vital] live dataset cache warm-up started (read-only cache fill).');
-  void warm.then(outcome => {
-    const elapsed = Date.now() - started;
-    console.log(
-      outcome.ok
-        ? `[vital] live dataset cache warm-up finished in ${elapsed} ms; the next request is served from cache.`
-        : `[vital] live dataset cache warm-up failed after ${elapsed} ms: ${outcome.reason} ` +
-          'The next request will retry and report the failure.'
-    );
-  });
+  // The import sits inside a positive runtime check so the bundler drops it —
+  // and the Postgres-backed profile store it reads — from the edge build.
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { warmUp } = await import('./instrumentation-node');
+    await warmUp();
+  }
 }

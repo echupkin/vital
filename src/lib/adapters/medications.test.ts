@@ -108,6 +108,34 @@ describe('medications grouping key (§ displayText is free text)', () => {
   });
 });
 
+describe('fetchMedications in a local timezone', () => {
+  it("attributes each dose to its day in the caller's zone, widening the upstream window", async () => {
+    const { impl, calls } = recordingFetch();
+    const result = await fetchMedications(
+      { from: '2026-09-27', to: '2026-09-28' },
+      { env: ENV, fetchImpl: impl, timezone: 'America/New_York' }
+    );
+    // UTC days straddle the local ones, so a day is fetched on each side.
+    expect(calls[0].url).toContain('from=2026-09-26');
+    expect(calls[0].url).toContain('to=2026-09-29');
+    // 03:00Z on Sep 28 is 11 PM on Sep 27 in New York.
+    expect(result.records.find(r => r.id === 'a1')?.dayKey).toBe('2026-09-27');
+    expect(result.records.find(r => r.id === 'a2')?.dayKey).toBe('2026-09-27');
+    expect(result.records.find(r => r.id === 'a3')?.dayKey).toBeNull();
+    expect(result.window).toEqual({ from: '2026-09-27', to: '2026-09-28' });
+  });
+
+  it('trims records that fall outside the requested local days', async () => {
+    const { impl } = recordingFetch();
+    const result = await fetchMedications(
+      { from: '2026-09-28', to: '2026-09-29' },
+      { env: ENV, fetchImpl: impl, timezone: 'America/New_York' }
+    );
+    // Both dated records are on Sep 27 locally; the undated one is kept.
+    expect(result.records.map(r => r.id)).toEqual(['a3']);
+  });
+});
+
 describe('fetchMedications (§ windowed read)', () => {
   it('happy path: sends windows, the api-key header (not Bearer), and maps records', async () => {
     const { impl, calls } = recordingFetch();

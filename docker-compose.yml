@@ -88,8 +88,9 @@ services:
       HAE_API_KEY: "${HAE_API_KEY:-}"
       HAE_PROBE_METRIC: "${HAE_PROBE_METRIC:-resting_heart_rate}"
       HAE_CACHE_TTL_SECONDS: "${HAE_CACHE_TTL_SECONDS:-300}"
-      # Timezone overnight sleep is assigned in and days are cut on.
-      VITAL_TIMEZONE: "${VITAL_TIMEZONE:-UTC}"
+      # Fallback timezone until a profile is stored; the profile's timezone
+      # (defaulted from the first browser, editable in Settings) cuts the days.
+      VITAL_TIMEZONE: "${VITAL_TIMEZONE:-}"
       # ── Profile (server-side only) ──────────────────────────────────────────
       # The profile is NOT an environment variable: it is the `profile` row in
       # the Postgres database above (id = 1), written by Settings → Account.

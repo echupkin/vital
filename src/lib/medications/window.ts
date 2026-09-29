@@ -23,10 +23,14 @@ export interface ResolvedWindow {
  *
  * `from` is inclusive; the upstream `to` is a calendar boundary that EXCLUDES
  * records dated on that day, so a caller wanting the last day D sends D + 1 day.
- * Absent bounds default to the last 30 days ending today in UTC.
+ * Absent bounds default to the last 30 days ending today in `timezone`.
  */
-export function resolveWindow(params: URLSearchParams, now: Date = new Date()): ResolvedWindow | string {
-  const fallback = medicationsWindow(dayKey(now, MEDICATION_DAY_TZ), MEDICATIONS_LOOKBACK_DAYS);
+export function resolveWindow(
+  params: URLSearchParams,
+  now: Date = new Date(),
+  timezone: string = MEDICATION_DAY_TZ
+): ResolvedWindow | string {
+  const fallback = medicationsWindow(dayKey(now, timezone), MEDICATIONS_LOOKBACK_DAYS);
   const from = (params.get('from') ?? '').trim() || fallback.from;
   const to = (params.get('to') ?? '').trim() || fallback.to;
   if (!DAY_KEY.test(from) || !DAY_KEY.test(to)) {

@@ -26,10 +26,10 @@ import type {
 } from '@/lib/adapters/medications';
 
 /**
- * The timezone a medication day is attributed in — mirrors
- * `MEDICATION_DAY_TIMEZONE` in the adapter, which derives each record's `dayKey`
- * in UTC. Kept here (rather than re-importing the server-only adapter into a
- * component bundle) and pinned by a test so the two cannot drift silently.
+ * The zone used when a caller passes none — mirrors `MEDICATION_DAY_TIMEZONE` in
+ * the adapter. Kept here (rather than re-importing the server-only adapter into
+ * a component bundle) and pinned by a test so the two cannot drift silently.
+ * Pages pass the profile's timezone, the zone the route attributed days in.
  */
 export const MEDICATION_DAY_TZ = 'UTC';
 
@@ -194,10 +194,13 @@ export function formatUnits(value: number | null | undefined): string {
 }
 
 /**
- * The time of day a dose was scheduled for, in the UTC day attribution the
- * adapter uses — '3:00 AM'. Deterministic: never the viewer's local clock.
+ * The time of day a dose was scheduled for, in the zone its day was attributed
+ * in — '3:00 AM'. Deterministic: the profile's zone, not the runtime's clock.
  */
-export function scheduledTimeLabel(scheduledDate: string | null): string {
+export function scheduledTimeLabel(
+  scheduledDate: string | null,
+  timezone: string = MEDICATION_DAY_TZ
+): string {
   if (!scheduledDate) return 'no scheduled time';
   const when = new Date(scheduledDate);
   if (Number.isNaN(when.getTime())) return 'no scheduled time';
@@ -205,7 +208,7 @@ export function scheduledTimeLabel(scheduledDate: string | null): string {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
-    timeZone: MEDICATION_DAY_TZ,
+    timeZone: timezone,
   });
 }
 
@@ -218,17 +221,23 @@ export interface CoverageDays {
  * The day keys the returned records actually cover, or null when the window
  * yielded nothing attributable. Derived from the adapter's `covered` span.
  */
-export function coverageDays(covered: MedicationCoverage | null): CoverageDays | null {
+export function coverageDays(
+  covered: MedicationCoverage | null,
+  timezone: string = MEDICATION_DAY_TZ
+): CoverageDays | null {
   if (!covered) return null;
   return {
-    from: dayKey(covered.from, MEDICATION_DAY_TZ),
-    to: dayKey(covered.to, MEDICATION_DAY_TZ),
+    from: dayKey(covered.from, timezone),
+    to: dayKey(covered.to, timezone),
   };
 }
 
 /** 'Aug 25, 2026 – Sep 28, 2026' for a covered span, or null when there is none. */
-export function coverageLabel(covered: MedicationCoverage | null): string | null {
-  const span = coverageDays(covered);
+export function coverageLabel(
+  covered: MedicationCoverage | null,
+  timezone: string = MEDICATION_DAY_TZ
+): string | null {
+  const span = coverageDays(covered, timezone);
   if (!span) return null;
   return `${formatDayKeyLong(span.from)} – ${formatDayKeyLong(span.to)}`;
 }

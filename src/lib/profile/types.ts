@@ -109,6 +109,34 @@ export function isCalendarDate(value: string): boolean {
   );
 }
 
+/**
+ * The browser's zone to store as the profile's timezone, or `null` to leave the
+ * profile alone.
+ *
+ * The browser's zone is only a DEFAULT: it is adopted when no profile has been
+ * stored yet. Once one is stored its timezone is the person's choice, made in
+ * Settings, and is never overwritten by whichever browser happens to be open.
+ */
+export function browserTimezoneToAdopt(
+  stored: boolean,
+  profileTimezone: string,
+  browserTimezone: string | null | undefined
+): string | null {
+  if (stored) return null;
+  const tz = browserTimezone?.trim();
+  if (!tz || tz === profileTimezone || !isTimezone(tz)) return null;
+  return tz;
+}
+
+/** The zone this runtime's clock is in (the browser's, on the client), or null. */
+export function runtimeTimezone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
 /** Today's calendar day in a timezone, as a `YYYY-MM-DD` key. */
 export function todayKeyIn(timezone: string, now: Date = new Date()): string {
   return dayKey(now, timezone);

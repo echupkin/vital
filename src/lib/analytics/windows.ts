@@ -28,6 +28,29 @@ export function dayKey(input: string | Date, tz: string = FIXTURE_TZ): string {
   return dayFormatter(tz).format(d);
 }
 
+const clockCache = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * Wall-clock time of an instant in the given timezone ('11:27 PM').
+ *
+ * Takes the zone per call on purpose: a formatter built at module load keeps
+ * whichever zone was active when the module was imported, not the one the
+ * active dataset is cut in.
+ */
+export function clockLabel(input: string | Date, tz: string): string {
+  let f = clockCache.get(tz);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+    clockCache.set(tz, f);
+  }
+  return f.format(typeof input === 'string' ? new Date(input) : input);
+}
+
 /** Parse a day key into a UTC-anchored Date at midday (DST-proof). */
 export function dayKeyToDate(key: string): Date {
   return new Date(`${key}T12:00:00.000Z`);

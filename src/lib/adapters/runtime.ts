@@ -18,6 +18,7 @@ import { liveCache, liveCacheTtlMs } from './cache';
 import type { ProvenanceRow } from './normalize';
 import type { ClientDatasetMeta } from './meta';
 import { SOURCE_DEDUPE_RULE } from './sources';
+import { readProfile } from '../profile/store';
 
 export type { DataMode };
 export type { ClientDatasetMeta } from './meta';
@@ -112,9 +113,13 @@ export async function resolveDataset(deps: LiveDeps = {}): Promise<ResolvedDatas
     );
   }
 
+  // The profile's timezone cuts the calendar days — the same zone the greeting,
+  // the briefing and the Settings page use — unless the caller supplied one.
+  const timezone = deps.timezone ?? (await readProfile(env)).timezone;
+
   let result;
   try {
-    result = await loadLiveDataset(deps);
+    result = await loadLiveDataset({ ...deps, timezone });
   } catch (error) {
     const detail = error instanceof Error ? error.message : 'The live data source could not be read.';
     throw new LiveDataUnavailableError(

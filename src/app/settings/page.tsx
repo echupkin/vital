@@ -38,6 +38,7 @@ import { LabUpload } from '@/components/settings/LabUpload';
 import {
   PROFILE_NAME_MAX,
   PROFILE_NOTES_MAX,
+  runtimeTimezone,
   type VitalProfile,
 } from '@/lib/profile/types';
 
@@ -329,6 +330,21 @@ function AccountTab() {
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(profile), [draft, profile]);
 
+  // Read after mount: the server render has no browser, and reading it during
+  // render would make the hydrated HTML disagree with the server's.
+  const [browserTimezone, setBrowserTimezone] = useState<string | null>(null);
+  useEffect(() => setBrowserTimezone(runtimeTimezone()), []);
+  const timezoneOptions = useMemo(() => {
+    const zones = [...TIMEZONES];
+    for (const tz of [browserTimezone, profile.timezone, draft.timezone]) {
+      if (tz && !zones.includes(tz)) zones.push(tz);
+    }
+    return zones.map(tz => ({
+      value: tz,
+      label: tz === browserTimezone ? `${tz} (this browser)` : tz,
+    }));
+  }, [browserTimezone, profile.timezone, draft.timezone]);
+
   const submit = async () => {
     setError(null);
     try {
@@ -416,19 +432,23 @@ function AccountTab() {
           {/* ── Timezone ─────────────────────────── */}
           <Field
             label="Timezone"
-            hint="The single source of truth for the app's calendar days: it labels windows in this browser AND cuts the server's day boundaries and briefing day. The dataset itself is stored in its own zone and is never rewritten."
+            hint="Cuts the app's calendar days: when a night, a workout or a daily total belongs to, the clock times shown on every page, and the briefing day. It starts as this browser's timezone and stays whatever you choose here."
           >
             <Select
               value={draft.timezone}
               onChange={v => setDraft({ ...draft, timezone: v })}
-              options={[
-                ...TIMEZONES.map(tz => ({ value: tz, label: tz })),
-                ...(TIMEZONES.includes(draft.timezone)
-                  ? []
-                  : [{ value: draft.timezone, label: `${draft.timezone} (current)` }]),
-              ]}
+              options={timezoneOptions}
               aria-label="Timezone"
             />
+            {browserTimezone && browserTimezone !== draft.timezone && (
+              <button
+                type="button"
+                onClick={() => setDraft({ ...draft, timezone: browserTimezone })}
+                className="mt-1.5 text-xs text-accent hover:underline"
+              >
+                Use this browser&rsquo;s timezone ({browserTimezone})
+              </button>
+            )}
           </Field>
 
           {/* ── Briefing hour ────────────────────── */}

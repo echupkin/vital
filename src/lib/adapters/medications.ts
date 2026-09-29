@@ -19,14 +19,15 @@
 // `hae.ts`; the TTL cache + single-flight policy lives in `cache.ts`. This module
 // reuses both rather than re-deriving either.
 
-import { dayKey } from '../analytics/windows';
+import { addDays, dayKey } from '../analytics/windows';
 import { liveCache } from './cache';
 import { haeGetArray, type MetricWindow, type RequestDeps } from './hae';
 
 /**
- * Day attribution is done in UTC, mirroring the dataset default
- * (`DEFAULT_TIMEZONE` in `live.ts`). The source records `scheduledDate` as an
- * instant; a null one is not attributable to any day (see `MedicationRecord`).
+ * The zone a record's day is attributed in when the caller passes none (tests).
+ * Every real read passes the profile's timezone, the zone the rest of the app
+ * cuts its calendar days in. The source records `scheduledDate` as an instant;
+ * a null one is not attributable to any day (see `MedicationRecord`).
  */
 export const MEDICATION_DAY_TIMEZONE = 'UTC';
 
@@ -141,7 +142,10 @@ function normalizeCoding(coding: RawMedicationCoding): MedicationCoding | null {
 }
 
 /** Convert one upstream record. A null `scheduledDate` survives as a null day. */
-export function toMedicationRecord(raw: RawMedicationRecord): MedicationRecord {
+export function toMedicationRecord(
+  raw: RawMedicationRecord,
+  timezone: string = MEDICATION_DAY_TIMEZONE
+): MedicationRecord {
   const displayText = typeof raw.displayText === 'string' ? raw.displayText : '';
   const scheduledDate =
     typeof raw.scheduledDate === 'string' && raw.scheduledDate.length > 0
@@ -158,7 +162,7 @@ export function toMedicationRecord(raw: RawMedicationRecord): MedicationRecord {
     dosage: normalizeDosage(raw.dosage),
     status: normalizeStatus(raw.status),
     scheduledDate,
-    dayKey: scheduledDate ? dayKey(scheduledDate, MEDICATION_DAY_TIMEZONE) : null,
+    dayKey: scheduledDate ? dayKey(scheduledDate, timezone) : null,
     start: typeof raw.start === 'string' ? raw.start : null,
     end: typeof raw.end === 'string' ? raw.end : null,
     isArchived: raw.isArchived === true,
@@ -204,6 +208,33 @@ function medicationQuery(window: MetricWindow): string {
   return qs ? `?${qs}` : '';
 }
 
+export interface MedicationReadDeps extends RequestDeps {
+  /** IANA zone each record's day is attributed in: the profile's timezone. */
+  timezone?: string;
+}
+
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * The upstream bounds are UTC calendar days. Outside UTC, a local day straddles
+ * two of them, so the request is widened by a day on each side and the records
+ * are then trimmed to the requested local days.
+ */
+function upstreamWindowFor(window: MetricWindow, timezone: string): MetricWindow {
+  if (timezone === 'UTC') return window;
+  return {
+    from: window.from && DAY_KEY.test(window.from) ? addDays(window.from, -1) : window.from,
+    to: window.to && DAY_KEY.test(window.to) ? addDays(window.to, 1) : window.to,
+  };
+}
+
+function inLocalWindow(record: MedicationRecord, window: MetricWindow): boolean {
+  if (record.dayKey === null) return true;
+  if (window.from && DAY_KEY.test(window.from) && record.dayKey < window.from) return false;
+  if (window.to && DAY_KEY.test(window.to) && record.dayKey >= window.to) return false;
+  return true;
+}
+
 /**
  * GET /api/medications — a bounded window of records, newest first.
  *
@@ -213,26 +244,32 @@ function medicationQuery(window: MetricWindow): string {
  */
 export async function fetchMedications(
   window: MetricWindow = {},
-  deps: RequestDeps = {}
+  deps: MedicationReadDeps = {}
 ): Promise<MedicationReadResult> {
+  const timezone = deps.timezone ?? MEDICATION_DAY_TIMEZONE;
   const raw = await haeGetArray<RawMedicationRecord>(
-    `${MEDICATIONS_PATH}${medicationQuery(window)}`,
+    `${MEDICATIONS_PATH}${medicationQuery(upstreamWindowFor(window, timezone))}`,
     deps
   );
-  const records = raw.map(toMedicationRecord);
+  const records = raw
+    .map(r => toMedicationRecord(r, timezone))
+    .filter(r => timezone === 'UTC' || inLocalWindow(r, window));
   return { records, window, covered: coveredSpan(records) };
 }
 
 // ── Cached entry point ──────────────────────────────────
 
-export interface MedicationDeps extends RequestDeps {
+export interface MedicationDeps extends MedicationReadDeps {
   /** Skip the process-wide cache (tests, and an explicit refresh). */
   bypassCache?: boolean;
 }
 
-/** One cache entry per requested window. */
-export function medicationsCacheKey(window: MetricWindow = {}): string {
-  return `medications:${window.from ?? ''}:${window.to ?? ''}`;
+/** One cache entry per requested window and attribution zone. */
+export function medicationsCacheKey(
+  window: MetricWindow = {},
+  timezone: string = MEDICATION_DAY_TIMEZONE
+): string {
+  return `medications:${timezone}:${window.from ?? ''}:${window.to ?? ''}`;
 }
 
 /**
@@ -244,7 +281,7 @@ export async function loadMedications(
   window: MetricWindow = {},
   deps: MedicationDeps = {}
 ): Promise<MedicationReadResult> {
-  const key = medicationsCacheKey(window);
+  const key = medicationsCacheKey(window, deps.timezone);
   if (deps.bypassCache) {
     const fresh = await fetchMedications(window, deps);
     liveCache.clear(key);

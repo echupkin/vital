@@ -53,6 +53,11 @@ import { splitSources, sourceRuleExplanationFor } from './sources';
 
 /** Rolling window fetched from upstream. Covers the observed 56-day history many times over. */
 export const LIVE_LOOKBACK_DAYS = 400;
+/**
+ * Zone used only when a caller passes none (tests and the bare adapter). Every
+ * path that renders or reasons about the data passes the profile's timezone —
+ * see `resolveDataset` in `runtime.ts`.
+ */
 export const DEFAULT_TIMEZONE = 'UTC';
 
 /** Upstream metrics are fetched a few at a time so a cold load stays bounded. */
@@ -66,6 +71,11 @@ export interface LiveDeps {
   lookbackDays?: number;
   /** Skip the process-wide cache (tests, and an explicit refresh). */
   bypassCache?: boolean;
+  /**
+   * IANA zone the calendar days are cut in: the profile's timezone. Sleep waking
+   * dates, workout days, daily totals and "today" all depend on it.
+   */
+  timezone?: string;
 }
 
 /** Outcome of the boot-time cache warm-up: reported, never thrown. */
@@ -88,8 +98,8 @@ export interface LiveDatasetResult {
   cacheTtlSeconds: number;
 }
 
-function resolveTimezone(env: NodeJS.ProcessEnv): string {
-  const tz = (env.VITAL_TIMEZONE ?? '').trim();
+function resolveTimezone(deps: LiveDeps): string {
+  const tz = (deps.timezone ?? '').trim();
   return tz || DEFAULT_TIMEZONE;
 }
 
@@ -193,7 +203,7 @@ export async function fetchLiveDatasetUncached(deps: LiveDeps = {}): Promise<Liv
   }
 
   const now = (deps.now ?? (() => new Date()))();
-  const timezone = resolveTimezone(env);
+  const timezone = resolveTimezone(deps);
   const referenceKey = dayKey(now.toISOString(), timezone);
   const lookbackDays = deps.lookbackDays ?? LIVE_LOOKBACK_DAYS;
   const window = upstreamWindow(referenceKey, lookbackDays);
@@ -358,8 +368,23 @@ export async function fetchLiveDatasetUncached(deps: LiveDeps = {}): Promise<Liv
 
 // ── Cached entry point ──────────────────────────────────
 
-export function liveCacheKey(env: NodeJS.ProcessEnv = process.env): string {
-  return `live-dataset:${resolveTimezone(env)}:${LIVE_LOOKBACK_DAYS}`;
+const LIVE_CACHE_PREFIX = 'live-dataset:';
+
+export function liveCacheKey(timezone: string = DEFAULT_TIMEZONE): string {
+  return `${LIVE_CACHE_PREFIX}${timezone}:${LIVE_LOOKBACK_DAYS}`;
+}
+
+/**
+ * The key for this load. A dataset cut in any other zone is dropped: after a
+ * timezone change it is stale, and holding two copies of the history only costs
+ * memory.
+ */
+function liveCacheKeyFor(deps: LiveDeps): string {
+  const key = liveCacheKey(resolveTimezone(deps));
+  for (const other of liveCache.stats().keys) {
+    if (other !== key && other.startsWith(LIVE_CACHE_PREFIX)) liveCache.clear(other);
+  }
+  return key;
 }
 
 /**
@@ -367,8 +392,7 @@ export function liveCacheKey(env: NodeJS.ProcessEnv = process.env): string {
  * concurrent callers share one upstream pass.
  */
 export async function loadLiveDataset(deps: LiveDeps = {}): Promise<LiveDatasetResult> {
-  const env = deps.env ?? process.env;
-  const key = liveCacheKey(env);
+  const key = liveCacheKeyFor(deps);
   if (deps.bypassCache) {
     const fresh = await fetchLiveDatasetUncached(deps);
     liveCache.clear(key);
@@ -398,7 +422,7 @@ export function warmLiveDataset(deps: LiveDeps = {}): Promise<WarmUpOutcome> | n
   if ((env.VITAL_DATA_MODE ?? '').trim().toLowerCase() !== 'live') return null;
   if (!readHaeConfig(env)) return null;
 
-  const key = liveCacheKey(env);
+  const key = liveCacheKeyFor(deps);
   // Single-flight: a request that got there first is joined, not duplicated.
   return liveCache
     .getOrLoad(key, () => fetchLiveDatasetUncached(deps))

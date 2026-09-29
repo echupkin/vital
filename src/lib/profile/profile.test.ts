@@ -10,6 +10,7 @@ import {
   PROFILE_NAME_MAX,
   PROFILE_NOTES_MAX,
   ageInYears,
+  browserTimezoneToAdopt,
   defaultProfile,
   greetingLine,
   initialsOf,
@@ -75,6 +76,23 @@ describe('greeting by time of day', () => {
     expect(ageInYears('1990-06-15', new Date('2026-01-01T12:00:00.000Z'))).toBe(35);
     expect(ageInYears(null)).toBeNull();
     expect(ageInYears('not-a-date')).toBeNull();
+  });
+});
+
+describe("the browser's timezone is a default, never an override", () => {
+  it('is adopted only while no profile is stored', () => {
+    expect(browserTimezoneToAdopt(false, 'America/Chicago', 'America/New_York')).toBe('America/New_York');
+    expect(browserTimezoneToAdopt(true, 'America/Chicago', 'America/New_York')).toBeNull();
+  });
+
+  it('does nothing when the zones already agree or the browser reports none', () => {
+    expect(browserTimezoneToAdopt(false, 'America/New_York', 'America/New_York')).toBeNull();
+    expect(browserTimezoneToAdopt(false, 'America/Chicago', null)).toBeNull();
+    expect(browserTimezoneToAdopt(false, 'America/Chicago', '  ')).toBeNull();
+  });
+
+  it('ignores a zone this runtime does not recognise', () => {
+    expect(browserTimezoneToAdopt(false, 'America/Chicago', 'Mars/Olympus_Mons')).toBeNull();
   });
 });
 

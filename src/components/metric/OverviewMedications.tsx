@@ -30,6 +30,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Info, Pill } from 'lucide-react';
 import { Badge, Card, DataStateNote, EmptyState, ErrorState, LoadingState } from '@/components/ui/primitives';
 import { useDatasetMeta } from '@/components/data/DatasetProvider';
+import { useUnits } from '@/components/ui/UnitsProvider';
 import { formatDayKeyLong } from '@/lib/analytics/windows';
 import { fetchMedications, type MedicationReadResponse } from '@/lib/medications/client-data';
 import {
@@ -107,10 +108,11 @@ export function MedicationsOverviewBody({
   data: MedicationReadResponse;
   referenceKey: string;
 }) {
+  const { timezone } = useUnits();
   const records = data.records;
   const groups = useMemo(() => groupMedications(records), [records]);
   const undated = useMemo(() => undatedRecords(records), [records]);
-  const covered = coverageLabel(data.covered);
+  const covered = coverageLabel(data.covered, timezone);
   const empty = hasNoRecords(records);
 
   return (
