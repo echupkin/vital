@@ -12,10 +12,13 @@ import { ArrowRight, ChevronRight, PauseCircle } from 'lucide-react';
 import type { RoutineOverview } from '@/lib/routine/progress';
 import type { WorkoutSlotView, WorkoutView } from '@/lib/routine/workout-view';
 import type { WorkoutSourceStatus } from '@/lib/workout-sources/types';
-import { Badge, Card, ErrorState, Skeleton } from '@/components/ui/primitives';
+import { Badge, Card, ErrorState } from '@/components/ui/primitives';
 import { DiscussButton } from '@/components/analyst/DiscussDialog';
 import { useUnits } from '@/components/ui/UnitsProvider';
-import { ExerciseDataNotice, LightLabel, ReadinessBar, pathHref, planHref, useRoutineFetch } from './shared';
+import { PageHero } from '@/components/art/PageHero';
+import { HeroStat } from '@/components/art/HeroStat';
+import { SectionTitle } from '@/components/domain/DomainShared';
+import { ExerciseDataNotice, LightLabel, MICRO_LABEL, ReadinessBar, RoutinePageSkeleton, pathHref, useRoutineFetch } from './shared';
 import { workoutSuggestions } from './discuss-suggestions';
 import { useBreadcrumbLabel } from '@/components/shell/Breadcrumbs';
 import { formatDayKeyShort } from '@/lib/analytics/windows';
@@ -33,14 +36,7 @@ export function RoutineWorkoutPage() {
   const { state, reload } = useRoutineFetch<WorkoutDetailResponse>(`/api/routine/workouts/${encodeURIComponent(templateId)}`, units);
   useBreadcrumbLabel(state.status === 'ok' ? state.data.workout.name : undefined);
 
-  if (state.status === 'loading') {
-    return (
-      <div className="space-y-4">
-        <Skeleton height={32} width="50%" />
-        <Skeleton height={180} />
-      </div>
-    );
-  }
+  if (state.status === 'loading') return <RoutinePageSkeleton label="Loading the workout" />;
   if (state.status === 'error') {
     return (
       <div className="space-y-4">
@@ -55,45 +51,53 @@ export function RoutineWorkoutPage() {
   const untracked = slots.some(s => !s.tracked);
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-xs text-text-secondary">
-            <Link href={planHref} className="hover:text-text-primary hover:underline underline-offset-2">
-              {routine.title}
-            </Link>
-          </p>
-          <h1 className="text-[24px] md:text-[30px] font-semibold tracking-tight text-text-primary leading-tight mt-1">{workout.name}</h1>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            {workout.when && <Badge variant="accent">{workout.when}</Badge>}
-            {workout.minutes ? <Badge>~{workout.minutes} min</Badge> : null}
-            <Badge>
-              {workout.domains.length} domain{workout.domains.length === 1 ? '' : 's'}
-            </Badge>
-            {ready > 0 && <Badge variant="success">{ready} ready to progress</Badge>}
-            {nearly > 0 && <Badge variant="info">{nearly} nearly there</Badge>}
-          </div>
-          <p className="text-xs text-text-secondary mt-2">
-            {workout.lastDone
-              ? `Last done ${formatDayKeyShort(workout.lastDone)} · ${workout.timesDone} time${workout.timesDone === 1 ? '' : 's'} since the plan began`
-              : untracked
-                ? 'Sessions of this workout can’t be seen without a workout source'
-                : 'Not logged yet in this plan'}
-          </p>
-        </div>
+    <div className="space-y-8">
+      <PageHero
+        title={workout.name}
+        eyebrow={routine.title}
+        category="activity"
+        subtitle={
+          workout.lastDone
+            ? `Last done ${formatDayKeyShort(workout.lastDone)} · ${workout.timesDone} time${workout.timesDone === 1 ? '' : 's'} since the plan began`
+            : untracked
+              ? 'Sessions of this workout can’t be seen without a workout source'
+              : 'Not logged yet in this plan'
+        }
+        aside={
+          slots.length > 0 ? (
+            <HeroStat
+              label="Ready to progress"
+              value={
+                <>
+                  {ready}
+                  <span className="text-base font-normal text-text-secondary"> of {slots.length}</span>
+                </>
+              }
+              sub={nearly > 0 ? `${nearly} nearly there` : undefined}
+            />
+          ) : undefined
+        }
+      >
+        {workout.when && <Badge variant="accent">{workout.when}</Badge>}
+        {workout.minutes ? <Badge>~{workout.minutes} min</Badge> : null}
+        <Badge>
+          {workout.domains.length} domain{workout.domains.length === 1 ? '' : 's'}
+        </Badge>
+        {ready > 0 && <Badge variant="success">{ready} ready to progress</Badge>}
+        {nearly > 0 && <Badge variant="info">{nearly} nearly there</Badge>}
         <DiscussButton
           context={{ kind: 'routine-workout', templateId: workout.id }}
           subject={workout.name}
           suggestions={workoutSuggestions(workout)}
           onPlanChange={reload}
         />
-      </header>
+      </PageHero>
 
       {untracked && <ExerciseDataNotice routine={routine} />}
 
       {workout.warmup.length > 0 && (
         <section aria-label="Warm-up">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary mb-2">Warm-up</h2>
+          <h2 className={`${MICRO_LABEL} mb-2`}>Warm-up</h2>
           <ul className="flex flex-wrap gap-1.5">
             {workout.warmup.map(w => (
               <li key={w}>
@@ -104,24 +108,30 @@ export function RoutineWorkoutPage() {
         </section>
       )}
 
-      {workout.domains.length === 0 ? (
-        <Card className="p-5">
-          <p className="text-sm text-text-secondary">This workout has no slots that point at a path in the plan. Ask the analyst to fill it in.</p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {workout.domains.map(d => (
-            <Card key={d.areaId} className="p-5" as="section" aria-label={d.areaName}>
-              <h2 className="text-sm font-semibold text-text-primary mb-3">{d.areaName}</h2>
-              <ul className="space-y-4">
-                {d.slots.map(s => (
-                  <SlotRow key={s.pathId} slot={s} />
-                ))}
-              </ul>
-            </Card>
-          ))}
-        </div>
-      )}
+      <section aria-labelledby="slots-title">
+        <SectionTitle hint="each slot opens its path">
+          <span id="slots-title">What to train</span>
+        </SectionTitle>
+        {workout.domains.length === 0 ? (
+          <Card className="p-5">
+            <p className="text-sm text-text-secondary">This workout has no slots that point at a path in the plan. Ask the analyst to fill it in.</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {workout.domains.map(d => (
+              <Card key={d.areaId} className="relative overflow-hidden p-5 md:p-6" as="section" aria-label={d.areaName}>
+                <span className="absolute inset-x-0 top-0 h-[3px] bg-category-activity" aria-hidden="true" />
+                <h3 className="text-[15px] font-semibold text-text-primary mb-4">{d.areaName}</h3>
+                <ul className="space-y-4">
+                  {d.slots.map(s => (
+                    <SlotRow key={s.pathId} slot={s} />
+                  ))}
+                </ul>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -135,13 +145,13 @@ function SlotRow({ slot }: { slot: WorkoutSlotView }) {
             {slot.pathName}
             {slot.optional ? ' · optional' : ''}
           </p>
-          <p className="text-sm font-semibold text-text-primary group-hover:underline underline-offset-2">
+          <p className="text-[15px] font-semibold tracking-[-0.01em] text-text-primary group-hover:underline underline-offset-2">
             {slot.stageName}
             {slot.stepName ? <span className="font-normal text-text-secondary"> · {slot.stepName}</span> : null}
           </p>
           {slot.dose && <p className="text-xs text-text-secondary mt-0.5 tnum">{slot.dose}</p>}
         </div>
-        <ChevronRight size={16} className="text-text-secondary shrink-0 mt-1" aria-hidden="true" />
+        <ChevronRight size={16} className="text-text-secondary shrink-0 mt-1 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
       </Link>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">

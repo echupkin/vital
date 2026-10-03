@@ -213,6 +213,8 @@ export function resolveTheme(
 /**
  * Apply the theme to the document: `data-theme` selects the palette in
  * globals.css, and the `dark` class keeps Tailwind's `dark:` variants working.
+ * The browser's own chrome (the iOS status bar of the home-screen app, a mobile
+ * browser's toolbar) is given the palette's page colour to match the top bar.
  */
 export function applyTheme(prefs: ThemeChoice): void {
   if (typeof document === 'undefined') return;
@@ -220,6 +222,25 @@ export function applyTheme(prefs: ThemeChoice): void {
   const { scheme, attr } = resolveTheme(prefs);
   root.classList.toggle('dark', scheme === 'dark');
   root.dataset.theme = attr;
+  syncThemeColor();
+}
+
+/**
+ * The page colour of the palette on show, as the document's theme colour. The
+ * layout's light and dark defaults cover the first paint; this tag comes first
+ * in <head>, so it wins over them once a palette is applied.
+ */
+function syncThemeColor(): void {
+  const page = getComputedStyle(document.documentElement).getPropertyValue('--color-page').trim();
+  if (!page) return;
+  let meta = document.head.querySelector<HTMLMetaElement>('meta[name="theme-color"][data-palette]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    meta.dataset.palette = '';
+    document.head.prepend(meta);
+  }
+  meta.content = page;
 }
 
 export { preferencesCacheKey, PREFS_SCHEMA_VERSION };

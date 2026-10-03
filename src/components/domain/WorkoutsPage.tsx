@@ -12,9 +12,8 @@ import { ArrowRight } from 'lucide-react';
 import { formatDurationHm } from '@/lib/metrics/format';
 import { filterWorkouts, formatDayKeyLong, workoutViews } from '@/lib/analytics';
 import { Card, DataStateNote } from '@/components/ui/primitives';
-import { DomainHeader, SectionTitle } from './DomainShared';
+import { DomainHeader, SectionTitle, TotalCard } from './DomainShared';
 import { RoutineSection } from '@/components/routine/RoutineSection';
-import { TotalCard } from './AllWorkoutsPage';
 
 const SUMMARY_DAYS = 30;
 

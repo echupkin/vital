@@ -161,6 +161,28 @@ describe('metric-specific normalization of recorded samples', () => {
     expect(byMetric.get('apple_stand_hours')).toBe('apple_stand_hour');
     expect(byMetric.get('dietary_carbs')).toBe('carbohydrates');
     expect(byMetric.get('dietary_fat_total')).toBe('total_fat');
+    // HAE's own names; the registry-id collections upstream are always empty.
+    expect(byMetric.get('walking_heart_rate')).toBe('walking_heart_rate_average');
+    expect(byMetric.get('vo2max')).toBe('vo2_max');
+    expect(byMetric.get('distance_cycling')).toBe('cycling_distance');
+    expect(byMetric.get('dietary_sodium')).toBe('sodium');
+  });
+
+  it('normalizes each newly mapped metric in the unit HAE reports it in', () => {
+    const cases: [string, RawSimpleRecord, number, string][] = [
+      ['walking_heart_rate', { date: '2026-09-16T04:00:09.000Z', qty: 97, units: 'count/min', source: 'Apple Watch' }, 97, 'bpm'],
+      ['vo2max', { date: '2026-09-16T14:00:00.000Z', qty: 42.06, units: 'ml/(kg·min)', source: 'Apple Watch' }, 42.06, 'ml/kg/min'],
+      ['waist_circumference', { date: '2026-09-16T14:00:00.000Z', qty: 38.5, units: 'in', source: 'Health' }, 97.79, 'cm'],
+      ['distance_cycling', { date: '2026-09-16T14:00:00.000Z', qty: 1, units: 'mi', source: '' }, 1.609344, 'km'],
+      ['dietary_sodium', { date: '2026-09-16T14:00:00.000Z', qty: 1036.44, units: 'mg', source: '' }, 1036.44, 'mg'],
+    ];
+    for (const [metricId, record, qty, units] of cases) {
+      const mapping = METRIC_MAPPINGS.find(m => m.metricId === metricId)!;
+      const normalized = normalizeSimpleMetric(mapping, [record], CTX);
+      expect(normalized, metricId).not.toBeNull();
+      expect(normalized!.observations[0].qty, metricId).toBeCloseTo(qty, 4);
+      expect(normalized!.observations[0].units, metricId).toBe(units);
+    }
   });
 });
 
@@ -376,7 +398,8 @@ describe('dataset assembly and coverage', () => {
 
     // An upstream metric with zero records produces no series at all — not a
     // zero-valued one.
-    expect(samples.metrics.vo2max).toHaveLength(0);
+    const vo2 = METRIC_MAPPINGS.find(m => m.metricId === 'vo2max')!;
+    expect((samples.metrics as Record<string, unknown[]>)[vo2.hae] ?? []).toHaveLength(0);
     expect(dataset.metrics['vo2max']).toBeUndefined();
     expect(dataset.coverage['vo2max']).toBeUndefined();
 

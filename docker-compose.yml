@@ -96,6 +96,12 @@ services:
       HEVY_API_URL: "${HEVY_API_URL:-}"
       HEVY_CACHE_TTL_SECONDS: "${HEVY_CACHE_TTL_SECONDS:-300}"
       WORKOUT_SOURCE_LOOKBACK_DAYS: "${WORKOUT_SOURCE_LOOKBACK_DAYS:-400}"
+      # Activity maps: routes held in memory, place search, street tiles.
+      # Empty values fall back to the defaults (see .env.example).
+      ROUTE_CACHE_MAX_POINTS: "${ROUTE_CACHE_MAX_POINTS:-}"
+      GEOCODER_URL: "${GEOCODER_URL:-}"
+      GEOCODER_USER_AGENT: "${GEOCODER_USER_AGENT:-}"
+      MAP_TILES_CARTO_KEY: "${MAP_TILES_CARTO_KEY:-}"
       # Fallback timezone until a profile is stored; the profile's timezone
       # (defaulted from the first browser, editable in Settings) cuts the days.
       VITAL_TIMEZONE: "${VITAL_TIMEZONE:-}"

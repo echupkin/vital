@@ -10,6 +10,9 @@
 //   GET /api/workouts          ?startDate=&endDate=
 //                              → [{ id, workout_type, start_time, end_time,
 //                                   duration_minutes, calories_burned }]
+//   GET /api/workouts/:id      ?include=route,heartRateData
+//                              → { route: [{ latitude, longitude, time }],
+//                                  heartRateData: [{ timestamp, value }] }
 //
 // Nothing here is imported by browser code: the client bundle never receives the
 // token (see README "Live data" and the bundle check in the verification steps).
@@ -88,15 +91,12 @@ function fetchOf(deps: RequestDeps = {}): typeof fetch {
   return impl;
 }
 
-/**
- * GET a JSON array from the API. A non-array body is an error: silently treating
- * `{error: …}` as "no data" is how a broken source becomes a fabricated zero.
- */
-export async function haeGetArray<T>(
+/** GET a JSON body from the API, with the shared timeout and error mapping. */
+async function haeGetJson(
   pathAndQuery: string,
   deps: RequestDeps = {},
   timeoutMs?: number
-): Promise<T[]> {
+): Promise<unknown> {
   const config = readHaeConfig(deps.env ?? process.env);
   if (!config) {
     throw new HaeError(
@@ -146,6 +146,19 @@ export async function haeGetArray<T>(
     throw new HaeError('The Health Auto Export API returned a body that is not JSON.', 'invalid_payload');
   }
 
+  return body;
+}
+
+/**
+ * GET a JSON array from the API. A non-array body is an error: silently treating
+ * `{error: …}` as "no data" is how a broken source becomes a fabricated zero.
+ */
+export async function haeGetArray<T>(
+  pathAndQuery: string,
+  deps: RequestDeps = {},
+  timeoutMs?: number
+): Promise<T[]> {
+  const body = await haeGetJson(pathAndQuery, deps, timeoutMs);
   if (!Array.isArray(body)) {
     throw new HaeError(
       'The Health Auto Export API returned an object where an array of records was expected.',
@@ -153,6 +166,22 @@ export async function haeGetArray<T>(
     );
   }
   return body as T[];
+}
+
+/** GET a JSON object from the API. An array, a scalar or null is an error. */
+export async function haeGetObject<T extends object>(
+  pathAndQuery: string,
+  deps: RequestDeps = {},
+  timeoutMs?: number
+): Promise<T> {
+  const body = await haeGetJson(pathAndQuery, deps, timeoutMs);
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    throw new HaeError(
+      'The Health Auto Export API returned something other than the object that was expected.',
+      'invalid_payload'
+    );
+  }
+  return body as T;
 }
 
 export interface MetricWindow {
@@ -190,6 +219,24 @@ export async function fetchWorkouts(
   if (window.to) params.set('endDate', window.to);
   const qs = params.toString();
   return haeGetArray<RawWorkoutRecord>(`/api/workouts${qs ? `?${qs}` : ''}`, deps);
+}
+
+/** One workout's detail: its GPS route and the heart rate sampled during it. */
+export interface RawWorkoutDetail {
+  route?: { latitude?: number; longitude?: number; time?: string }[];
+  heartRateData?: { timestamp?: string; value?: number }[];
+}
+
+/**
+ * GET /api/workouts/:id — the route and heart rate of one session. The list
+ * endpoint carries neither, so a map reads each workout once (see
+ * `@/lib/activity-maps/routes`).
+ */
+export async function fetchWorkoutDetail(id: string, deps: RequestDeps = {}): Promise<RawWorkoutDetail> {
+  return haeGetObject<RawWorkoutDetail>(
+    `/api/workouts/${encodeURIComponent(id)}?include=route,heartRateData`,
+    deps
+  );
 }
 
 export interface HaeProbeResult {

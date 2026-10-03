@@ -11,34 +11,36 @@
 // read from Apple Health and the logged sessions.
 
 import Link from 'next/link';
-import type { ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { RoutineOverview } from '@/lib/routine/progress';
 import type { RecoveryIndicator } from '@/lib/routine/recovery';
 import type { RecoverySignalId } from '@/lib/routine/types';
 import { formatDayKeyLong, formatDayKeyShort } from '@/lib/analytics/windows';
-import { Badge, Button, Card, EmptyState, ErrorState, Skeleton } from '@/components/ui/primitives';
+import { Badge, Button, Card, EmptyState, ErrorState } from '@/components/ui/primitives';
 import { useUnits } from '@/components/ui/UnitsProvider';
 import { DiscussButton } from '@/components/analyst/DiscussDialog';
-import { LightLabel, RECOVERY_TONE, pathHref, planHref, recoveryVariant, useRoutineFetch, type RoutineApiResponse } from './shared';
+import { PageHero } from '@/components/art/PageHero';
+import { HeroStat } from '@/components/art/HeroStat';
+import { CATEGORY_VAR } from '@/components/art/categories';
+import { SectionTitle, TotalCard, artCategoryOf } from '@/components/domain/DomainShared';
+import {
+  LightLabel,
+  MICRO_LABEL,
+  RECOVERY_TONE,
+  RoutinePageSkeleton,
+  pathHref,
+  recoveryVariant,
+  useRoutineFetch,
+  type RoutineApiResponse,
+} from './shared';
 import { recoverySuggestions } from './discuss-suggestions';
-
-const SECTION_HEADING = 'text-sm font-semibold text-text-primary';
 
 export function RoutineRecoveryPage() {
   const { units } = useUnits();
   const { state, reload } = useRoutineFetch<RoutineApiResponse>('/api/routine', units);
 
-  if (state.status === 'loading') {
-    return (
-      <div className="space-y-4">
-        <Skeleton height={32} width="40%" />
-        <Skeleton height={120} />
-        <Skeleton height={220} />
-      </div>
-    );
-  }
+  if (state.status === 'loading') return <RoutinePageSkeleton label="Loading recovery" />;
   if (state.status === 'error') {
     return (
       <div className="space-y-4">
@@ -49,7 +51,8 @@ export function RoutineRecoveryPage() {
   const routine = state.data.routine;
   if (!routine) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-8">
+        <PageHero title="Recovery" eyebrow="Workouts" category="recovery" />
         <Card className="p-5">
           <EmptyState
             title="No active plan"
@@ -66,21 +69,16 @@ export function RoutineRecoveryPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 max-w-3xl">
-          <p className="text-xs text-text-secondary">
-            <Link href={planHref} className="hover:text-text-primary hover:underline underline-offset-2">
-              {routine.title}
-            </Link>
-          </p>
-          <h1 className="text-[24px] md:text-[30px] font-semibold tracking-tight text-text-primary leading-tight mt-1">Recovery</h1>
-          <p className="text-sm text-text-secondary mt-1">
-            Whether your body supports pushing on, judged against the plan&apos;s limits, and when the next lighter week is due.
-          </p>
-        </div>
+    <div className="space-y-8">
+      <PageHero
+        title="Recovery"
+        eyebrow={routine.title}
+        category="recovery"
+        subtitle="Whether your body supports pushing on, judged against the plan's limits, and when the next lighter week is due."
+        aside={<HeroStat label="Status" value={RECOVERY_TONE[routine.recovery.status]} sub={HEADLINE[routine.recovery.status]} />}
+      >
         <DiscussButton context={{ kind: 'routine' }} subject="recovery and deloads" suggestions={recoverySuggestions(routine)} onPlanChange={reload} />
-      </header>
+      </PageHero>
       <Now routine={routine} />
       <Deload routine={routine} />
       <Signals indicators={routine.recovery.indicators} />
@@ -125,51 +123,55 @@ function Now({ routine }: { routine: RoutineOverview }) {
   const r = routine.recovery;
   const tripped = r.indicators.filter(i => i.gate && (i.status === 'warn' || i.status === 'watch'));
   return (
-    <Card className="p-5 space-y-4 scroll-mt-20" as="section" id="now" aria-labelledby="now-title">
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 id="now-title" className={SECTION_HEADING}>
-            {HEADLINE[r.status]}
-          </h2>
-          <Badge variant={recoveryVariant(r.status)}>{RECOVERY_TONE[r.status]}</Badge>
-        </div>
-        <p className="text-xs text-text-secondary mt-1 max-w-3xl">{meaning(routine)}</p>
-      </div>
-
-      {tripped.length > 0 && (
-        <>
-          <div>
-            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary mb-1.5">Why</h3>
-            <ul className="space-y-3 list-none p-0 max-w-3xl">
-              {tripped.map(i => (
-                <li key={i.signal} className="text-xs text-text-secondary">
-                  <p>
-                    <a href={`#signal-${i.signal}`} className="font-medium text-text-primary hover:underline underline-offset-2">
-                      {i.label}
-                    </a>{' '}
-                    ({RECOVERY_TONE[i.status].toLowerCase()}): {i.text}
-                  </p>
-                  {i.rule && <p className="mt-0.5">{i.rule}</p>}
-                  {i.advice && <p className="mt-0.5">{i.advice}</p>}
-                </li>
-              ))}
-            </ul>
+    <section className="scroll-mt-20" id="now" aria-labelledby="now-title">
+      <SectionTitle>
+        <span id="now-title">Right now</span>
+      </SectionTitle>
+      <Card className="relative overflow-hidden p-5 md:p-6 space-y-4">
+        <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: CATEGORY_VAR.recovery }} aria-hidden="true" />
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-[19px] font-semibold tracking-[-0.025em] text-text-primary">{HEADLINE[r.status]}</h3>
+            <Badge variant={recoveryVariant(r.status)}>{RECOVERY_TONE[r.status]}</Badge>
           </div>
-          <p className="text-xs text-text-primary rounded-control bg-surface-muted p-3 max-w-3xl">{caution(tripped, r.status)}</p>
-        </>
-      )}
-    </Card>
+          <p className="text-sm text-text-secondary mt-1.5 max-w-3xl">{meaning(routine)}</p>
+        </div>
+
+        {tripped.length > 0 && (
+          <>
+            <div>
+              <h4 className={`${MICRO_LABEL} mb-1.5`}>Why</h4>
+              <ul className="space-y-3 list-none p-0 max-w-3xl">
+                {tripped.map(i => (
+                  <li key={i.signal} className="text-[13px] text-text-secondary">
+                    <p>
+                      <a href={`#signal-${i.signal}`} className="font-medium text-text-primary hover:underline underline-offset-2">
+                        {i.label}
+                      </a>{' '}
+                      ({RECOVERY_TONE[i.status].toLowerCase()}): {i.text}
+                    </p>
+                    {i.rule && <p className="mt-0.5">{i.rule}</p>}
+                    {i.advice && <p className="mt-0.5">{i.advice}</p>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <p className="text-[13px] text-text-primary rounded-control bg-surface-muted p-3 max-w-3xl">{caution(tripped, r.status)}</p>
+          </>
+        )}
+      </Card>
+    </section>
   );
 }
 
 function HeldPaths({ title, paths }: { title: string; paths: RoutineOverview['paths'] }) {
   return (
     <div>
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary mb-1.5">{title}</h3>
+      <h4 className={`${MICRO_LABEL} mb-1.5`}>{title}</h4>
       <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 list-none p-0">
         {paths.map(p => (
           <li key={p.pathId}>
-            <Link href={pathHref(p.pathId)} className="flex items-start justify-between gap-2 rounded-control bg-surface-muted p-3 hover:bg-accent-tint transition-colors">
+            <Link href={pathHref(p.pathId)} className="group flex items-start justify-between gap-2 rounded-control border border-border bg-surface p-3 transition-[box-shadow,border-color] hover:border-border-strong hover:shadow-pop">
               <span className="min-w-0">
                 <span className="block text-xs text-text-secondary">{p.pathName}</span>
                 <span className="block text-sm font-medium text-text-primary truncate">{p.stage.name}</span>
@@ -177,7 +179,7 @@ function HeldPaths({ title, paths }: { title: string; paths: RoutineOverview['pa
                   <LightLabel light={p.light} tracked={p.tracked} />
                 </span>
               </span>
-              <ChevronRight size={16} className="text-text-secondary shrink-0 mt-1" aria-hidden="true" />
+              <ChevronRight size={16} className="text-text-secondary shrink-0 mt-1 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </Link>
           </li>
         ))}
@@ -219,54 +221,56 @@ function Deload({ routine }: { routine: RoutineOverview }) {
   const badge = DELOAD_BADGE[d.status];
   const waiting = routine.paths.filter(p => p.heldBack.includes('deload'));
   return (
-    <Card className="p-5 space-y-3 scroll-mt-20" as="section" id="deload" aria-labelledby="deload-title">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 id="deload-title" className={SECTION_HEADING}>
+    <section className="scroll-mt-20" id="deload" aria-labelledby="deload-title">
+      <SectionTitle>
+        <span id="deload-title" className="inline-flex flex-wrap items-center gap-2">
           Deload
-        </h2>
-        <Badge variant={badge.variant}>{badge.label}</Badge>
+          <Badge variant={badge.variant}>{badge.label}</Badge>
+        </span>
+      </SectionTitle>
+      <div className="space-y-4">
+        <Card className="grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <TotalCard label={d.lastDeload ? 'Last deload' : 'Counting from'} value={formatDayKeyShort(d.lastDeload ?? routine.startDate)} />
+          <TotalCard label="Weeks since" value={d.status === 'in-deload' ? 'Deload week' : String(d.weeksSince)} />
+          <TotalCard
+            label="Plan rule"
+            value={d.rule ? `Every ${d.rule.everyWeeks[0]}–${d.rule.everyWeeks[1]} weeks` : 'None'}
+            sub={d.rule ? `sets cut ${pct(d.rule.volumeReduction)}` : undefined}
+          />
+        </Card>
+        <Card className="p-5 md:p-6 space-y-3">
+          <p className="text-sm text-text-secondary max-w-3xl">{d.text}</p>
+          <p className="text-[15px] text-text-primary leading-relaxed max-w-3xl">{deloadAdvice(d)}</p>
+          {waiting.length > 0 && <HeldPaths title="Ready to move on after the deload" paths={waiting} />}
+        </Card>
       </div>
-      <p className="text-xs text-text-secondary max-w-3xl">{d.text}</p>
-      <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Fact label={d.lastDeload ? 'Last deload' : 'Counting from'}>{formatDayKeyShort(d.lastDeload ?? routine.startDate)}</Fact>
-        <Fact label="Weeks since">{d.status === 'in-deload' ? 'Deload week' : d.weeksSince}</Fact>
-        <Fact label="Plan rule">{d.rule ? `Every ${d.rule.everyWeeks[0]}–${d.rule.everyWeeks[1]} weeks, sets cut ${pct(d.rule.volumeReduction)}` : 'None'}</Fact>
-      </dl>
-      <p className="text-xs text-text-primary max-w-3xl">{deloadAdvice(d)}</p>
-      {waiting.length > 0 && <HeldPaths title="Ready to move on after the deload" paths={waiting} />}
-    </Card>
-  );
-}
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="rounded-control bg-surface-muted p-3">
-      <dt className="text-[11px] text-text-secondary">{label}</dt>
-      <dd className="text-sm font-medium text-text-primary tnum mt-0.5">{children}</dd>
-    </div>
+    </section>
   );
 }
 
 // ── Signals ─────────────────────────────────────────────
 
-const FULL_DATA: Record<RecoverySignalId, { href: string; label: string }> = {
-  resting_hr: { href: '/metric/resting_heart_rate', label: 'All resting heart rate readings' },
-  hrv: { href: '/metric/heart_rate_variability', label: 'All HRV readings' },
-  sleep_hours: { href: '/metric/sleep_analysis', label: 'All sleep' },
-  body_weight_rate: { href: '/metric/weight_body_mass', label: 'All weigh-ins' },
+const FULL_DATA: Record<RecoverySignalId, { href: string; label: string; metricId?: string }> = {
+  resting_hr: { href: '/metric/resting_heart_rate', label: 'All resting heart rate readings', metricId: 'resting_heart_rate' },
+  hrv: { href: '/metric/heart_rate_variability', label: 'All HRV readings', metricId: 'heart_rate_variability' },
+  sleep_hours: { href: '/metric/sleep_analysis', label: 'All sleep', metricId: 'sleep_analysis' },
+  body_weight_rate: { href: '/metric/weight_body_mass', label: 'All weigh-ins', metricId: 'weight_body_mass' },
   training_load: { href: '/workouts/all', label: 'All sessions' },
 };
+
+/** A signal's colour is its metric's category; training load is workouts, so activity. */
+function signalColor(signal: RecoverySignalId): string {
+  const id = FULL_DATA[signal].metricId;
+  return CATEGORY_VAR[id ? artCategoryOf(id) : 'activity'];
+}
 
 function Signals({ indicators }: { indicators: RecoveryIndicator[] }) {
   return (
     <section className="scroll-mt-20" id="signals" aria-labelledby="signals-title">
-      <h2 id="signals-title" className={SECTION_HEADING}>
-        Signals
-      </h2>
-      <p className="text-[11px] text-text-secondary mt-0.5 mb-3">
-        The last 7 days against the 4 weeks before them, from your recorded readings and logged sessions.
-      </p>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <SectionTitle hint="The last 7 days against the 4 weeks before them, from your recorded readings and logged sessions.">
+        <span id="signals-title">Signals</span>
+      </SectionTitle>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {indicators.map(i => (
           <SignalCard key={i.signal} indicator={i} />
         ))}
@@ -290,15 +294,18 @@ function headline(i: RecoveryIndicator): string {
 
 function SignalCard({ indicator: i }: { indicator: RecoveryIndicator }) {
   const full = FULL_DATA[i.signal];
+  const color = signalColor(i.signal);
   return (
-    <Card className="p-4 flex flex-col gap-3 scroll-mt-20" as="article" id={`signal-${i.signal}`} aria-labelledby={`signal-${i.signal}-title`}>
+    <Card className="relative overflow-hidden p-5 flex flex-col gap-3 scroll-mt-20" as="article" id={`signal-${i.signal}`} aria-labelledby={`signal-${i.signal}-title`}>
+      <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: color }} aria-hidden="true" />
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 id={`signal-${i.signal}-title`} className="text-sm font-medium text-text-primary">
+          <h3 id={`signal-${i.signal}-title`} className="flex items-center gap-2 text-[13px] font-medium text-text-primary">
+            <span className="h-2 w-2 rounded-full" style={{ background: color }} aria-hidden="true" />
             {i.label}
           </h3>
-          <p className="mt-1">
-            <span className="text-[22px] font-semibold text-text-primary tnum leading-none">{headline(i)}</span>
+          <p className="mt-3">
+            <span className="text-[30px] font-semibold text-text-primary tnum leading-none tracking-[-0.03em]">{headline(i)}</span>
             {i.current !== null && <span className="text-xs text-text-secondary"> {i.unit}</span>}
             {i.baseline !== null && (
               <span className="text-xs text-text-secondary tnum">
@@ -311,16 +318,16 @@ function SignalCard({ indicator: i }: { indicator: RecoveryIndicator }) {
         <Badge variant={recoveryVariant(i.status)}>{RECOVERY_TONE[i.status]}</Badge>
       </div>
       <p className="text-[11px] text-text-secondary">{i.text}</p>
-      <RecoveryTrend indicator={i} />
+      <RecoveryTrend indicator={i} color={color} />
       <p className="text-[11px] text-text-secondary">
         <span className="font-medium text-text-primary">Plan limit: </span>
         {i.rule ?? 'none — shown for information, never holds a path back.'}
         {i.gate?.note && <span className="italic"> {i.gate.note}</span>}
       </p>
       {i.advice && <p className="text-xs text-text-primary rounded-control bg-surface-muted p-3">{i.advice}</p>}
-      <Link href={full.href} className="mt-auto inline-flex items-center self-start text-xs text-text-secondary hover:text-text-primary hover:underline underline-offset-2">
+      <Link href={full.href} className="group mt-auto inline-flex items-center gap-1 self-start text-[13px] font-medium text-primary hover:underline">
         {full.label}
-        <ChevronRight size={12} aria-hidden="true" />
+        <ChevronRight size={14} aria-hidden="true" className="transition-transform group-hover:translate-x-0.5" />
       </Link>
     </Card>
   );
@@ -369,7 +376,7 @@ function TrendTooltip({ active, payload, weekly, unit }: { active?: boolean; pay
   );
 }
 
-function RecoveryTrend({ indicator: i }: { indicator: RecoveryIndicator }) {
+function RecoveryTrend({ indicator: i, color }: { indicator: RecoveryIndicator; color: string }) {
   const data = i.points.map(p => ({ date: p.key, value: p.value }));
   const weekly = i.signal === 'training_load';
   if (data.length < 2 || (weekly && data.every(d => d.value === 0))) {
@@ -417,7 +424,7 @@ function RecoveryTrend({ indicator: i }: { indicator: RecoveryIndicator }) {
               {common.y}
               <Tooltip cursor={{ fill: 'var(--color-surface-muted)' }} content={<TrendTooltip weekly unit={unit} />} />
               {references}
-              <Bar dataKey="value" fill="var(--color-accent)" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
+              <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
             </BarChart>
           ) : (
             <AreaChart data={data} margin={{ top: 6, right: 4, bottom: 0, left: 0 }}>
@@ -429,12 +436,12 @@ function RecoveryTrend({ indicator: i }: { indicator: RecoveryIndicator }) {
               <Area
                 type="monotone"
                 dataKey="value"
-                stroke="var(--color-accent)"
+                stroke={color}
                 strokeWidth={2}
-                fill="var(--color-accent)"
-                fillOpacity={0.1}
-                dot={i.signal === 'body_weight_rate' ? { r: 3, fill: 'var(--color-accent)', strokeWidth: 0 } : false}
-                activeDot={{ r: 4, fill: 'var(--color-accent)', stroke: 'var(--color-surface)', strokeWidth: 2 }}
+                fill={color}
+                fillOpacity={0.12}
+                dot={i.signal === 'body_weight_rate' ? { r: 3, fill: color, strokeWidth: 0 } : false}
+                activeDot={{ r: 4, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 }}
                 isAnimationActive={false}
               />
             </AreaChart>

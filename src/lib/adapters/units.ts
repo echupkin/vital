@@ -31,6 +31,7 @@ export const UNIT_CONVERSIONS: UnitConversion[] = [
   // Unit labels that differ but denote the same quantity.
   { from: 'count/min', to: 'bpm', factor: 1 },
   { from: 'count/min', to: 'breaths/min', factor: 1 },
+  { from: 'ml/(kg·min)', to: 'ml/kg/min', factor: 1 },
   // Apple/HAE report the stand, step and BMI counts in "count"; the registry
   // names those quantities differently.
   { from: 'count', to: 'count', factor: 1 },

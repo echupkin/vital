@@ -58,11 +58,38 @@ export function DomainHeader({
   );
 }
 
-export function SectionTitle({ children, hint }: { children: React.ReactNode; hint?: string }) {
+export function SectionTitle({
+  children, hint, action,
+}: {
+  children: React.ReactNode;
+  hint?: string;
+  /** A control for the section (a menu, say), after the hint. */
+  action?: React.ReactNode;
+}) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-2 mb-4">
       <h2 className="text-[19px] md:text-[22px] font-semibold tracking-[-0.025em] text-text-primary">{children}</h2>
-      {hint && <span className="text-xs text-text-secondary">{hint}</span>}
+      {(hint || action) && (
+        <span className="flex items-center gap-2">
+          {hint && <span className="text-xs text-text-secondary">{hint}</span>}
+          {action}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ── Total card ─────────────────────────────────────────
+
+/** One figure in a connected band of totals (a Card split with dividers). */
+export function TotalCard({ label, value, sub, title }: { label: string; value: string; sub?: string; title?: string }) {
+  return (
+    <div className="p-5">
+      <div className="mb-2 text-[12px] font-medium text-text-secondary">{label}</div>
+      <div className="mb-1.5 text-[26px] font-semibold leading-none tnum tracking-[-0.03em] text-text-primary" title={title}>
+        {value}
+      </div>
+      {sub && <div className="text-[11px] text-text-secondary">{sub}</div>}
     </div>
   );
 }

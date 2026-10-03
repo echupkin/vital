@@ -14,6 +14,7 @@ Routes, what is still demo or unwired in this build, and the quality commands.
 | `/trends` | Compare periods; explore how two metrics move together |
 | `/health` | Heart, blood pressure and other health signals |
 | `/activity` | Steps, exercise and movement |
+| `/activity/maps` | Maps of where outdoor workouts went, with highlights |
 | `/sleep` | Nights, stages, consistency |
 | `/body` | Weight, body composition |
 | `/nutrition` | Logged dietary intake |
@@ -30,9 +31,9 @@ Routes, what is still demo or unwired in this build, and the quality commands.
 | `/settings` | Account (profile and goals), preferences, data and coverage, connections, AI privacy |
 | `/metric/[metricId]` | One metric in detail |
 
-The API lives under `/api/*`: `analyst` (with `conversations` and `stream`), `briefing`, `lab`,
-`medications`, `pipeline/status`, `preferences`, `profile`, `routine`, `workout-sources` and a
-`health` liveness probe.
+The API lives under `/api/*`: `activity-coverage`, `activity-maps`, `analyst` (with `conversations`
+and `stream`), `briefing`, `geocode`, `lab`, `medications`, `pipeline/status`, `preferences`,
+`profile`, `routine`, `workout-sources` and a `health` liveness probe.
 
 ---
 
@@ -65,11 +66,15 @@ What is still demo or unwired in this build, exhaustively:
 - **Malformed or missing fields upstream are not repaired.** Records without a numeric value,
   or without `start_time`/`workout_type`, are dropped; the dropped counts are not yet surfaced
   per metric in the UI (only the source-dedup counts are).
+- **Several metrics are requested under HAE's name, not the registry id.** HAE stores walking
+  heart rate as `walking_heart_rate_average`, VO₂ max as `vo2_max`, cycling distance as
+  `cycling_distance` and sodium as `sodium`; its `walking_heart_rate` and `vo2max`
+  collections are always empty, summarized export or not. The mapping table in
+  `src/lib/adapters/normalize.ts` records each pairing.
 - **`apple_stand_time`, `apple_sleeping_wrist_temperature` raw fields and the empty upstream
-  metrics** (`walking_heart_rate`, `vo2max`, `waist_circumference`, `cycling_distance`,
-  `dietary_caffeine`, `dietary_protein`, `dietary_water`, `mindful_minutes`, `blood_glucose`,
-  `apple_move_time`, `dietary_sodium`) are deliberately **not requested**: they are known to
-  have no records, and the app renders them from the registry as "No readings of this metric are recorded" — never as zero.
+  metrics** (`mindful_minutes`, `blood_glucose`, `apple_move_time`) are deliberately **not
+  requested**: they are known to have no records, and the app renders them from the registry
+  as "No readings of this metric are recorded" — never as zero.
 - **There is still no authentication, no TLS and no rate limiting.** Run it on a private LAN
   or behind an authenticated reverse proxy.
 - **The live dataset is cached in process memory.** One read-only cache fill warms it at

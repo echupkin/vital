@@ -23,6 +23,13 @@ describe('resolveTrail', () => {
     expect(resolveTrail('/workouts/all').page?.id).toBe('history');
   });
 
+  it('places the activity maps under Activity, and the landing page as its Overview', () => {
+    expect(labels('/activity/maps')).toEqual(['Activity', 'Maps']);
+    expect(resolveTrail('/activity/maps').page?.id).toBe('maps');
+    expect(labels('/activity')).toEqual(['Activity']);
+    expect(resolveTrail('/activity').page?.id).toBe('overview');
+  });
+
   it('puts a progression path under the Plan, which stays the active page', () => {
     const trail = resolveTrail('/workouts/routine/pull-up');
     expect(trail.crumbs).toEqual([

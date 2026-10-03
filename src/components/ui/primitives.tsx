@@ -316,6 +316,26 @@ export function ChoiceButton({ active, onClick, label }: { active: boolean; onCl
   );
 }
 
+// ── FilterChip ───────────────────────────────────────
+
+/** One option of a filter row (an activity type, say); several may sit side by side. */
+export function FilterChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`px-3 py-2 text-xs rounded-control border transition-colors min-h-[44px] ${
+        active
+          ? 'bg-primary text-primary-text border-primary'
+          : 'bg-surface text-text-secondary border-border hover:text-text-primary'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 // ── Tabs ─────────────────────────────────────────────
 
 interface Tab {

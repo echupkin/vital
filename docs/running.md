@@ -80,3 +80,20 @@ VITAL_PORT=9090 docker compose up -d
 ```
 
 Only the host side moves; the container port stays 3000.
+
+---
+
+# Continuous integration and container images
+
+`.github/workflows/ci.yml` runs the quality commands on every pull request and push. It then builds the image natively for `linux/amd64` and `linux/arm64` and smoke-tests each one: the container starts against a throwaway Postgres, applies the migrations and must answer `/api/health` and `/`. Pull requests stop there and push nothing.
+
+Pushes to `main` and `v*` tags publish a multi-arch image to the GitHub Container Registry of the repository that runs the workflow, `ghcr.io/<owner>/<repo>`, using the built-in `GITHUB_TOKEN`:
+
+| Event | Tags |
+|-------|------|
+| push to `main` | `main`, `sha-<short>` |
+| tag `v1.2.3` | `1.2.3`, `1.2`, `latest`, `sha-<short>` |
+
+A new GHCR package starts private. Make it public in the package settings, or give the runtime pull credentials.
+
+To run the image outside Compose (on Kubernetes, for example), supply the same environment as the `vital` service in `docker-compose.yml`. At minimum that is `DATABASE_URL` or the `VITAL_PG_*` variables; without a database the container refuses to start. The image runs as uid/gid 1001 and listens on port 3000. Its Docker `HEALTHCHECK` is not used by Kubernetes, so point liveness and readiness probes at `GET /api/health`, which touches no database, model or data source.

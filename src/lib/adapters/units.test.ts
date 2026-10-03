@@ -24,6 +24,7 @@ describe('unit conversion (SPEC §9)', () => {
     expect(convertUnit(98.6, 'degF', 'degC')).toBeCloseTo(37, 9);
     expect(convertUnit(4.5, 'hr', 'min')).toBeCloseTo(270, 9);
     expect(convertUnit(72, 'count/min', 'bpm')).toBe(72);
+    expect(convertUnit(42.06, 'ml/(kg·min)', 'ml/kg/min')).toBe(42.06);
     expect(convertUnit(97, '%', '%')).toBe(97);
   });
 

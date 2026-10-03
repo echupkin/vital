@@ -36,6 +36,7 @@ import { STAGE_STATUS_LABEL } from '@/lib/pipeline/types';
 import { FreshnessIndicator } from '@/components/shell/FreshnessIndicator';
 import { useProfile } from '@/components/profile/ProfileProvider';
 import { LabUpload } from '@/components/settings/LabUpload';
+import { MapProvidersCard } from '@/components/settings/MapProviders';
 import {
   PROFILE_NAME_MAX,
   PROFILE_NOTES_MAX,
@@ -750,6 +751,10 @@ function ConnectionsTab() {
             and are never written to the database.
           </DataStateNote>
         </div>
+      </Card>
+
+      <Card className="p-6">
+        <MapProvidersCard heading={(icon, title) => <SectionHead icon={icon} title={title} />} />
       </Card>
     </div>
   );

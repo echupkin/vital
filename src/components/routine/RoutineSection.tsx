@@ -18,12 +18,14 @@ import type { ScheduledDayView } from '@/lib/routine/schedule';
 import { Badge, Button, Card, DataStateNote, EmptyState, ErrorState, Skeleton } from '@/components/ui/primitives';
 import { useUnits } from '@/components/ui/UnitsProvider';
 import { SectionTitle } from '@/components/domain/DomainShared';
+import { CATEGORY_VAR } from '@/components/art/categories';
 import {
   BadgeLink,
   BlockChips,
   DeloadChip,
   ExerciseDataNotice,
   LightLabel,
+  MICRO_LABEL,
   PlanChangeCard,
   PlanWeek,
   ReadinessBar,
@@ -37,6 +39,8 @@ import {
 import type { PlanChange } from '@/lib/routine/types';
 import { DiscussButton } from '@/components/analyst/DiscussDialog';
 import { CREATE_PROMPT, routineSuggestions, untrackedSuggestions } from './discuss-suggestions';
+
+const ACTIVITY = CATEGORY_VAR.activity;
 
 export function analystHref(question: string): string {
   return `/analyst?q=${encodeURIComponent(question)}`;
@@ -170,17 +174,18 @@ function RoutineBody({ data, routine, onChange }: { data: RoutineApiResponse; ro
   return (
     <div className="space-y-4">
       <ExerciseDataNotice routine={routine} />
-      <Card className="p-5">
+      <Card className="relative overflow-hidden p-5 md:p-6">
+        <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: ACTIVITY }} aria-hidden="true" />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-base font-semibold text-text-primary">
+            <h3 className="text-[19px] font-semibold tracking-[-0.025em] text-text-primary">
               <Link href={planHref} className="hover:underline underline-offset-2">
                 {routine.title}
               </Link>
             </h3>
-            <p className="text-xs text-text-secondary mt-0.5 max-w-2xl">{routine.goal}</p>
+            <p className="text-sm text-text-secondary mt-1 max-w-2xl">{routine.goal}</p>
             <PlanWeek routine={routine} className="mt-1" />
-            <div className="flex flex-wrap items-center gap-2 mt-2">
+            <div className="flex flex-wrap items-center gap-2 mt-3">
               {routine.currentPhase ? (
                 <BadgeLink
                   href={`${planHref}#phases`}
@@ -219,11 +224,11 @@ function RoutineBody({ data, routine, onChange }: { data: RoutineApiResponse; ro
       </Card>
 
       {areas.length > 0 && (
-        <section className="space-y-4">
-          <h3 className="text-sm font-semibold text-text-primary">Paths</h3>
+        <section className="space-y-4 pt-2">
+          <h3 className="text-[15px] font-semibold text-text-primary">Paths</h3>
           {areas.map(area => (
             <div key={area.id}>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-text-secondary mb-2">{area.name}</h4>
+              <h4 className={`${MICRO_LABEL} mb-2`}>{area.name}</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {area.paths.map(p => (
                   <PathCard key={p.pathId} path={p} />
@@ -249,7 +254,7 @@ function UntrackedNote({ routine, onChange }: { routine: RoutineOverview; onChan
   // Its own heading, level with "Paths", so it doesn't read as part of the last area above it.
   return (
     <section className="space-y-4 pt-2" aria-labelledby="untracked-title">
-      <h3 id="untracked-title" className="text-sm font-semibold text-text-primary">
+      <h3 id="untracked-title" className="text-[15px] font-semibold text-text-primary">
         {list.length === 1 ? 'One exercise you log is' : `${list.length} exercises you log are`} not in the plan
       </h3>
       <Card className="p-4">
@@ -354,9 +359,9 @@ function NextSession({ routine }: { routine: RoutineOverview }) {
     ? [...(next.scheduleKind === 'frequency' && next.due.kind === 'rest' ? [] : [next.due]), ...next.upcoming].slice(0, 3)
     : next.upcoming;
   return (
-    <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 rounded-control bg-surface-muted p-4">
+    <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 rounded-control bg-surface-muted p-4">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary mb-1 flex items-center gap-1.5">
+        <p className={`${MICRO_LABEL} mb-1.5 flex items-center gap-1.5`}>
           <CalendarDays size={12} aria-hidden="true" />
           {next.today ? 'Today · completed' : 'Today'}
         </p>
@@ -365,7 +370,7 @@ function NextSession({ routine }: { routine: RoutineOverview }) {
       </div>
       {then.length > 0 && (
         <div className="text-xs text-text-secondary lg:border-l lg:border-border lg:pl-4">
-          <p className="font-semibold uppercase tracking-wide text-[11px] mb-1">Then</p>
+          <p className={`${MICRO_LABEL} mb-1.5`}>Then</p>
           <ol className="space-y-0.5">
             {then.map((d, i) => (
               <li key={i}>
@@ -377,7 +382,7 @@ function NextSession({ routine }: { routine: RoutineOverview }) {
       )}
       {routine.workouts.length > 0 && (
         <p className="lg:col-span-2 text-[11px] text-text-secondary border-t border-border pt-3 flex flex-wrap gap-x-3 gap-y-1">
-          <span className="font-semibold uppercase tracking-wide">Workouts</span>
+          <span className={MICRO_LABEL}>Workouts</span>
           {routine.workouts.map(w => (
             <Link key={w.id} href={workoutHref(w.id)} className="text-text-primary hover:underline underline-offset-2">
               {w.name}
@@ -411,17 +416,18 @@ function DayLabel({ day }: { day: ScheduledDayView }) {
 function PathCard({ path }: { path: PathProgress }) {
   const readiness = path.readiness;
   return (
-    <Link href={pathHref(path.pathId)} className="block group">
-      <Card className="p-4 h-full group-hover:shadow-sm transition-shadow">
+    <Link href={pathHref(path.pathId)} className="block group h-full">
+      <Card className="relative overflow-hidden p-4 pl-5 h-full transition-[box-shadow,border-color] group-hover:border-border-strong group-hover:shadow-pop">
+        <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: ACTIVITY }} aria-hidden="true" />
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="text-[11px] text-text-secondary">{path.pathName} path{path.priority === 'secondary' ? ' · secondary' : ''}</p>
-            <p className="text-sm font-semibold text-text-primary truncate">
+            <p className="text-[15px] font-semibold tracking-[-0.01em] text-text-primary truncate">
               {path.stage.name}
               {path.step ? <span className="font-normal text-text-secondary"> · {path.step.name}</span> : null}
             </p>
           </div>
-          <ChevronRight size={16} className="text-text-secondary shrink-0 mt-1" aria-hidden="true" />
+          <ChevronRight size={16} className="text-text-secondary shrink-0 mt-1 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <LightLabel light={path.light} tracked={path.tracked} />

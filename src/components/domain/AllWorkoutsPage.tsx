@@ -23,10 +23,10 @@ import {
   type WorkoutView,
 } from '@/lib/analytics';
 import {
-  Card, Button, DataStateNote, Dialog, EmptyState, InsufficientDataState, Select,
+  Card, Button, DataStateNote, Dialog, EmptyState, FilterChip, InsufficientDataState, Select,
 } from '@/components/ui/primitives';
 import { MetricChart } from '@/components/charts';
-import { DomainHeader, SectionTitle } from './DomainShared';
+import { DomainHeader, SectionTitle, TotalCard } from './DomainShared';
 import { useUnits } from '@/components/ui/UnitsProvider';
 import { RangeControl } from '@/components/ui/RangeControl';
 import { SessionExercises } from '@/components/routine/SessionExercises';
@@ -72,12 +72,14 @@ export function AllWorkoutsPage() {
     <div className="space-y-8">
       <DomainHeader
         title="Workout history"
+        eyebrow="Workouts"
+        category="activity"
         subtitle={`Recorded sessions across ${filtered.window.label.toLowerCase()} (${filtered.views.length} shown of ${filtered.inWindowCount} in the window). Only the fields the dataset actually contains are shown.`}
       />
 
       {/* ── Filters ─────────────────────────────────── */}
       <Card className="p-5 space-y-4" as="section">
-        <h2 className="text-sm font-semibold text-text-primary">Filter and sort</h2>
+        <h2 className="text-[15px] font-semibold text-text-primary">Filter and sort</h2>
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium text-text-secondary w-20">Activity</span>
@@ -358,35 +360,6 @@ export function AllWorkoutsPage() {
 }
 
 // ── Sub-components ─────────────────────────────────────
-
-function FilterChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`px-3 py-2 text-xs rounded-control border transition-colors min-h-[44px] ${
-        active
-          ? 'bg-primary text-primary-text border-primary'
-          : 'bg-surface text-text-secondary border-border hover:text-text-primary'
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-export function TotalCard({ label, value, sub, title }: { label: string; value: string; sub: string; title?: string }) {
-  return (
-    <div className="p-5">
-      <div className="mb-2 text-[12px] font-medium text-text-secondary">{label}</div>
-      <div className="mb-1.5 text-[26px] font-semibold leading-none tnum tracking-[-0.03em] text-text-primary" title={title}>
-        {value}
-      </div>
-      <div className="text-[11px] text-text-secondary">{sub}</div>
-    </div>
-  );
-}
 
 function mixSlices(views: WorkoutView[]): MixSlice[] {
   const byType = new Map<string, { minutes: number; n: number }>();

@@ -17,12 +17,27 @@ import type { RoutineResponse } from '@/lib/routine/service';
 import type { PlanChange } from '@/lib/routine/types';
 import type { UnitSystem } from '@/lib/prefs';
 import { formatDayKeyShort } from '@/lib/analytics/windows';
-import { Badge, Button, Card } from '@/components/ui/primitives';
+import { Badge, Button, Card, Skeleton } from '@/components/ui/primitives';
 
 export const planHref = '/workouts/routine';
 export const recoveryHref = '/workouts/recovery';
 export const workoutHref = (templateId: string) => `/workouts/routine/workouts/${encodeURIComponent(templateId)}`;
 export const pathHref = (pathId: string) => `/workouts/routine/${encodeURIComponent(pathId)}`;
+
+/** The small-caps label the redesigned pages use above a group or a figure. */
+export const MICRO_LABEL = 'text-[11px] font-medium uppercase tracking-[0.08em] text-text-secondary';
+
+/** A routine page while it loads: a banner-sized block first, so the hero does not shift the layout. */
+export function RoutinePageSkeleton({ label }: { label: string }) {
+  return (
+    <div className="space-y-6" role="status" aria-live="polite">
+      <span className="sr-only">{label}</span>
+      <Skeleton height={200} rounded={false} className="rounded-[22px]" />
+      <Skeleton height={20} width="30%" />
+      <Skeleton height={180} />
+    </div>
+  );
+}
 
 // ── Status badges ───────────────────────────────────────
 //
@@ -120,19 +135,19 @@ export const RECOVERY_TONE: Record<RecoveryStatus, string> = {
 export function RecoveryCard({ indicators, summary, deload }: { indicators: RecoveryIndicator[]; summary: string; deload: string }) {
   return (
     <Card className="p-5" as="section" aria-label="Recovery indicators">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold text-text-primary">Recovery</h2>
-        <Link href={recoveryHref} className="inline-flex items-center text-xs text-text-secondary hover:text-text-primary hover:underline underline-offset-2">
+      {/* Titled by the section it sits in, so the card opens with the summary. */}
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="text-sm text-text-secondary max-w-3xl">{summary} {deload}</p>
+        <Link href={recoveryHref} className="group inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline">
           Details
-          <ChevronRight size={12} aria-hidden="true" />
+          <ChevronRight size={14} aria-hidden="true" className="transition-transform group-hover:translate-x-0.5" />
         </Link>
       </div>
-      <p className="text-xs text-text-secondary mb-3">{summary} {deload}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {indicators.map(i => (
           <div key={i.signal} className="rounded-control bg-surface-muted p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-text-primary">{i.label}</span>
+              <span className="text-[13px] font-medium text-text-primary">{i.label}</span>
               <Badge variant={recoveryVariant(i.status)}>{RECOVERY_TONE[i.status]}</Badge>
             </div>
             <p className="text-[11px] text-text-secondary mt-1">{i.text}</p>
@@ -204,7 +219,7 @@ export function ExerciseDataNotice({ routine }: { routine: RoutineOverview }) {
       <div className="flex items-start gap-3">
         <PlugZap size={18} className="text-category-attention shrink-0 mt-0.5" aria-hidden="true" />
         <div className="min-w-0 space-y-1">
-          <h3 id="exercise-data-title" className="text-sm font-semibold text-text-primary">
+          <h3 id="exercise-data-title" className="text-[15px] font-semibold text-text-primary">
             {all ? 'Progress can’t be tracked yet' : `Progress can’t be tracked for ${untracked} of ${routine.paths.length} paths`}
           </h3>
           <p className="text-xs text-text-secondary leading-relaxed max-w-2xl">
@@ -326,7 +341,7 @@ export function ReadinessBar({ readiness, from, to, className = '' }: { readines
         <span className="tnum shrink-0">{readiness.label}</span>
       </div>
       <div
-        className="h-1.5 rounded-full bg-surface-muted overflow-hidden"
+        className="h-2 rounded-full bg-surface-muted overflow-hidden"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
@@ -334,7 +349,7 @@ export function ReadinessBar({ readiness, from, to, className = '' }: { readines
         aria-label={`Progress toward ${to ?? 'the marker'}`}
         title={`${pct}% of the way to ${to ?? 'the marker'}`}
       >
-        <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-category-activity" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

@@ -21,9 +21,9 @@ const nextConfig = {
     return [
       {
         // Every page and API response is personal health context: never stored by
-        // a shared or public cache (SPEC §11). Static assets are excluded so they
-        // keep normal browser caching.
-        source: '/((?!_next/static|_next/image|favicon.ico).*)',
+        // a shared or public cache (SPEC §11). Static assets, the app icons among
+        // them, are excluded so they keep normal browser caching.
+        source: '/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|icons/).*)',
         headers: [
           { key: 'Cache-Control', value: 'private, no-store' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },

@@ -121,6 +121,20 @@ The Medications page shows what you logged in Apple Health: today's doses and a 
 history for the last 30 days. It is a *record*, not a verdict — no adherence score, no "missed dose"
 alarms, no advice — and the same record is available to the analyst as context.
 
+### Maps of where you went
+Activity → Maps draws every outdoor workout that recorded a GPS route as one coverage map — the
+streets you have walked, run or ridden, with the ones you use most standing out — rather than a
+squiggle per session.
+
+- **As many maps as you like**, each an area you frame: search for a place (or type `lat, lon`, or
+  use your location), then pan and zoom until the frame holds what you want.
+- **Each map keeps its own view**: which activities to draw, a date range, and what the line colour
+  means — how often you travelled a stretch, or your average heart rate along it.
+- **Your choice of map underneath**: CARTO (light, dark, or following your theme; needs a free key),
+  OpenStreetMap or OpenTopoMap terrain, chosen per map. Settings → Connections shows which are ready.
+- **Highlights beside the map**: workouts, time and distance in the area, distinct and new ground,
+  your longest session there and your hardest stretch — hover one to see it on the map.
+
 ### Training routines that follow your progress
 Workouts is a routine dashboard rather than a log: your current phase, the next session, recovery
 and deload status, and a card per progression path showing how close you are to the next stage.
@@ -142,8 +156,9 @@ and deload status, and a card per progression path showing how close you are to 
 
 ### Private by design
 - Keys and tokens stay on the server and never reach the browser.
-- The database holds **configuration only** — profile, preferences, saved conversations and training
-  plans. Your health history stays with Health Auto Export and is read live.
+- The database holds **configuration only** — profile, preferences, saved conversations, training
+  plans and the areas your maps show. Your health history, routes included, stays with Health Auto
+  Export and is read live.
 - No analytics, no trackers, no telemetry, and no health values in logs.
 - Honest failure: when a source cannot be read you get a clear message and a retry, never quietly
   substituted demo data.
@@ -241,7 +256,7 @@ not a medical device and is not provided by, or on behalf of, any of the parties
 | [Configuration](docs/configuration.md) | The analyst and its providers, the profile and goals, the training routine, the daily briefing |
 | [Data sources and modes](docs/data-sources.md) | Health Auto Export, Hevy, demo vs live data, de-duplication and the adapters |
 | [Architecture](docs/architecture.md) | How the app is put together, and what that shape costs |
-| [Running it](docs/running.md) | Docker in detail, the database, local development, changing the port |
+| [Running it](docs/running.md) | Docker in detail, the database, local development, changing the port, CI and published images |
 | [Reference](docs/reference.md) | Every route, what is demo-only in this build, and the quality commands |
 | [Privacy and security](docs/privacy-and-security.md) | What is stored, what is sent where, and what to put in front of it |
 

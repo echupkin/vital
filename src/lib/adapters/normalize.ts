@@ -94,11 +94,14 @@ export interface RawWorkoutRecord {
 //
 // Every upstream metric Vital reads, the registry metric it becomes, how one day
 // is aggregated from that metric's interval records, and how often the source
-// records it. Metrics the verified contract shows as empty upstream
-// (walking_heart_rate, vo2max, waist_circumference, dietary_caffeine,
-// dietary_protein, dietary_water, blood_glucose, …) are deliberately NOT in this
-// table: no request is made for data that is known to be absent, and the app
-// renders them from the registry as "not recorded".
+// records it. The upstream id is HAE's name, which often differs from the
+// registry id: HAE writes walking heart rate as `walking_heart_rate_average` and
+// VO₂ max as `vo2_max`, and its `walking_heart_rate` and `vo2max` collections
+// stay empty whether or not the export is summarized (verified 2026-10-02).
+// Metrics with no upstream records at all (blood_glucose, mindful_minutes,
+// apple_move_time, …) are deliberately NOT in this table: no request is made for
+// data that is known to be absent, and the app renders them from the registry as
+// "not recorded".
 
 export type DayAggregation = 'sum' | 'mean' | 'latest';
 
@@ -119,6 +122,8 @@ export const METRIC_MAPPINGS: MetricMapping[] = [
   { hae: 'heart_rate_variability', metricId: 'heart_rate_variability', field: 'qty', aggregation: 'mean', samplingFrequency: 'several per day' },
   { hae: 'heart_rate', metricId: 'heart_rate', field: 'heart_rate', aggregation: 'mean', samplingFrequency: 'continuous' },
   { hae: 'cardio_recovery', metricId: 'cardio_recovery', field: 'qty', aggregation: 'latest', samplingFrequency: 'occasional' },
+  { hae: 'walking_heart_rate_average', metricId: 'walking_heart_rate', field: 'qty', aggregation: 'mean', samplingFrequency: 'daily' },
+  { hae: 'vo2_max', metricId: 'vo2max', field: 'qty', aggregation: 'latest', samplingFrequency: 'after outdoor walks and runs' },
   // Respiratory / recovery
   { hae: 'respiratory_rate', metricId: 'respiratory_rate', field: 'qty', aggregation: 'mean', samplingFrequency: 'nightly' },
   { hae: 'blood_oxygen_saturation', metricId: 'blood_oxygen_saturation', field: 'qty', aggregation: 'mean', samplingFrequency: 'several per day' },
@@ -134,16 +139,19 @@ export const METRIC_MAPPINGS: MetricMapping[] = [
   { hae: 'basal_energy_burned', metricId: 'basal_energy_burned', field: 'qty', aggregation: 'sum', samplingFrequency: 'intraday' },
   { hae: 'time_in_daylight', metricId: 'time_in_daylight', field: 'qty', aggregation: 'sum', samplingFrequency: 'intraday' },
   { hae: 'physical_effort', metricId: 'physical_effort', field: 'qty', aggregation: 'mean', samplingFrequency: 'intraday' },
+  { hae: 'cycling_distance', metricId: 'distance_cycling', field: 'qty', aggregation: 'sum', samplingFrequency: 'during rides' },
   // Body — sparse measurements, never presented as daily observations.
   { hae: 'weight_body_mass', metricId: 'weight_body_mass', field: 'qty', aggregation: 'latest', samplingFrequency: 'occasional weigh-in' },
   { hae: 'body_mass_index', metricId: 'body_mass_index', field: 'qty', aggregation: 'latest', samplingFrequency: 'occasional weigh-in' },
   { hae: 'body_fat_percentage', metricId: 'body_fat_percentage', field: 'qty', aggregation: 'latest', samplingFrequency: 'occasional weigh-in' },
   { hae: 'lean_body_mass', metricId: 'lean_body_mass', field: 'qty', aggregation: 'latest', samplingFrequency: 'occasional weigh-in' },
+  { hae: 'waist_circumference', metricId: 'waist_circumference', field: 'qty', aggregation: 'latest', samplingFrequency: 'occasional measurement' },
   // Nutrition — logged intake from a scale app, not a food diary.
   { hae: 'dietary_energy', metricId: 'dietary_energy', field: 'qty', aggregation: 'sum', samplingFrequency: 'logged' },
   { hae: 'carbohydrates', metricId: 'dietary_carbs', field: 'qty', aggregation: 'sum', samplingFrequency: 'logged' },
   { hae: 'total_fat', metricId: 'dietary_fat_total', field: 'qty', aggregation: 'sum', samplingFrequency: 'logged' },
   { hae: 'dietary_sugar', metricId: 'dietary_sugar', field: 'qty', aggregation: 'sum', samplingFrequency: 'logged' },
+  { hae: 'sodium', metricId: 'dietary_sodium', field: 'qty', aggregation: 'sum', samplingFrequency: 'logged' },
   // These three are registered metrics whose nutrition summaries the analyst's
   // general (free-form) selection asks for. Without a mapping here the live
   // dataset can never carry them, however much of them was logged.
@@ -256,7 +264,7 @@ export function normalizeSimpleMetric(
   ctx: NormalizeContext
 ): NormalizedMetric | null {
   const meta = getMetric(mapping.metricId);
-  if (!meta) return null;
+  if (!meta || records.length === 0) return null;
 
   const rule = sourceRuleFor(mapping.metricId);
   const dayOf = (r: RawSimpleRecord) => dayKey(r.date, ctx.tz);

@@ -256,6 +256,25 @@ def({
 });
 
 def({
+  id: 'distance_cycling',
+  displayName: 'Cycling Distance',
+  aliases: ['cycling', 'bike distance', 'ride distance'],
+  category: 'activity',
+  canonicalUnit: 'km',
+  shortUnit: 'km',
+  dataType: 'continuous',
+  aggregationStrategy: 'sum',
+  defaultRange: '30d',
+  decimalPlaces: 1,
+  formatter: (v) => fmt1(v),
+  tickFormatter: tick1,
+  minObservations: 3,
+  demoAvailable: false,
+  unavailableReason: 'Not recorded in this demo dataset.',
+  sourceNames: [],
+});
+
+def({
   id: 'apple_stand_hours',
   displayName: 'Stand Hours',
   aliases: ['stand hours', 'stand time'],
@@ -663,6 +682,25 @@ def({
   category: 'nutrition',
   canonicalUnit: 'g',
   shortUnit: 'g',
+  dataType: 'continuous',
+  aggregationStrategy: 'sum',
+  defaultRange: '30d',
+  decimalPlaces: 0,
+  formatter: (v) => fmt0(v),
+  tickFormatter: tick0,
+  minObservations: 3,
+  demoAvailable: false,
+  unavailableReason: 'Not recorded in this demo dataset.',
+  sourceNames: [],
+});
+
+def({
+  id: 'dietary_sodium',
+  displayName: 'Sodium',
+  aliases: ['dietary sodium', 'sodium intake', 'salt'],
+  category: 'nutrition',
+  canonicalUnit: 'mg',
+  shortUnit: 'mg',
   dataType: 'continuous',
   aggregationStrategy: 'sum',
   defaultRange: '30d',

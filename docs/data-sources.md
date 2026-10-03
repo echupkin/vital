@@ -65,6 +65,50 @@ Like the Health Auto Export history, sessions live in server memory and are **ne
 the database**; demo mode serves committed demo sessions (`src/data/training-fixtures.json`)
 and calls nothing. Settings → Connections shows each source's status.
 
+## Workout routes (Activity → Maps)
+
+Health Auto Export's workout list carries no GPS, so the maps read each workout's route and heart
+rate from `GET /api/workouts/:id?include=route,heartRateData` — **once per workout**:
+
+- The route is packed into typed arrays (about 13 bytes a point) and held in server memory, keyed
+  by workout id and end time, so a re-exported session is read again and an unchanged one never
+  is. A workout without a route (a strength session) is remembered as having none. Nothing is
+  written to the database or to disk, and no coordinate is logged.
+- At most four reads run at once across the process. The first visit to the Maps page after a
+  restart reads every workout in the 400-day window (a few seconds for a few hundred workouts);
+  after that, changing a map's filters is answered from memory.
+- `ROUTE_CACHE_MAX_POINTS` (default `3000000`, about 40 MB) caps the points held; beyond it the
+  least recently used routes are dropped and read again when next needed.
+- Heart rate is interpolated linearly in time onto each route point (HR arrives about once a
+  minute against a point a second) and held, not extrapolated, past the last sample. A point with
+  no reading is drawn as "no reading", never as resting.
+- A workout whose route could not be read is left off the map and counted in a note under it, and
+  retried on the next load. If every read fails, the map says the routes are unavailable rather
+  than drawing an empty map.
+
+The coverage itself is computed per request: route points are snapped to a grid sized to the map
+(about 1/1000 of its diagonal, 5–50 m), so both sides of a street and both directions of travel
+merge into one path with a traversal count, and the paths are dissolved into polylines. Demo mode
+draws deterministic synthetic routes around Golden Gate Park for the demo walks, runs and rides,
+and reads nothing.
+
+### Map tiles
+
+Each map is drawn on the provider, tile style and light/dark rendering chosen in its edit dialog.
+Tiles load from the provider straight into the browser.
+
+| Provider | Styles | Light / dark | Key |
+|----------|--------|--------------|-----|
+| CARTO | Positron / Dark Matter (with or without labels), Voyager | Light, Dark or Auto (follows your theme); Voyager is light only | `MAP_TILES_CARTO_KEY` ([free for non-commercial use](https://carto.com/basemaps/apikey)) |
+| OpenStreetMap | Standard | Light | None |
+| OpenTopoMap | Terrain | Light | None |
+
+Every provider can be chosen whether or not its key is set. A map on a provider whose key is
+missing still requests its tiles, without the key (the provider may refuse them), and says the key
+is missing. Keys are read from the
+server environment only; Settings → Connections → Maps shows which providers are ready, never the
+key.
+
 ---
 
 # Data modes

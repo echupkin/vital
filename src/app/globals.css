@@ -598,6 +598,48 @@ body {
   animation: typing-dot 1.2s ease-in-out infinite;
 }
 
+/* ── Map loading ───────────────────────────────────────── */
+/* Laid over a coverage map while its routes are read. It fades in only after a
+   moment, so an answer from cache never flashes it; the bar sweeps the top edge
+   and the scrim lifts what is drawn just enough to read as "not current yet".
+   Reduced motion (below) shows the overlay without the sweep. */
+@keyframes map-busy-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes map-busy-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.map-busy {
+  animation: map-busy-in 200ms ease-out 250ms both;
+}
+.map-busy-scrim {
+  background: color-mix(in srgb, var(--color-surface) 45%, transparent);
+}
+.map-busy-bar {
+  width: 40%;
+  background: var(--color-primary);
+  animation: map-busy-sweep 1.1s ease-in-out infinite;
+}
+
+/* ── Map tiles ────────────────────────────────────────── */
+/* Activity map tiles overlap their neighbours by a pixel to close the seams a
+   fractional zoom leaves (see LeafletMap.tsx). Leaflet blends tiles
+   `plus-lighter`, which would add the overlap into a lighter grid; these blend
+   normally, so the top tile simply covers it. */
+.leaflet-container .vital-tiles img.leaflet-tile {
+  mix-blend-mode: normal;
+}
+
 /* ── Reduced motion ────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -606,6 +648,12 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  /* A still bar across the whole edge instead of one that swept off it. */
+  .map-busy-bar {
+    width: 100%;
+    opacity: 0.6;
+    animation: none;
   }
 }
 /* ── Form controls ─────────────────────────────────────────

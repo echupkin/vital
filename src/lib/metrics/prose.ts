@@ -30,6 +30,7 @@ const PROSE: Record<string, ProseEntry> = {
   apple_exercise_time: { name: 'exercise minutes', noun: 'day' },
   active_energy: { name: 'active calories', noun: 'day' },
   distance_walking_running: { name: 'walking and running distance', noun: 'day' },
+  distance_cycling: { name: 'cycling distance', noun: 'day' },
   apple_stand_hours: { name: 'stand hours', noun: 'day' },
   weight_body_mass: { name: 'weight', noun: 'weigh-in' },
   body_fat_percentage: { name: 'body fat', noun: 'reading' },
@@ -41,6 +42,7 @@ const PROSE: Record<string, ProseEntry> = {
   dietary_fat_total: { name: 'logged fat', noun: 'logged day' },
   dietary_water: { name: 'logged water', noun: 'logged day' },
   dietary_caffeine: { name: 'logged caffeine', noun: 'logged day' },
+  dietary_sodium: { name: 'logged sodium', noun: 'logged day' },
 };
 
 /** Lower-case phrase naming a metric inside a sentence. */

@@ -11,7 +11,7 @@
 // `force-dynamic` is required: the live dataset must be read per request, not
 // baked into a prerendered page at build time.
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import './globals.css';
@@ -25,9 +25,27 @@ import { LEGACY_STORAGE_KEY, preferencesCacheKey } from '@/lib/prefs/types';
 import { DEFAULT_THEME_ID, themesFor } from '@/lib/prefs/themes';
 import PrefsSync from '@/components/prefs/PrefsSync';
 
+// The icons are files beside this layout (icon.svg, favicon.ico, apple-icon.png,
+// drawn by scripts/make-icons.mjs) and the web app manifest is manifest.ts.
+// `appleWebApp` lets iOS's "Add to Home Screen" open Vital as an app: its own
+// window, no Safari toolbar, named "Vital" under the icon.
 export const metadata: Metadata = {
   title: 'Vital — Health Intelligence',
   description: 'Your health. Your data. Your intelligence.',
+  applicationName: 'Vital',
+  appleWebApp: { capable: true, title: 'Vital', statusBarStyle: 'default' },
+  // Next writes only the standard `mobile-web-app-capable`; iOS before 17.4
+  // opens the home-screen app in its own window only for Apple's own name.
+  other: { 'apple-mobile-web-app-capable': 'yes' },
+};
+
+// The Default palettes' page colours, until the reader's own palette is applied
+// (applyTheme in @/lib/prefs keeps the theme colour in step with it).
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#F7F7F9' },
+    { media: '(prefers-color-scheme: dark)', color: '#0C0D11' },
+  ],
 };
 
 export const dynamic = 'force-dynamic';

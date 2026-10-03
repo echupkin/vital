@@ -27,6 +27,22 @@ What Vital does and does not do with your data, and what to put in front of it b
   context by `.dockerignore`; nothing sensitive is baked into a layer. Runtime configuration
   is passed via the environment, and the token is only ever sent as an upstream HTTP header —
   never written into a file, a URL, a log line or the report.
+- **Maps talk to two outside services, and say so.** On Activity → Maps:
+  - **Basemap tiles** load straight from the tile provider into the browser (each map chooses
+    CARTO, OpenStreetMap or OpenTopoMap; CARTO's key comes from `MAP_TILES_CARTO_KEY` and is sent in
+    its tile URLs). A tile request
+    tells the provider which area is on screen. Vital pages send no `Referer`; tile requests opt
+    back in to the **origin only** (`strict-origin-when-cross-origin`), because OpenStreetMap's
+    tile policy requires one — the provider learns your Vital host name, never a page path. Your
+    routes are drawn in the browser on top of the tiles and are never sent to the provider.
+  - **Place search** in the add-map dialog is sent from Vital's server to the geocoder
+    (`GEOCODER_URL`, OpenStreetMap Nominatim by default) — the text you type leaves your network,
+    which is what a geocoder is. `GEOCODER_URL=off` turns it off; typing `lat, lon` or using your
+    browser's location works either way and sends nothing.
+- **Map areas are stored, routes are not.** Each map's bounding box and name live in Postgres
+  with your other configuration (often a box around home, which is why it is never logged).
+  Routes and heart rate are read live from Health Auto Export, held in server memory only, and
+  never written to the database or to disk.
 - **Deploy on a private LAN or VPN, or behind an authenticated reverse proxy.** The container
   has no built-in authentication or TLS: anyone who can reach the port sees the dashboard.
   Put an authenticating reverse proxy in front of it before exposing it beyond a trusted
