@@ -12,6 +12,11 @@
 //
 // `applySilenced` is applied before anything is counted: the severity roll-ups,
 // the pipeline stage text and the notes are all computed from its result.
+//
+// A silence on a check Vital is correcting (overlapping exports, duplicate
+// readings; see `quality-correct.ts`) has nothing to hide and is left out of
+// the list: the check reads "Corrected by Vital" instead. Turning a correction
+// on or off removes the silence on that check altogether (the correct route).
 
 import { getMetric } from '../metrics/registry';
 import {
@@ -68,8 +73,9 @@ export interface SilencedResult {
 }
 
 export function applySilenced(report: DataQualityReport, silenced: readonly SilencedKey[]): SilencedResult {
+  const corrected = new Set(report.checks.filter(c => c.outcome === 'corrected').map(c => c.id));
   const keys = new Map<string, SilencedKey>();
-  for (const k of silenced) keys.set(keyOf(k), k);
+  for (const k of silenced) if (!corrected.has(k.checkId)) keys.set(keyOf(k), k);
   if (keys.size === 0) return { report, silenced: [] };
 
   const hidden = new Map<string, QualityFinding[]>();

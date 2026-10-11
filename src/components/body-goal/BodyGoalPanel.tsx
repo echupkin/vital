@@ -19,6 +19,7 @@ import { useUnits } from '@/components/ui/UnitsProvider';
 import { DiscussButton } from '@/components/analyst/DiscussDialog';
 import { SectionTitle } from '@/components/domain/DomainShared';
 import { formatDayKeyLong } from '@/lib/analytics/windows';
+import { WEIGHT_TREND_WINDOW } from '@/lib/analytics/weight-trend';
 import { STEADY_PCT, TREND_DAYS } from '@/lib/body-goal/constants';
 import { energyEquation } from '@/lib/body-goal/energy';
 import { DIRECTION_LABEL, PHASE_LABEL, type GoalPhase } from '@/lib/body-goal/phase';
@@ -269,7 +270,7 @@ function EnergySection({ data, hasGoal, units }: { data: BodyReading; hasGoal: b
   const e = data.energy;
   const eq = energyEquation(e);
   const rows: { label: string; value?: string; note?: string }[] = [];
-  const daysNote = `${e.days.complete.length} complete logged days in the last ${TREND_DAYS}${e.days.partial.length ? `; ${e.days.partial.length} partial log${e.days.partial.length === 1 ? '' : 's'} left out (${e.days.partial.map(d => formatDayKeyLong(d.key)).join(', ')})` : ''}`;
+  const daysNote = `${e.days.complete.length} complete logged days in the ${WEIGHT_TREND_WINDOW}${e.days.partial.length ? `; ${e.days.partial.length} partial log${e.days.partial.length === 1 ? '' : 's'} left out (${e.days.partial.map(d => formatDayKeyLong(d.key)).join(', ')})` : ''}`;
   const trendRow = e.trendBalance !== null && {
     label: 'Daily balance, from your weight trend',
     value: formatSignedKcal(e.trendBalance),
@@ -369,7 +370,7 @@ function EnergySection({ data, hasGoal, units }: { data: BodyReading; hasGoal: b
 
   return (
     <section>
-      <SectionTitle hint={`last ${TREND_DAYS} days${e.foodLogged ? ' · logged days only' : ''}`}>Energy balance</SectionTitle>
+      <SectionTitle hint={`${WEIGHT_TREND_WINDOW}${e.foodLogged ? ' · logged days only' : ''}`}>Energy balance</SectionTitle>
       <Card className="p-4 md:p-6">
         {eq ? (
           <>
@@ -496,7 +497,7 @@ function TrendPaceSection({ reading, units }: { reading: BodyReading; units: Uni
   if (!d || w.rateKgPerWeek === null || w.ratePct === null) return null;
   return (
     <section>
-      <SectionTitle hint={`last ${TREND_DAYS} days`}>Your current pace</SectionTitle>
+      <SectionTitle hint={WEIGHT_TREND_WINDOW}>Your current pace</SectionTitle>
       <Card className="p-4 md:p-6">
         <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
           <Badge variant="accent">{DIRECTION_LABEL[d.phase]}</Badge>
@@ -506,8 +507,8 @@ function TrendPaceSection({ reading, units }: { reading: BodyReading; units: Uni
         </div>
         {d.phase === 'maintain' ? (
           <p className="text-sm text-text-secondary leading-relaxed">
-            Weight is holding steady: it moved less than {STEADY_PCT} % of body weight a week either way over the last four
-            weeks, from {w.weighIns} weigh-ins.
+            Weight is holding steady: it moved less than {STEADY_PCT} % of body weight a week either way over the{' '}
+            {WEIGHT_TREND_WINDOW}, from {w.weighIns} weigh-ins.
           </p>
         ) : (
           <TrendPaceScale reading={reading} units={units} />

@@ -54,3 +54,12 @@ describe('Workout sources section', () => {
     expect(loading).not.toContain('No workout source was checked.');
   });
 });
+
+describe('Workout sources while they are being checked', () => {
+  it('shows a Checking… card, not "No workout source was checked"', () => {
+    const report = { workoutSources: [], pending: ['workouts'] } as unknown as PipelineStatusReport;
+    const html = renderToStaticMarkup(createElement(WorkoutSources, { report, heading: (_k: string, t: string) => t }));
+    expect(html).toContain('Checking…');
+    expect(html).not.toContain('No workout source was checked');
+  });
+});

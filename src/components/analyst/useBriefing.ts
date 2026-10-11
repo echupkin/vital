@@ -70,6 +70,7 @@ export function useBriefing(system: UnitSystem): BriefingHook {
 
   useEffect(() => {
     let cancelled = false;
+    const abort = new AbortController();
 
     const clear = () => {
       if (timer.current !== null) {
@@ -80,7 +81,7 @@ export function useBriefing(system: UnitSystem): BriefingHook {
 
     const read = async (attempt: number): Promise<void> => {
       try {
-        const res = await fetch(`/api/briefing?system=${system}`, { cache: 'no-store' });
+        const res = await fetch(`/api/briefing?system=${system}`, { cache: 'no-store', signal: abort.signal });
         if (!res.ok) throw new Error(`The briefing endpoint answered HTTP ${res.status}.`);
         const data = (await res.json()) as BriefingView;
         if (cancelled) return;
@@ -106,6 +107,7 @@ export function useBriefing(system: UnitSystem): BriefingHook {
 
     return () => {
       cancelled = true;
+      abort.abort();
       clear();
     };
     // Re-read when the unit system changes: the server formats the text in it.

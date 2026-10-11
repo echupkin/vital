@@ -82,7 +82,8 @@ What is still demo or unwired in this build, exhaustively:
   or behind an authenticated reverse proxy.
 - **The live dataset is cached in process memory.** One read-only cache fill warms it at
   process start, and stale-while-revalidate refreshes it in the background after the TTL
-  lapses; a request only waits for upstream on a genuinely cold process. There is still no
+  lapses; only a genuinely cold process waits for upstream, and even then the app shell paints
+  at once and the page streams in when the data arrives (Settings renders straight away). There is still no
   background ingestion job and no persisted copy of the dataset on disk; the only timer is the
   daily briefing's (it writes the briefing at the profile's briefing hour).
 

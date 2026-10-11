@@ -20,7 +20,10 @@
 // Every check runs on the records as the server returned them, before Vital
 // aggregates them per day: once two exports are summed into one daily value
 // the overlap cannot be seen any more. The checks report and explain; they
-// never change the data. Each finding carries the steps that fix it.
+// never change the export server. Overlapping exports and duplicate readings
+// Vital corrects itself, by leaving the repeated records out of its own totals
+// (`findRedundant`, on unless the reader turned it off): those checks then say
+// what was corrected. Every other finding carries the steps that fix it.
 //
 // Pure and deterministic; no I/O.
 
@@ -30,6 +33,9 @@ import type { DayAggregation } from './normalize';
 
 export type QualitySeverity = 'problem' | 'warning' | 'info';
 export type QualityCheckId = 'overlapping-exports' | 'duplicate-readings' | 'missing-days' | 'late-start' | 'stale';
+/** Checks whose findings Vital can correct itself, by leaving the repeated records out (see `findRedundant`). */
+export const CORRECTABLE_CHECKS = ['overlapping-exports', 'duplicate-readings'] as const satisfies readonly QualityCheckId[];
+export type CorrectableCheck = (typeof CORRECTABLE_CHECKS)[number];
 
 export interface DayRange {
   from: string;
@@ -50,13 +56,20 @@ export interface QualityFinding {
   affectedDays: number;
   /** What to do about it, in order. */
   remedy: string[];
+  /** Vital can correct this itself, and the reader turned that off: offer to turn it back on. */
+  correctable?: boolean;
 }
 
 export interface QualityCheckResult {
   id: QualityCheckId;
   label: string;
-  /** flagged: something to fix; note: found, but only more than RECENT_DAYS ago. */
-  outcome: 'pass' | 'flagged' | 'note';
+  /**
+   * flagged: something to fix; note: found, but only more than RECENT_DAYS ago;
+   * corrected: found, and Vital leaves the repeated records out of its totals.
+   */
+  outcome: 'pass' | 'flagged' | 'note' | 'corrected';
+  /** Set on a correctable check: whether the correction is on. */
+  correcting?: boolean;
   summary: string;
 }
 
@@ -200,13 +213,15 @@ export interface MetricScan {
   overlapDays: Map<string, { hours: number; doubled: number; total: number }>;
   /** Days with a reading stored a second time as an hourly copy. */
   duplicateDays: Map<string, number>;
+  /** Records the correction leaves out: the finer records of the flagged days, or the copies. */
+  redundantRecords: number;
   /** Newest record instant, ms. */
   newest: number | null;
 }
 
 /** A scan with nothing to look at but how recent the metric is (averaged metrics such as heart rate). */
 export function recencyScan(metricId: string, aggregation: DayAggregation, newest: number | null): MetricScan {
-  return { metricId, aggregation, overlapDays: new Map(), duplicateDays: new Map(), newest };
+  return { metricId, aggregation, overlapDays: new Map(), duplicateDays: new Map(), redundantRecords: 0, newest };
 }
 
 const DAY_MS = 86_400_000;
@@ -226,8 +241,21 @@ interface HourBucket {
   fineValues: number[] | null;
 }
 
+export interface RedundantRecords {
+  overlapDays: MetricScan['overlapDays'];
+  duplicateDays: MetricScan['duplicateDays'];
+  /**
+   * 1 for each record (by index into the packed arrays) that only repeats
+   * another: on a flagged day, the finer records inside an hour that also
+   * holds their hourly total; for a reading, the on-the-hour copy.
+   */
+  drop: Uint8Array;
+  /** How many records `drop` marks. */
+  count: number;
+}
+
 /**
- * Look at one metric's records for overlapping time groupings.
+ * Find the records that repeat others because two time groupings overlap.
  *
  * Records are grouped by source and local clock hour. An hour holding one
  * record exactly on the hour plus finer records is suspicious; it is an
@@ -235,17 +263,24 @@ interface HourBucket {
  * are the same activity, sent twice). Summed metrics are checked for double
  * counting, per-reading metrics (weight, body fat) for copies.
  *
+ * The data-quality scan reports what this finds, and the live load leaves the
+ * marked records out when the correction is on (see `quality-correct.ts`), so
+ * what is corrected is exactly what is reported. For a summed metric the
+ * hourly total stays and the finer records go, and only on flagged days: a
+ * stray hour is not enough to change a day. For a reading the copy goes; it
+ * sits at the start of the hour, before the original, so the day's latest
+ * reading is unchanged.
+ *
  * Buckets are keyed by number and days by a local day index, so the scan does
  * no per-record string or timezone formatting: the zone's offset is looked up
  * once per UTC hour.
  */
-export function scanCompact(metricId: string, aggregation: DayAggregation, data: CompactRecords, tz: string): MetricScan {
-  const scan = recencyScan(metricId, aggregation, null);
+export function findRedundant(aggregation: DayAggregation, data: CompactRecords, tz: string): RedundantRecords {
   const { ms, value, source } = data;
   const n = ms.length;
-  for (let i = 0; i < n; i++) if (scan.newest === null || ms[i] > scan.newest) scan.newest = ms[i];
+  const found: RedundantRecords = { overlapDays: new Map(), duplicateDays: new Map(), drop: new Uint8Array(n), count: 0 };
   // Averaged metrics (heart rate and the like) are checked only for how recent they are.
-  if (aggregation === 'mean' || n === 0) return scan;
+  if (aggregation === 'mean' || n === 0) return found;
 
   const local = localClock(tz);
   const sourceCount = Math.max(1, data.sources.length);
@@ -273,8 +308,8 @@ export function scanCompact(metricId: string, aggregation: DayAggregation, data:
     }
   }
 
-  const overlap = new Map<number, { hours: number; doubled: number; total: number }>();
-  for (const hour of hours.values()) {
+  const overlap = new Map<number, { hours: number; doubled: number; total: number; keys: number[] }>();
+  for (const [key, hour] of hours) {
     if (hour.aligned < 0 || hour.fineCount === 0) continue;
     const hourly = value[hour.aligned];
     const day = Math.floor(at[hour.aligned] / DAY_MS);
@@ -286,25 +321,52 @@ export function scanCompact(metricId: string, aggregation: DayAggregation, data:
       if (hourly < hour.fineMax * OVERLAP_TOTAL_OVER_PART) continue;
       const ratio = hour.fineSum / hourly;
       if (ratio < OVERLAP_RATIO.min || ratio > OVERLAP_RATIO.max) continue;
-      const entry = overlap.get(day) ?? { hours: 0, doubled: 0, total: dayTotals.get(day) ?? 0 };
+      const entry = overlap.get(day) ?? { hours: 0, doubled: 0, total: dayTotals.get(day) ?? 0, keys: [] };
       entry.hours++;
       entry.doubled += Math.min(hour.fineSum, hourly);
+      entry.keys.push(key);
       overlap.set(day, entry);
     } else if (aggregation === 'latest') {
       const scale = Math.max(Math.abs(hourly), 1e-9);
       if (hour.fineValues!.some(v => Math.abs(v - hourly) / scale <= DUPLICATE_TOLERANCE)) {
-        const key = dayOfIndex(day);
-        scan.duplicateDays.set(key, (scan.duplicateDays.get(key) ?? 0) + 1);
+        const dayKey = dayOfIndex(day);
+        found.duplicateDays.set(dayKey, (found.duplicateDays.get(dayKey) ?? 0) + 1);
+        found.drop[hour.aligned] = 1;
+        found.count++;
       }
     }
   }
 
   // A day is flagged only when the overlap is a real share of it, not a stray hour.
-  for (const [day, entry] of overlap) {
+  const doubledHours = new Set<number>();
+  for (const [day, { keys, ...entry }] of overlap) {
     if (entry.hours >= OVERLAP_MIN_HOURS && entry.total > 0 && entry.doubled / entry.total >= OVERLAP_MIN_SHARE) {
-      scan.overlapDays.set(dayOfIndex(day), entry);
+      found.overlapDays.set(dayOfIndex(day), entry);
+      for (const k of keys) doubledHours.add(k);
     }
   }
+  // The finer records inside those hours are the ones counted twice.
+  if (doubledHours.size > 0) {
+    for (let i = 0; i < n; i++) {
+      if (at[i] % HOUR_MS === 0) continue;
+      if (doubledHours.has(Math.floor(at[i] / HOUR_MS) * sourceCount + source[i])) {
+        found.drop[i] = 1;
+        found.count++;
+      }
+    }
+  }
+  return found;
+}
+
+/** Look at one metric's records for overlapping time groupings (see `findRedundant`). */
+export function scanCompact(metricId: string, aggregation: DayAggregation, data: CompactRecords, tz: string): MetricScan {
+  const scan = recencyScan(metricId, aggregation, null);
+  const { ms } = data;
+  for (let i = 0; i < ms.length; i++) if (scan.newest === null || ms[i] > scan.newest) scan.newest = ms[i];
+  const found = findRedundant(aggregation, data, tz);
+  scan.overlapDays = found.overlapDays;
+  scan.duplicateDays = found.duplicateDays;
+  scan.redundantRecords = found.count;
   return scan;
 }
 
@@ -322,6 +384,8 @@ export interface QualityInputs {
   /** The dataset's current day (still filling up; never counted as missing). */
   referenceKey: string;
   now: Date;
+  /** Checks Vital corrects in its own totals. Omitted: none (the checks only report). */
+  corrections?: ReadonlySet<CorrectableCheck>;
 }
 
 function label(metricId: string): string {
@@ -366,8 +430,6 @@ function groupByDays(missing: { id: string; days: string[] }[]): { ids: string[]
   return [...groups.values()];
 }
 
-const BACKUP_FIRST =
-  'Back up the export server’s database first (for the reference server: mongodump --db health-auto-export --gzip --archive=…).';
 const GUIDE =
   'See “Setting up Health Auto Export for complete data” in docs/data-sources.md for the settings that prevent this.';
 const SAME_GROUPING =
@@ -375,6 +437,7 @@ const SAME_GROUPING =
 
 export function dataQualityReport(inputs: QualityInputs): DataQualityReport {
   const { scans, daysByMetric, referenceKey, now } = inputs;
+  const correcting = (id: CorrectableCheck) => inputs.corrections?.has(id) ?? false;
   const findings: QualityFinding[] = [];
   const checks: QualityCheckResult[] = [];
   const complete = (day: string) => day < referenceKey;
@@ -392,29 +455,37 @@ export function dataQualityReport(inputs: QualityInputs): DataQualityReport {
       }
       const inflation = total > doubled ? Math.round((doubled / (total - doubled)) * 100) : null;
       const ranges = toRanges(days);
-      findings.push({
-        check: 'overlapping-exports',
-        severity: 'problem',
-        title: 'Some activity is counted twice',
-        detail:
-          `On ${days.length} day${days.length === 1 ? '' : 's'}, ${listLabels(hit.map(s => s.metricId))} ` +
-          `${hit.length === 1 ? 'has' : 'have'} hourly totals stored beside the finer records they already contain, ` +
-          `so the daily totals add the same activity twice${inflation !== null ? ` — about ${inflation} % too high on those days` : ''}. ` +
-          'This happens when an export at one time grouping (say “1 hour”) covers days already sent at another.',
-        metrics: hit.map(s => s.metricId),
-        ranges: ranges.slice(0, MAX_RANGES),
-        affectedDays: days.length,
-        remedy: [
-          SAME_GROUPING,
-          BACKUP_FIRST,
-          'On the export server, for each affected metric and day, delete the records that do not start on the hour inside every hour that also has an on-the-hour total. The hourly totals stay; the finer records they already include go.',
-          'Reload this page: the check passes once the totals are counted once.',
-          GUIDE,
-        ],
-      });
-      checks.push({ id: 'overlapping-exports', label: QUALITY_CHECK_LABEL['overlapping-exports'], outcome: 'flagged', summary: `${days.length} days with activity counted twice.` });
+      const records = hit.reduce((n, s) => n + s.redundantRecords, 0);
+      if (correcting('overlapping-exports')) {
+        checks.push({
+          id: 'overlapping-exports',
+          label: QUALITY_CHECK_LABEL['overlapping-exports'],
+          outcome: 'corrected',
+          correcting: true,
+          summary:
+            `Corrected by Vital: ${records} finer record${records === 1 ? '' : 's'} of ${listLabels(hit.map(s => s.metricId))} on ${days.length} day${days.length === 1 ? '' : 's'} ` +
+            `${records === 1 ? 'is' : 'are'} left out, so that activity is counted once.`,
+        });
+      } else {
+        findings.push({
+          check: 'overlapping-exports',
+          severity: 'problem',
+          title: 'Some activity is counted twice',
+          detail:
+            `On ${days.length} day${days.length === 1 ? '' : 's'}, ${listLabels(hit.map(s => s.metricId))} ` +
+            `${hit.length === 1 ? 'has' : 'have'} hourly totals stored beside the finer records they already contain, ` +
+            `so the daily totals add the same activity twice${inflation !== null ? ` — about ${inflation} % too high on those days` : ''}. ` +
+            'This happens when an export at one time grouping (say “1 hour”) covers days already sent at another.',
+          metrics: hit.map(s => s.metricId),
+          ranges: ranges.slice(0, MAX_RANGES),
+          affectedDays: days.length,
+          remedy: [SAME_GROUPING, GUIDE],
+          correctable: true,
+        });
+        checks.push({ id: 'overlapping-exports', label: QUALITY_CHECK_LABEL['overlapping-exports'], outcome: 'flagged', correcting: false, summary: `${days.length} days with activity counted twice.` });
+      }
     } else {
-      checks.push({ id: 'overlapping-exports', label: QUALITY_CHECK_LABEL['overlapping-exports'], outcome: 'pass', summary: 'No hour holds the same activity at two time groupings.' });
+      checks.push({ id: 'overlapping-exports', label: QUALITY_CHECK_LABEL['overlapping-exports'], outcome: 'pass', correcting: correcting('overlapping-exports'), summary: 'No hour holds the same activity at two time groupings.' });
     }
   }
 
@@ -425,26 +496,34 @@ export function dataQualityReport(inputs: QualityInputs): DataQualityReport {
       const days = [...new Set(hit.flatMap(s => [...s.duplicateDays.keys()]))];
       const copies = hit.reduce((n, s) => n + [...s.duplicateDays.values()].reduce((a, b) => a + b, 0), 0);
       const ranges = toRanges(days);
-      findings.push({
-        check: 'duplicate-readings',
-        severity: 'warning',
-        title: 'Some readings are stored twice',
-        detail:
-          `${listLabels(hit.map(s => s.metricId))} ${hit.length === 1 ? 'has' : 'have'} ${copies} reading${copies === 1 ? '' : 's'} stored a second time as an on-the-hour copy, on ${days.length} day${days.length === 1 ? '' : 's'}. ` +
-          'Vital uses the latest reading of each day, so the values shown barely change, but the number of readings is inflated.',
-        metrics: hit.map(s => s.metricId),
-        ranges: ranges.slice(0, MAX_RANGES),
-        affectedDays: days.length,
-        remedy: [
-          SAME_GROUPING,
-          BACKUP_FIRST,
-          'On the export server, delete the on-the-hour copies that sit in the same hour as an original reading from the same source.',
-          GUIDE,
-        ],
-      });
-      checks.push({ id: 'duplicate-readings', label: QUALITY_CHECK_LABEL['duplicate-readings'], outcome: 'flagged', summary: `${copies} readings stored twice.` });
+      if (correcting('duplicate-readings')) {
+        checks.push({
+          id: 'duplicate-readings',
+          label: QUALITY_CHECK_LABEL['duplicate-readings'],
+          outcome: 'corrected',
+          correcting: true,
+          summary:
+            `Corrected by Vital: ${copies} on-the-hour cop${copies === 1 ? 'y' : 'ies'} of ${listLabels(hit.map(s => s.metricId))} readings on ${days.length} day${days.length === 1 ? '' : 's'} ` +
+            `${copies === 1 ? 'is' : 'are'} left out.`,
+        });
+      } else {
+        findings.push({
+          check: 'duplicate-readings',
+          severity: 'warning',
+          title: 'Some readings are stored twice',
+          detail:
+            `${listLabels(hit.map(s => s.metricId))} ${hit.length === 1 ? 'has' : 'have'} ${copies} reading${copies === 1 ? '' : 's'} stored a second time as an on-the-hour copy, on ${days.length} day${days.length === 1 ? '' : 's'}. ` +
+            'Vital uses the latest reading of each day, so the values shown barely change, but the number of readings is inflated.',
+          metrics: hit.map(s => s.metricId),
+          ranges: ranges.slice(0, MAX_RANGES),
+          affectedDays: days.length,
+          remedy: [SAME_GROUPING, GUIDE],
+          correctable: true,
+        });
+        checks.push({ id: 'duplicate-readings', label: QUALITY_CHECK_LABEL['duplicate-readings'], outcome: 'flagged', correcting: false, summary: `${copies} readings stored twice.` });
+      }
     } else {
-      checks.push({ id: 'duplicate-readings', label: QUALITY_CHECK_LABEL['duplicate-readings'], outcome: 'pass', summary: 'No reading is stored twice.' });
+      checks.push({ id: 'duplicate-readings', label: QUALITY_CHECK_LABEL['duplicate-readings'], outcome: 'pass', correcting: correcting('duplicate-readings'), summary: 'No reading is stored twice.' });
     }
   }
 
@@ -628,6 +707,7 @@ export interface QualityJobInput {
   referenceKey: string;
   now: Date;
   tz: string;
+  corrections?: ReadonlySet<CorrectableCheck>;
 }
 
 const nextTurn = (): Promise<void> =>
@@ -642,7 +722,7 @@ export function startQualityJob(input: QualityJobInput): QualityJob {
         await nextTurn();
         scans.push(m.data ? scanCompact(m.metricId, m.aggregation, m.data, input.tz) : recencyScan(m.metricId, m.aggregation, m.newest));
       }
-      job.value = dataQualityReport({ scans, daysByMetric: input.daysByMetric, referenceKey: input.referenceKey, now: input.now });
+      job.value = dataQualityReport({ scans, daysByMetric: input.daysByMetric, referenceKey: input.referenceKey, now: input.now, corrections: input.corrections });
       job.state = 'ready';
       return job.value;
     } catch (error) {

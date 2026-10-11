@@ -10,8 +10,10 @@ afterEach(() => resetTrainingStoreForTests());
 
 function hevyFetch(opts: { failWorkouts?: boolean } = {}) {
   let workoutCalls = 0;
+  const paths: string[] = [];
   const impl = (async (input: RequestInfo | URL) => {
     const url = new URL(String(input));
+    paths.push(url.pathname);
     let status = 200;
     let body: unknown;
     if (url.pathname === '/v1/exercise_templates') {
@@ -42,7 +44,7 @@ function hevyFetch(opts: { failWorkouts?: boolean } = {}) {
     }
     return { ok: status === 200, status, json: async () => body, text: async () => '' } as unknown as Response;
   }) as unknown as typeof fetch;
-  return { impl, workoutCalls: () => workoutCalls };
+  return { impl, workoutCalls: () => workoutCalls, paths: () => paths };
 }
 
 describe('loadTrainingData', () => {
@@ -66,6 +68,17 @@ describe('loadTrainingData', () => {
     await loadTrainingData({ env: LIVE, hevyStored: STORED, fetchImpl: fake.impl, now: () => NOW });
     expect(fake.workoutCalls()).toBe(1);
     expect((await heldSourceStatuses({ env: LIVE, hevyStored: STORED }))[0].sessions).toBe(1);
+  });
+
+  it('syncs again on a refresh ("Check again") instead of serving the held sync', async () => {
+    const fake = hevyFetch();
+    await loadTrainingData({ env: LIVE, hevyStored: STORED, fetchImpl: fake.impl, now: () => NOW });
+    const afterFirst = fake.paths().length;
+    await loadTrainingData({ env: LIVE, hevyStored: STORED, fetchImpl: fake.impl, now: () => NOW });
+    expect(fake.paths().length).toBe(afterFirst);
+    // The second sync is incremental (only what changed since the first), but it does ask Hevy again.
+    await loadTrainingData({ env: LIVE, hevyStored: STORED, fetchImpl: fake.impl, now: () => NOW, refresh: true });
+    expect(fake.paths().length).toBeGreaterThan(afterFirst);
   });
 
   it('reports a failing source instead of throwing', async () => {

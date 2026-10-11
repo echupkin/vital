@@ -4,7 +4,7 @@
 //
 // Replaces a progress bar on the goal card and the Overview tile: a progress
 // bar early in a cut only shows how far there is to go, and at the goal it is
-// simply full. This shows the four-week trend instead, against what the goal
+// simply full. This shows the weight trend instead, against what the goal
 // needs.
 //
 //   cutting / gaining  one axis from "moving away" through "steady" to
@@ -16,6 +16,7 @@
 // The status above it describes the data; it never measures the reader against
 // a deadline.
 
+import { WEIGHT_TREND_WINDOW } from '@/lib/analytics/weight-trend';
 import { BULK_RISK_PCT, CUT_RISK_PCT } from '@/lib/body-goal/constants';
 import type { BodyGoalReport } from '@/lib/body-goal/report';
 import type { GoalTrack as Track } from '@/lib/body-goal/track';
@@ -37,7 +38,7 @@ export function GoalTrack({ report, units, compact = false }: { report: BodyGoal
     <div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <Badge variant={BADGE[track.tone]}>{track.label}</Badge>
-        {track.status !== 'unknown' && <span className="text-[11px] text-text-secondary">last four weeks</span>}
+        {track.status !== 'unknown' && <span className="text-[11px] text-text-secondary">{WEIGHT_TREND_WINDOW}</span>}
       </div>
       {!compact && <p className="mt-1.5 text-sm text-text-secondary">{track.detail}</p>}
       <div className={compact ? 'mt-3' : 'mt-4'}>
@@ -93,7 +94,7 @@ function PaceGauge({ report, units }: { report: BodyGoalReport; units: UnitSyste
   const hi = Math.min(2.5, step(Math.max(band.maxPct * 1.5, riskPct * 1.35, toward * 1.1)));
   const lo = -Math.min(2.5, Math.max(0.5, step(-toward * 1.1)));
   const x = (pct: number) => Math.min(100, Math.max(0, ((pct - lo) / (hi - lo)) * 100));
-  const summary = `${track.label}. The four-week trend is ${formatRate(weight.rateKgPerWeek, units)}; the recommended range is ${band.minPct}–${band.maxPct} % of body weight a week toward the goal.`;
+  const summary = `${track.label}. The weight trend (${WEIGHT_TREND_WINDOW}) is ${formatRate(weight.rateKgPerWeek, units)}; the recommended range is ${band.minPct}–${band.maxPct} % of body weight a week toward the goal.`;
 
   return (
     <div className="relative w-full" style={{ height: 52 }} role="img" aria-label={summary}>

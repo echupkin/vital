@@ -109,3 +109,68 @@ describe('DataQualitySection', () => {
     expect(renderToStaticMarkup(createElement(DataQualitySection, { report: status({ qualityState: 'unavailable', quality: null }) }))).toBe('');
   });
 });
+
+describe('DataQualityView: corrections', () => {
+  const OVERLAP: QualityFinding = {
+    check: 'overlapping-exports', severity: 'problem', title: 'Some activity is counted twice', detail: 'Doubled.', metrics: ['step_count'],
+    ranges: [{ from: '2026-09-28', to: '2026-09-28', days: 1 }], affectedDays: 1,
+    remedy: ['In Health Auto Export, use one time grouping.', 'See the guide.'], correctable: true,
+  };
+
+  it('offers Fix it in place of the steps when the correction is off, and keeps Silence', () => {
+    const html = view(report([OVERLAP]), []);
+    expect(html).toMatch(/aria-label="Fix it: Some activity is counted twice"[^>]*>Fix it</);
+    expect(html).toContain('Your export server is not changed.');
+    expect(html).toContain('To keep it from happening again: In Health Auto Export, use one time grouping.');
+    expect(html).not.toContain('How to fix it');
+    expect(html).toContain('>Silence<');
+  });
+
+  it('keeps the steps for a finding Vital cannot correct', () => {
+    const html = view(report([MISSING]), []);
+    expect(html).toContain('How to fix it');
+    expect(html).not.toContain('>Fix it<');
+  });
+
+  it('shows progress on Fix it while it is in flight', () => {
+    expect(view(report([OVERLAP]), [], { busy: 'correct:overlapping-exports' })).toMatch(/<button[^>]*disabled=""[^>]*>Fixing…/);
+  });
+
+  it('lists a corrected check as corrected by Vital, with Stop correcting', () => {
+    const corrected: DataQualityReport = {
+      findings: [],
+      checks: [
+        {
+          id: 'overlapping-exports', label: QUALITY_CHECK_LABEL['overlapping-exports'], outcome: 'corrected', correcting: true,
+          summary: 'Corrected by Vital: 120 finer records of Steps on 1 day are left out, so that activity is counted once.',
+        },
+      ],
+    };
+    const html = view(corrected, []);
+    expect(html).toContain(': corrected by Vital');
+    expect(html).toContain('Corrected by Vital: 120 finer records');
+    expect(html).toMatch(/aria-label="Stop correcting: Overlapping exports \(double counting\)"[^>]*>Stop correcting</);
+    expect(html).toContain('All checks passed');
+  });
+});
+
+describe('DataQualityView: fixing a silenced issue', () => {
+  const SILENCED_OVERLAP: SilencedFinding = {
+    checkId: 'overlapping-exports', checkLabel: QUALITY_CHECK_LABEL['overlapping-exports'], metricId: '', metricLabel: 'Steps',
+    title: 'Some activity is counted twice', severity: 'problem', found: true, firstDay: '2026-10-04', lastDay: '2026-10-06',
+  };
+
+  it('offers Fix it beside Restore for a silenced issue Vital can correct', () => {
+    const html = view(report([]), [SILENCED_OVERLAP]);
+    expect(html).toMatch(/aria-label="Fix it: Some activity is counted twice"[^>]*>Fix it</);
+    expect(html).toContain('>Restore<');
+  });
+
+  it('offers no Fix it when the silenced issue is not found right now', () => {
+    expect(view(report([]), [{ ...SILENCED_OVERLAP, found: false }])).not.toContain('>Fix it<');
+  });
+
+  it('offers no Fix it for a silenced issue Vital cannot correct', () => {
+    expect(view(report([]), [SILENCED])).not.toContain('>Fix it<');
+  });
+});

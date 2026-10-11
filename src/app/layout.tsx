@@ -9,6 +9,10 @@
 // normalized and cached by the server. The browser never receives the API token
 // and never calls the health API itself.
 //
+// The layout does not wait for that load: a cold one takes seconds. It hands
+// it to `DatasetStream` as a promise, so the shell paints at once and each page
+// streams in when its data is here (Settings renders straight away).
+//
 // `force-dynamic` is required: the live dataset must be read per request, not
 // baked into a prerendered page at build time.
 
@@ -16,12 +20,10 @@ import type { Metadata, Viewport } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import './globals.css';
-import { AppShell } from '@/components/shell/AppShell';
-import { DatasetProvider } from '@/components/data/DatasetProvider';
-import { LiveGate } from '@/components/data/LiveGate';
-import { FALLBACK_CLIENT_META } from '@/components/data/fallback-meta';
-import { LiveDataUnavailableError, resolveDataset, type ResolvedDataset } from '@/lib/adapters/runtime';
+import { DatasetStream, type LayoutData } from '@/components/data/DatasetStream';
+import { LiveDataUnavailableError, knownSetupMode, resolveDataset } from '@/lib/adapters/runtime';
 import { readProfileState } from '@/lib/profile/store';
+import { readPreferencesState } from '@/lib/prefs/store';
 import { LEGACY_STORAGE_KEY, preferencesCacheKey } from '@/lib/prefs/types';
 import { DEFAULT_THEME_ID, themesFor } from '@/lib/prefs/themes';
 import PrefsSync from '@/components/prefs/PrefsSync';
@@ -94,33 +96,19 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let resolved: ResolvedDataset | null = null;
-  let failure: { title: string; message: string; host: string | null; hint?: string } | null = null;
-
-  try {
-    resolved = await resolveDataset();
-  } catch (error) {
-    if (error instanceof LiveDataUnavailableError) {
-      failure = {
-        title: error.message,
-        message: error.detail,
-        host: error.host,
-        hint:
-          'Vital is running in live mode (VITAL_DATA_MODE=live), so no demo data is shown in its place. ' +
-          'Check the data connection in Settings and that the server is reachable from this host, then retry.',
-      };
-    } else {
-      throw error;
-    }
-  }
-
-  const mode = resolved?.mode ?? 'live';
-  const meta = resolved?.meta ?? FALLBACK_CLIENT_META;
-  const dataset = resolved?.dataset ?? null;
+  // Not awaited: the shell renders now, and the page streams in when this settles.
+  const data: Promise<LayoutData> = loadLayoutData();
   // Read server-side, per request: the greeting, the avatar and the briefing all
   // read one profile, and the browser never needs to fetch it to render. The
   // read is awaitable because the record may live in Postgres.
   const { profile, stored: profileStored } = await readProfileState();
+  // The display preferences too, so the first render already uses the reader's
+  // units: starting on the default and switching after the device's cache is read
+  // made every page that fetches by unit system fetch twice. Null when the store
+  // could not be read; the browser's cache then decides, as before.
+  const prefsState = await readPreferencesState().catch(() => null);
+  const initialPrefs =
+    prefsState && !prefsState.error ? { units: prefsState.preferences.units, theme: prefsState.preferences.theme } : null;
 
   return (
     <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
@@ -128,23 +116,45 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        <DatasetProvider mode={mode} dataset={dataset} meta={meta}>
-          {/* Starts the server-backed settings sync (theme/units) and re-applies
-              the theme when the server's value differs from this device's cache. */}
-          <PrefsSync />
-          <AppShell profile={profile} profileStored={profileStored} setupMode={failure !== null}>
-            <LiveGate
-              failure={
-                failure
-                  ? { title: failure.title, message: failure.message, host: failure.host, hint: failure.hint }
-                  : null
-              }
-            >
-              {children}
-            </LiveGate>
-          </AppShell>
-        </DatasetProvider>
+        {/* Starts the server-backed settings sync (theme/units) and re-applies
+            the theme when the server's value differs from this device's cache. */}
+        <PrefsSync />
+        <DatasetStream
+          data={data}
+          initialSetupMode={await knownSetupMode()}
+          profile={profile}
+          profileStored={profileStored}
+          initialPrefs={initialPrefs}
+        >
+          {children}
+        </DatasetStream>
       </body>
     </html>
   );
+}
+
+/**
+ * The dataset for this request, or the reason live mode has none (setup mode).
+ * Any other failure rejects, and reaches the error page as before.
+ */
+async function loadLayoutData(): Promise<LayoutData> {
+  try {
+    const resolved = await resolveDataset();
+    return { mode: resolved.mode, dataset: resolved.dataset, meta: resolved.meta, failure: null };
+  } catch (error) {
+    if (!(error instanceof LiveDataUnavailableError)) throw error;
+    return {
+      mode: 'live',
+      dataset: null,
+      meta: null,
+      failure: {
+        title: error.message,
+        message: error.detail,
+        host: error.host,
+        hint:
+          'Vital is running in live mode (VITAL_DATA_MODE=live), so no demo data is shown in its place. ' +
+          'Check the data connection in Settings and that the server is reachable from this host, then retry.',
+      },
+    };
+  }
 }

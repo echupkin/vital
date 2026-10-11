@@ -4,11 +4,13 @@
 // population guidelines, not prescriptions: the pages say so, and the reader can
 // set their own pace over the recommended one.
 
+import { WEIGHT_TREND_DAYS } from '../analytics/weight-trend';
+
 /** Energy in one kg of body-weight change (the usual 3,500 kcal/lb). */
 export const KCAL_PER_KG = 7700;
 
-/** Days the weight trend and the energy balance are measured over. */
-export const TREND_DAYS = 28;
+/** Days the weight trend and the energy balance are measured over (see analytics/weight-trend). */
+export const TREND_DAYS = WEIGHT_TREND_DAYS;
 /** The shorter, more recent trend shown beside it. */
 export const RECENT_TREND_DAYS = 14;
 /** Days averaged for "current" weight and body fat (a 7-day mean smooths water swings). */

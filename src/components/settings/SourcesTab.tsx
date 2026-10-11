@@ -16,13 +16,17 @@ import { MapProvidersCard } from './MapProviders';
 import { OuraConnection } from './OuraConnection';
 import { SectionHead } from './SectionHead';
 import { usePipelineReport } from './usePipelineReport';
+import type { PipelinePart } from '@/lib/pipeline/types';
 import { WorkoutSources } from './WorkoutSources';
+
+const WORKOUTS_ONLY: PipelinePart[] = ['workouts'];
 
 export function SourcesTab() {
   const router = useRouter();
   const ouraNotice = useSearchParams().get('oura');
   const settingUp = useSetupFailure() !== null;
-  const { report, refreshQuietly } = usePipelineReport();
+  // Only the workout sources: the Hevy card never waits on the dataset load.
+  const { report, refreshQuietly } = usePipelineReport({ parts: WORKOUTS_ONLY });
 
   return (
     <div className="space-y-5">

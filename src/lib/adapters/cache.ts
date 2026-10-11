@@ -120,6 +120,17 @@ export class TtlCache {
     return promise;
   }
 
+  /**
+   * Load a key afresh now, whatever its TTL, and wait for it ("Check again").
+   * Every other reader keeps getting the value already held until the new one
+   * lands, so nobody else waits on it; a refresh already running is joined
+   * rather than doubled. A failed load leaves the held value in place.
+   */
+  async refresh<T>(key: string, loader: () => Promise<T>, ttlMs?: number): Promise<T> {
+    this.revalidations += 1;
+    return (await this.start(key, loader, ttlMs)) as T;
+  }
+
   /** True when a value is held and still inside its TTL. */
   isFresh(key: string): boolean {
     const hit = this.entries.get(key);

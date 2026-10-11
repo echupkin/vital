@@ -87,6 +87,14 @@ describe('db/migrations', () => {
     expect(body).toMatch(/id\s+TEXT\s+PRIMARY KEY/);
   });
 
+  it('ships 0016 corrections turned off: a check id only', () => {
+    const file = shipped().find(m => m.filename === '0016-quality-corrections-off.sql');
+    expect(file).toBeDefined();
+    const body = file!.sql.match(/CREATE TABLE IF NOT EXISTS quality_correction_off \(([\s\S]*?)\n\);/)![1];
+    expect([...body.matchAll(/^\s{2}(\w+)\s/gm)].map(m => m[1])).toEqual(['check_id', 'turned_off_at']);
+    expect(body).toMatch(/check_id\s+TEXT\s+PRIMARY KEY/);
+  });
+
   it('numbers each file as its header says', () => {
     for (const { filename, sql } of shipped()) {
       const version = filename.slice(0, 4);

@@ -127,7 +127,7 @@ export function overviewSummary(r: RoutineOverview, detailPathId?: string) {
     currentPhase: r.currentPhase
       ? { phase: `${r.currentPhase.index + 1} of ${r.currentPhase.count}`, name: r.currentPhase.name, since: r.currentPhase.since, milestones: `${r.currentPhase.progress.met} of ${r.currentPhase.progress.total} required` }
       : r.phases.length ? 'all phases complete' : null,
-    phases: r.phases.map(p => ({ name: p.name, status: p.status, targets: p.targets.map(t => `${t.met === true ? 'met' : t.met === false ? 'not yet' : 'unchecked'}: ${t.label}${t.optional ? ' (optional)' : ''}`) })),
+    phases: r.phases.map(p => ({ name: p.name, status: p.status, targets: p.targets.map(t => `${t.state === 'done' ? 'done' : t.state === 'in-progress' ? `in progress${t.met ? ', which this phase counts as reached' : ''}` : t.state === 'not-started' ? 'not yet' : 'unchecked'}: ${t.label}${t.optional ? ' (optional)' : ''}`) })),
     calendarBlocksThisWeek: r.currentBlocks,
     nextSession: { due: r.next.due.label, why: r.next.why, slots: r.next.due.templates.flatMap(t => t.slots.map(s => `${s.stageName}${s.dose ? ` — ${s.dose}` : ''}${s.optional ? ' (optional)' : ''}`)) },
     adherence: r.adherence.text,

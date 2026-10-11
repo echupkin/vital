@@ -41,7 +41,7 @@ export interface BodyGoalReport extends BodyReading {
   start: { weight: Reading | null; bodyFat: Reading | null; value: number | null };
   /** 0–1 of the way from the start to the target, in the goal's unit. Data for the briefing; the pages show `track`. */
   progress: number | null;
-  /** Whether the four-week trend is moving the right way at a sensible pace. */
+  /** Whether the weight trend is moving the right way at a sensible pace. */
   track: GoalTrack;
   band: PaceBand | null;
   pace: EffectivePace | null;

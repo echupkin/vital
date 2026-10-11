@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode, type ButtonHTMLAttributes } from 'react';
-import { X, Search, Command, ArrowUp, ArrowDown, ArrowRight } from 'lucide-react';
+import { X, Search, Command, ArrowUp, ArrowDown, ArrowRight, LoaderCircle } from 'lucide-react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -451,24 +451,42 @@ export function Sparkline({ data, width = 80, height = 28, className = '', color
   );
 }
 
+// ── Badge spinner ────────────────────────────────────
+// A spinner before the text of a badge, for work still running in the
+// background. Centred on the line box it sits a pixel low: the line reserves
+// room for descenders that "Checking…" does not use, so the text's visible
+// middle is higher. The wrapper takes the nudge, because the spin's own
+// transform would replace a translate on the icon. Reduced motion holds it still.
+
+export function BadgeSpinner() {
+  return (
+    <span className="mr-1 inline-flex -translate-y-px" aria-hidden="true">
+      <LoaderCircle size={11} className="motion-safe:animate-spin" />
+    </span>
+  );
+}
+
 // ── Change cue (neutral direction, never a judgement) ─
 
 export function ChangeCue({
   direction,
   value,
   percent,
+  comparedWith = 'baseline',
   className = '',
 }: {
   direction: 'above' | 'below' | 'none';
   value: string;
   percent?: string | null;
+  /** What the change is measured against, for the screen-reader text. */
+  comparedWith?: string;
   className?: string;
 }) {
   const Icon = direction === 'above' ? ArrowUp : direction === 'below' ? ArrowDown : ArrowRight;
   // The screen-reader text states the direction only; the visible text already
   // carries the value, so it is never repeated.
   const srText =
-    direction === 'above' ? 'Higher than baseline' : direction === 'below' ? 'Lower than baseline' : '';
+    direction === 'above' ? `Higher than ${comparedWith}` : direction === 'below' ? `Lower than ${comparedWith}` : '';
   return (
     <span className={`inline-flex items-center gap-1 tnum ${className}`}>
       <Icon size={12} aria-hidden="true" className="shrink-0 opacity-70" />

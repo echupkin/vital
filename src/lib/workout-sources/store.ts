@@ -151,7 +151,7 @@ export async function loadTrainingData(deps: SourceRequestDeps = {}): Promise<Tr
     enabled.map(async ({ plugin, config }) => {
       store.ttlBySource.set(plugin.id, plugin.ttlMs(config));
       try {
-        await store.cache.getOrLoad(plugin.id, async () => {
+        const sync = async () => {
           try {
             const result = await plugin.sync(config, store.states.get(plugin.id) ?? null, lookback, deps);
             store.states.set(plugin.id, result.state);
@@ -161,7 +161,8 @@ export async function loadTrainingData(deps: SourceRequestDeps = {}): Promise<Tr
             store.errors.set(plugin.id, error instanceof Error ? error.message : 'The sync failed.');
             throw error;
           }
-        });
+        };
+        await (deps.refresh ? store.cache.refresh(plugin.id, sync) : store.cache.getOrLoad(plugin.id, sync));
       } catch {
         // Recorded above; the previous state (if any) keeps serving.
       }

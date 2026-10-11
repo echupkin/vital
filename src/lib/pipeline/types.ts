@@ -8,7 +8,8 @@ import type { DataQualityReport } from '../adapters/quality';
 import type { SilencedFinding } from '../adapters/quality-silenced';
 import type { WorkoutSourceStatus } from '../workout-sources/types';
 
-export type StageStatus = 'healthy' | 'degraded' | 'unknown' | 'unconfigured';
+/** `checking`: the check is still running in the background; its result is on the way. */
+export type StageStatus = 'healthy' | 'degraded' | 'checking' | 'unknown' | 'unconfigured';
 
 export type StageId =
   | 'health_auto_export'
@@ -121,11 +122,80 @@ export interface PipelineStatusReport {
   checkedAt: string;
   /** Human sentence for the panel header. */
   summary: string;
+  /**
+   * Parts still being checked when the report was put together in the browser
+   * from parts (see `assemble.ts`); their stages read "Checking…" and their
+   * other fields are placeholders. Empty for a report the server assembled.
+   */
+  pending: PipelinePart[];
 }
+
+// ── Parts: the report, checked piece by piece ───────────
+//
+// GET /api/pipeline/status?part=… answers one part, so the panel can show
+// each stage as soon as its own check is done instead of waiting for the
+// slowest (a cold dataset load). `assembleReport` puts parts together; the
+// full report is the same function over all three.
+
+export type PipelinePart = 'sources' | 'dataset' | 'workouts';
+export const PIPELINE_PARTS: PipelinePart[] = ['sources', 'dataset', 'workouts'];
+
+/** The export server and Oura: configuration and the two read-only probes. */
+export interface SourcesPart {
+  part: 'sources';
+  mode: 'demo' | 'live';
+  config: PipelineConfig;
+  probe: PipelineProbe;
+  /** Oura answered its probe. */
+  ouraOk: boolean;
+  /** health_auto_export, health_api and oura_api. */
+  stages: PipelineStage[];
+  checkedAt: string;
+}
+
+/** The dataset the app is serving, and the data-quality checks on it. */
+export interface DatasetPart {
+  part: 'dataset';
+  mode: 'demo' | 'live';
+  dataset: PipelineDatasetSummary;
+  cache: PipelineCacheInfo;
+  quality: DataQualityReport | null;
+  qualityState: PipelineStatusReport['qualityState'];
+  silenced: SilencedFinding[];
+  /** data_quality and intelligence. */
+  stages: PipelineStage[];
+  checkedAt: string;
+}
+
+/** Detailed-workout sources (Hevy, …). */
+export interface WorkoutsPart {
+  part: 'workouts';
+  workoutSources: WorkoutSourceStatus[];
+  checkedAt: string;
+}
+
+/** A part whose request failed: its stages read Unknown, with the reason. */
+export interface PartFailure {
+  error: string;
+}
+
+export interface PipelineParts {
+  sources?: SourcesPart | PartFailure;
+  dataset?: DatasetPart | PartFailure;
+  workouts?: WorkoutsPart | PartFailure;
+}
+
+/** The stages each part reports. */
+export const PART_STAGES: Record<PipelinePart, StageId[]> = {
+  sources: ['health_auto_export', 'health_api', 'oura_api'],
+  dataset: ['data_quality', 'intelligence'],
+  workouts: [],
+};
 
 export const STAGE_STATUS_LABEL: Record<StageStatus, string> = {
   healthy: 'Healthy',
   degraded: 'Degraded',
+  checking: 'Checking…',
   unknown: 'Unknown',
   unconfigured: 'Not configured',
 };
@@ -139,6 +209,15 @@ export const PIPELINE_ORDER: StageId[] = [
   'intelligence',
   'dashboard',
 ];
+
+export const STAGE_NAME: Record<StageId, string> = {
+  health_auto_export: 'Health Auto Export',
+  health_api: 'Health API',
+  oura_api: 'Oura Ring',
+  data_quality: 'Data quality',
+  intelligence: 'Intelligence',
+  dashboard: 'Dashboard',
+};
 
 /** GET /api/pipeline/quality: the data-quality checks, once they have finished. */
 export interface PipelineQualityResponse {

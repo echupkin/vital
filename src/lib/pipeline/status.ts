@@ -13,6 +13,11 @@
 //     observation count and newest observation are reported.
 //   * Dashboard — the request itself is the check.
 //
+// The checks are grouped in three parts that run independently and at once —
+// the probes, the dataset, the workout sources — so the settings panel can ask
+// for each separately and show a stage as soon as its own check is done (see
+// `assemble.ts`). The full report is the same three parts, assembled.
+//
 // This module is server-side: it reads the server environment, may load the live
 // dataset, and never returns the token.
 
@@ -28,13 +33,18 @@ import { loadTrainingData } from '../workout-sources/store';
 import type { QualityJob } from '../adapters/quality';
 import type { SilencedKey, SilencedResult } from '../adapters/quality-silenced';
 import { silencedView } from './quality-view';
+import { assembleReport } from './assemble';
 import type {
+  DatasetPart,
   PipelineConfig,
   PipelineDatasetSummary,
+  PipelinePart,
   PipelineProbe,
   PipelineStage,
   PipelineStatusReport,
   ProbeOutcome,
+  SourcesPart,
+  WorkoutsPart,
 } from './types';
 
 export type {
@@ -84,6 +94,8 @@ export interface PipelineDeps {
   haeConfig?: HaeConfig | null;
   /** Replaces the process Postgres pool for the stored connection (tests). */
   haeClient?: PoolLike | null;
+  /** Read the dataset and sync the workout sources afresh instead of serving the caches ("Check again"). */
+  fresh?: boolean;
 }
 
 /** The Oura stage: every status comes from the probe, or from the configuration when no request was made. */
@@ -173,7 +185,7 @@ export function qualityStage(job: QualityJob | null, mode: 'demo' | 'live', summ
     return {
       id: 'data_quality',
       name: 'Data quality',
-      status: 'unknown',
+      status: job.state === 'computing' ? 'checking' : 'unknown',
       detail:
         job.state === 'computing'
           ? 'Checking the export’s records in the background. Nothing else waits for it; the result appears below when it is ready.'
@@ -204,18 +216,26 @@ export function qualityStage(job: QualityJob | null, mode: 'demo' | 'live', summ
   const notes = quality.findings.filter(f => f.severity === 'info');
   const flagged = quality.checks.filter(c => c.outcome === 'flagged').length;
   const hidden = view ? view.silenced.filter(s => s.found).length : 0;
+  const corrected = quality.checks.filter(c => c.outcome === 'corrected');
+  const correctedText = corrected.length
+    ? ` Vital corrects ${corrected.map(c => c.label.replace(/ \(.*\)$/, '').toLowerCase()).join(' and ')} in its own totals.`
+    : '';
   return {
     id: 'data_quality',
     name: 'Data quality',
     status: serious.length ? 'degraded' : 'healthy',
-    detail: serious.length
-      ? `${serious.length} finding${serious.length === 1 ? '' : 's'} to fix: ${serious.map(f => f.title.toLowerCase()).join('; ')}.` +
-        `${notes.length ? ` Also ${notes.length} note${notes.length === 1 ? '' : 's'}.` : ''} Each is listed below with how to fix it.`
-      : notes.length
-        ? `No recent problems. ${notes.length} note${notes.length === 1 ? '' : 's'} about older history or the food log: ${notes.map(f => f.title.toLowerCase()).join('; ')}.`
-        : hidden > 0
-          ? `No data-quality problems found. ${hidden} issue${hidden === 1 ? ' is' : 's are'} silenced in Settings → Connections.`
-          : `All ${quality.checks.length} checks passed: no activity counted twice, no reading stored twice, no missing days, and new data is arriving.`,
+    detail:
+      (serious.length
+        ? `${serious.length} finding${serious.length === 1 ? '' : 's'} to fix: ${serious.map(f => f.title.toLowerCase()).join('; ')}.` +
+          `${notes.length ? ` Also ${notes.length} note${notes.length === 1 ? '' : 's'}.` : ''} Each is listed below with how to fix it.`
+        : notes.length
+          ? `No recent problems. ${notes.length} note${notes.length === 1 ? '' : 's'} about older history or the food log: ${notes.map(f => f.title.toLowerCase()).join('; ')}.`
+          : hidden > 0
+            ? `No data-quality problems found. ${hidden} issue${hidden === 1 ? ' is' : 's are'} silenced in Settings → Connections.`
+            : corrected.length
+              ? 'No data-quality problems left to fix.'
+              : `All ${quality.checks.length} checks passed: no activity counted twice, no reading stored twice, no missing days, and new data is arriving.`) +
+      correctedText,
     derivedFrom: `${quality.checks.length} checks on the export's records as stored, before daily aggregation (${flagged} flagged).`,
     observationCount: summary.observationCount,
     lastObservationAt: summary.lastObservationAt,
@@ -226,28 +246,79 @@ function dayOf(iso: string | null): string {
   return iso ? iso.slice(0, 10) : 'unknown';
 }
 
-/** Build the whole report. Every status here comes from a real check. */
-export async function resolvePipelineStatus(deps: PipelineDeps = {}): Promise<PipelineStatusReport> {
+/** The export server and Oura: configuration, then both read-only probes at once. */
+export async function resolveSourcesPart(deps: PipelineDeps = {}): Promise<SourcesPart> {
   const env = deps.env ?? process.env;
   const now = deps.now ?? (() => Date.now());
   const config = await readPipelineConfig({ env, haeConfig: deps.haeConfig, haeClient: deps.haeClient });
   const mode = readDataMode(env);
 
-  // ── 1. Probe the export API (only when configured) ────
-  const probeResult = config.healthApiConfigured
-    ? await probeHae({ env, fetchImpl: deps.fetchImpl, haeConfig: deps.haeConfig, haeClient: deps.haeClient }, now)
-    : null;
+  // Probe the export API (only when configured) and Oura (only when configured;
+  // a missing credential makes no request). Neither waits for the other.
+  const [probeResult, ouraRead] = await Promise.all([
+    config.healthApiConfigured
+      ? probeHae({ env, fetchImpl: deps.fetchImpl, haeConfig: deps.haeConfig, haeClient: deps.haeClient }, now)
+      : Promise.resolve(null),
+    readOuraConfig({ env, client: deps.ouraClient, ouraApp: deps.ouraApp }).then(async read => ({
+      read,
+      probe:
+        read?.ok === true
+          ? await probeOura({ env, fetchImpl: deps.fetchImpl, client: deps.ouraClient, ouraApp: deps.ouraApp }, now)
+          : null,
+    })),
+  ]);
   const probe = toProbe(probeResult, config, env);
   const probeOk = probe.outcome === 'ok';
 
-  // ── 1b. Probe Oura (only when configured; a missing credential makes no request) ──
-  const ouraRead = await readOuraConfig({ env, client: deps.ouraClient, ouraApp: deps.ouraApp });
-  const ouraProbe = ouraRead?.ok === true
-    ? await probeOura({ env, fetchImpl: deps.fetchImpl, client: deps.ouraClient, ouraApp: deps.ouraApp }, now)
-    : null;
-  const ouraOk = ouraProbe?.outcome === 'ok';
+  return {
+    part: 'sources',
+    mode,
+    config,
+    probe,
+    ouraOk: ouraRead.probe?.outcome === 'ok',
+    stages: [
+      {
+        id: 'health_auto_export',
+        name: 'Health Auto Export',
+        status: !config.healthApiConfigured ? 'unconfigured' : probeOk ? 'healthy' : 'degraded',
+        detail: !config.healthApiConfigured
+          ? 'The data source is not connected. Connect it in Settings → Sources.'
+          : probeOk
+            ? `The configured export server at ${config.healthApiHost ?? 'the configured host'} answered a read-only probe with ${probe.records ?? 0} record(s).`
+            : `${probe.detail} The configured host is ${config.healthApiHost ?? 'unknown'}.`,
+        derivedFrom: config.healthApiConfigured
+          ? `GET /api/metrics/${config.probeMetric} with a ${PROBE_TIMEOUT_MS} ms timeout (outcome: ${probe.outcome}).`
+          : 'Configuration check only; no request was made.',
+        observationCount: null,
+        lastObservationAt: null,
+      },
+      {
+        id: 'health_api',
+        name: 'Health API',
+        status: !config.healthApiConfigured ? 'unconfigured' : probeOk ? 'healthy' : 'degraded',
+        detail: config.healthApiConfigured
+          ? probeOk
+            ? `Read endpoints answered; the probe metric ${config.probeMetric} returned ${probe.records ?? 0} record(s) in ${probe.durationMs ?? '—'} ms.`
+            : probe.detail
+          : 'No API endpoint is configured, so no live metric can be read.',
+        derivedFrom: config.healthApiConfigured
+          ? 'The same bounded read-only probe as the export stage.'
+          : 'Configuration check only; no request was made.',
+        observationCount: null,
+        lastObservationAt: null,
+      },
+      ouraStage(ouraRead.read, ouraRead.probe),
+    ],
+    checkedAt: new Date(now()).toISOString(),
+  };
+}
 
-  // ── 2. Read the dataset the app is actually serving ───
+/** The dataset the app is serving (loading it when cold), and the data-quality checks on it. */
+export async function resolveDatasetPart(deps: PipelineDeps = {}): Promise<DatasetPart> {
+  const env = deps.env ?? process.env;
+  const now = deps.now ?? (() => Date.now());
+  const mode = readDataMode(env);
+
   let summary: PipelineDatasetSummary;
   let qualityJob: QualityJob | null = null;
   if (deps.datasetSummary) {
@@ -258,7 +329,7 @@ export async function resolvePipelineStatus(deps: PipelineDeps = {}): Promise<Pi
     qualityJob = deps.qualityJob ?? null;
   } else {
     try {
-      const resolved = await installDataset({ env, fetchImpl: deps.fetchImpl, haeConfig: deps.haeConfig, haeClient: deps.haeClient, now: deps.now ? () => new Date(deps.now!()) : undefined });
+      const resolved = await installDataset({ env, fetchImpl: deps.fetchImpl, haeConfig: deps.haeConfig, haeClient: deps.haeClient, now: deps.now ? () => new Date(deps.now!()) : undefined, refresh: deps.fresh });
       summary = summariseDataset(resolved.serverMeta ?? datasetMeta(), null);
       qualityJob = resolved.quality;
     } catch (error) {
@@ -272,93 +343,15 @@ export async function resolvePipelineStatus(deps: PipelineDeps = {}): Promise<Pi
     }
   }
 
-  // ── 3. Workout sources (a real sync, or the demo fixtures) ──
-  const workoutSources = deps.skipDataset
-    ? []
-    : (await loadTrainingData({ env, fetchImpl: deps.fetchImpl, now })).statuses;
-
-  // ── 3b. Silenced data-quality findings, left out of everything below ──
+  // Silenced data-quality findings, left out of everything below.
   const qualityView = qualityJob?.state === 'ready' && qualityJob.value
     ? await silencedView(qualityJob.value, { env, client: deps.silencedClient, silenced: deps.silenced })
     : null;
 
-  // ── 4. Stages ─────────────────────────────────────────
-  const stages: PipelineStage[] = [
-    {
-      id: 'health_auto_export',
-      name: 'Health Auto Export',
-      status: !config.healthApiConfigured ? 'unconfigured' : probeOk ? 'healthy' : 'degraded',
-      detail: !config.healthApiConfigured
-        ? 'The data source is not connected. Connect it in Settings → Sources.'
-        : probeOk
-          ? `The configured export server at ${config.healthApiHost ?? 'the configured host'} answered a read-only probe with ${probe.records ?? 0} record(s).`
-          : `${probe.detail} The configured host is ${config.healthApiHost ?? 'unknown'}.`,
-      derivedFrom: config.healthApiConfigured
-        ? `GET /api/metrics/${config.probeMetric} with a ${PROBE_TIMEOUT_MS} ms timeout (outcome: ${probe.outcome}).`
-        : 'Configuration check only; no request was made.',
-      observationCount: summary.observationCount,
-      lastObservationAt: summary.lastObservationAt,
-    },
-    {
-      id: 'health_api',
-      name: 'Health API',
-      status: !config.healthApiConfigured ? 'unconfigured' : probeOk ? 'healthy' : 'degraded',
-      detail: config.healthApiConfigured
-        ? probeOk
-          ? `Read endpoints answered; the probe metric ${config.probeMetric} returned ${probe.records ?? 0} record(s) in ${probe.durationMs ?? '—'} ms.`
-          : probe.detail
-        : 'No API endpoint is configured, so no live metric can be read.',
-      derivedFrom: config.healthApiConfigured
-        ? 'The same bounded read-only probe as the export stage.'
-        : 'Configuration check only; no request was made.',
-      observationCount: summary.observationCount,
-      lastObservationAt: summary.lastObservationAt,
-    },
-    ouraStage(ouraRead, ouraProbe),
-    qualityStage(qualityJob, mode, summary, qualityView),
-    {
-      id: 'intelligence',
-      name: 'Intelligence',
-      status: summary.error ? 'degraded' : summary.observationCount > 0 ? 'healthy' : 'degraded',
-      detail: summary.error
-        ? `The dataset could not be read, so no baseline, comparison or summary was produced: ${summary.error}`
-        : `Baselines, comparisons and summaries were computed locally from the ${summary.source === 'live' ? 'live health history' : 'committed demo dataset'}: ` +
-          `${summary.observationCount} daily observations across ${summary.metricCount} metrics and ${summary.workouts} workouts. ` +
-          `Newest observation ${dayOf(summary.lastObservationAt)}.`,
-      derivedFrom: summary.error
-        ? 'The dataset load failed and the failure is reported.'
-        : `Local check: every registered metric was read from the dataset the app is serving (window ${summary.windowStartKey} → ${summary.referenceKey}, ${summary.timezone}).`,
-      observationCount: summary.observationCount,
-      lastObservationAt: summary.lastObservationAt,
-    },
-    {
-      id: 'dashboard',
-      name: 'Dashboard',
-      status: 'healthy',
-      detail: 'This request is the check: the pipeline route compiled, ran and returned this report.',
-      derivedFrom: 'The status endpoint responded to this request.',
-      observationCount: null,
-      lastObservationAt: null,
-    },
-  ];
-
-  const healthy = stages.filter(s => s.status === 'healthy').length;
   const cache = cacheStatus();
-  const summarySentence = mode === 'live'
-    ? probeOk || ouraOk
-      ? `Live mode: ${healthy} of ${stages.length} stages confirmed by real checks; ${summary.observationCount} observations as of ${dayOf(summary.lastObservationAt)}.`
-      : !config.healthApiConfigured
-        ? `Live mode, but no live source answered. ${healthy} of ${stages.length} stages confirmed; the dashboard is showing a connection error rather than demo data.`
-        : `Live mode, but the export API did not answer (${probe.outcome}). ${healthy} of ${stages.length} stages confirmed; the dashboard is showing a connection error rather than demo data.`
-    : probeOk
-      ? `Demo mode: the committed fixtures are being served. The configured export server answered a probe, but every number on the dashboard still comes from the fixtures. ${healthy} of ${stages.length} stages confirmed by real checks.`
-      : `Demo mode: the committed fixtures are being served, and nothing upstream could be confirmed. ${healthy} of ${stages.length} stages are confirmed healthy.`;
-
   return {
+    part: 'dataset',
     mode,
-    stages,
-    config,
-    probe,
     dataset: summary,
     cache: {
       ttlSeconds: cache.ttlMs / 1000,
@@ -367,14 +360,53 @@ export async function resolvePipelineStatus(deps: PipelineDeps = {}): Promise<Pi
       misses: cache.misses,
       keys: cache.keys.length,
     },
-    workoutSources,
     // Never awaited: the checks finish in the background and the panel fetches
     // /api/pipeline/quality for them.
     quality: qualityView ? qualityView.report : (qualityJob?.value ?? null),
     qualityState: qualityJob ? qualityJob.state : 'unavailable',
     silenced: qualityView ? qualityView.silenced : [],
-    dataAsOf: summary.lastObservationAt,
+    stages: [
+      qualityStage(qualityJob, mode, summary, qualityView),
+      {
+        id: 'intelligence',
+        name: 'Intelligence',
+        status: summary.error ? 'degraded' : summary.observationCount > 0 ? 'healthy' : 'degraded',
+        detail: summary.error
+          ? `The dataset could not be read, so no baseline, comparison or summary was produced: ${summary.error}`
+          : `Baselines, comparisons and summaries were computed locally from the ${summary.source === 'live' ? 'live health history' : 'committed demo dataset'}: ` +
+            `${summary.observationCount} daily observations across ${summary.metricCount} metrics and ${summary.workouts} workouts. ` +
+            `Newest observation ${dayOf(summary.lastObservationAt)}.`,
+        derivedFrom: summary.error
+          ? 'The dataset load failed and the failure is reported.'
+          : `Local check: every registered metric was read from the dataset the app is serving (window ${summary.windowStartKey} → ${summary.referenceKey}, ${summary.timezone}).`,
+        observationCount: summary.observationCount,
+        lastObservationAt: summary.lastObservationAt,
+      },
+    ],
     checkedAt: new Date(now()).toISOString(),
-    summary: summarySentence,
   };
+}
+
+/** Workout sources: a real sync, or the demo fixtures. */
+export async function resolveWorkoutsPart(deps: PipelineDeps = {}): Promise<WorkoutsPart> {
+  const env = deps.env ?? process.env;
+  const now = deps.now ?? (() => Date.now());
+  const workoutSources = deps.skipDataset ? [] : (await loadTrainingData({ env, fetchImpl: deps.fetchImpl, now, refresh: deps.fresh })).statuses;
+  return { part: 'workouts', workoutSources, checkedAt: new Date(now()).toISOString() };
+}
+
+export const resolvePart: Record<PipelinePart, (deps?: PipelineDeps) => Promise<SourcesPart | DatasetPart | WorkoutsPart>> = {
+  sources: resolveSourcesPart,
+  dataset: resolveDatasetPart,
+  workouts: resolveWorkoutsPart,
+};
+
+/** Build the whole report. Every status here comes from a real check; the three parts run at once. */
+export async function resolvePipelineStatus(deps: PipelineDeps = {}): Promise<PipelineStatusReport> {
+  const [sources, dataset, workouts] = await Promise.all([
+    resolveSourcesPart(deps),
+    resolveDatasetPart(deps),
+    resolveWorkoutsPart(deps),
+  ]);
+  return assembleReport({ sources, dataset, workouts }, { now: deps.now });
 }

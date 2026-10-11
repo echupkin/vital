@@ -103,4 +103,5 @@ export const PIPELINE: PipelineStatusReport = {
   dataAsOf: `${addDays(REF, -2)}T18:00:00.000Z`,
   checkedAt: `${REF}T12:00:00.000Z`,
   summary: `Live mode, but the export API did not answer (timeout) at ${HOST}.`,
+  pending: [],
 };

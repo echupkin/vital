@@ -177,6 +177,12 @@ pace. It is set from the Body page and stored in the `body_goals` table (migrati
   body-fat reading) is a cut, above it a gain, and within ±1 % of body weight (±0.5 points of body
   fat) the goal is reached and the guidance turns to maintenance. Crossing the target never needs
   the goal to be re-entered.
+- **One weight trend.** Every rate of weight change in the app — the Body pace, the energy balance
+  and the Routine body-weight recovery indicator — is the same weight trend: a least-squares line
+  through the last 28 days of weigh-ins, with recent weeks counting more (a 14-day half-life, so a
+  weigh-in from two weeks ago counts half as much as today's and one from four weeks ago a quarter).
+  It shows a change of pace sooner than an equal-weight slope while one high or low day still moves
+  it little.
 - **Recommended pace, or your own.** The recommended band is a share of body weight per week:
   0.5–1 % when cutting, 0.25–0.5 % when gaining. With the profile's sex set, the cutting band is
   fitted to how lean the current body fat is for that sex (narrower when lean); unset, no sex is
@@ -186,9 +192,9 @@ pace. It is set from the Body page and stored in the `body_goals` table (migrati
   for men, 10–13 % for women), or below the athletic range (8 % / 15 %), gets a note in the goal
   dialog; so does a weight target whose projected body fat lands there. It is advice, never a
   block. With sex unset the note names both.
-- **Maintenance two ways.** From the weight trend (mean logged calories on complete days minus the
-  four-week weight slope × 7,700 kcal/kg, which the page shows as about 3,500 kcal/lb in imperial
-  units; needs 10 complete logged days and 4 weigh-ins) and from the device (basal + active
+- **Maintenance two ways.** From the weight trend (mean logged calories on complete days, weighted
+  the same way as the trend, minus the weight trend × 7,700 kcal/kg, which the page shows as about
+  3,500 kcal/lb in imperial units; needs 10 complete logged days and 4 weigh-ins) and from the device (basal + active
   energy). The weight-trend estimate is used when there is one.
   Logged days under 60 % of the window's median are treated as partial logs and left out.
 - **No food log needed.** Most people do not count calories. Without one, the goal is tracked from

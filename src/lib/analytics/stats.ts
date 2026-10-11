@@ -36,23 +36,42 @@ export function sum(values: number[]): number {
   return values.reduce((a, b) => a + b, 0);
 }
 
+/** Mean of `values`, each counted by its weight. NaN when there are none. */
+export function weightedMean(values: number[], weights: number[]): number {
+  let total = 0, weight = 0;
+  for (let i = 0; i < values.length; i++) {
+    total += values[i] * weights[i];
+    weight += weights[i];
+  }
+  return weight > 0 ? total / weight : NaN;
+}
+
+/**
+ * Weighted least-squares slope, in value per day, of points keyed by calendar
+ * day; `weights[i]` is how much point i counts. Null with fewer than
+ * `minPoints` points or when they all fall on one day.
+ */
+export function weightedSlope(points: { key: string; value: number }[], weights: number[], minPoints = 4): number | null {
+  if (points.length < minPoints) return null;
+  const x0 = Date.parse(`${points[0].key}T12:00:00Z`);
+  const xs = points.map(p => (Date.parse(`${p.key}T12:00:00Z`) - x0) / 86_400_000);
+  const ys = points.map(p => p.value);
+  const mx = weightedMean(xs, weights);
+  const my = weightedMean(ys, weights);
+  let num = 0, den = 0;
+  for (let i = 0; i < xs.length; i++) {
+    num += weights[i] * (xs[i] - mx) * (ys[i] - my);
+    den += weights[i] * (xs[i] - mx) ** 2;
+  }
+  return den > 0 ? num / den : null;
+}
+
 /**
  * Least-squares slope, in value per day, of points keyed by calendar day.
  * Null with fewer than `minPoints` points or when they all fall on one day.
  */
 export function linearSlope(points: { key: string; value: number }[], minPoints = 4): number | null {
-  if (points.length < minPoints) return null;
-  const x0 = Date.parse(`${points[0].key}T12:00:00Z`);
-  const xs = points.map(p => (Date.parse(`${p.key}T12:00:00Z`) - x0) / 86_400_000);
-  const ys = points.map(p => p.value);
-  const mx = mean(xs);
-  const my = mean(ys);
-  let num = 0, den = 0;
-  for (let i = 0; i < xs.length; i++) {
-    num += (xs[i] - mx) * (ys[i] - my);
-    den += (xs[i] - mx) ** 2;
-  }
-  return den > 0 ? num / den : null;
+  return weightedSlope(points, points.map(() => 1), minPoints);
 }
 
 /** Aggregate using the metric's declared strategy. Returns NaN for no data. */

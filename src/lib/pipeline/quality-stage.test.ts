@@ -82,10 +82,17 @@ describe('qualityStage with silenced findings', () => {
     expect(s).toEqual(base);
   });
 
-  it('still says unknown while the checks have not finished, silenced or not', () => {
+  it('says checking while the checks are still running, silenced or not', () => {
     const view = applySilenced(REPORT, [{ checkId: 'stale', metricId: '' }]);
     const job: QualityJob = { state: 'computing', value: null, error: null, promise: Promise.resolve(null) };
-    expect(qualityStage(job, 'live', SUMMARY, view).status).toBe('unknown');
+    expect(qualityStage(job, 'live', SUMMARY, view).status).toBe('checking');
+  });
+
+  it('says unknown, not checking, when the checks failed', () => {
+    const job: QualityJob = { state: 'failed', value: null, error: 'boom', promise: Promise.resolve(null) };
+    const s = qualityStage(job, 'live', SUMMARY, null);
+    expect(s.status).toBe('unknown');
+    expect(s.detail).toContain('boom');
   });
 });
 
@@ -115,5 +122,21 @@ describe('resolvePipelineStatus and silenced findings', () => {
     ]);
     expect(report.stages.find(x => x.id === 'data_quality')!.status).toBe('healthy');
     expect(report.quality!.findings).toEqual([]);
+  });
+});
+
+describe('qualityStage with corrected checks', () => {
+  it('reads healthy and says what Vital corrects', () => {
+    const report: DataQualityReport = {
+      findings: [],
+      checks: [
+        { id: 'overlapping-exports', label: QUALITY_CHECK_LABEL['overlapping-exports'], outcome: 'corrected', correcting: true, summary: 'Corrected.' },
+        { id: 'duplicate-readings', label: QUALITY_CHECK_LABEL['duplicate-readings'], outcome: 'corrected', correcting: true, summary: 'Corrected.' },
+        { id: 'stale', label: QUALITY_CHECK_LABEL.stale, outcome: 'pass', summary: 'Fresh.' },
+      ],
+    };
+    const s = qualityStage(ready(report), 'live', SUMMARY, applySilenced(report, []));
+    expect(s.status).toBe('healthy');
+    expect(s.detail).toBe('No data-quality problems left to fix. Vital corrects overlapping exports and duplicate readings in its own totals.');
   });
 });

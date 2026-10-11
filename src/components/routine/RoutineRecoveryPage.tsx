@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { RoutineOverview } from '@/lib/routine/progress';
-import type { RecoveryIndicator } from '@/lib/routine/recovery';
+import { holdsProgression, trippedCallouts, type RecoveryIndicator } from '@/lib/routine/recovery';
 import type { RecoverySignalId } from '@/lib/routine/types';
 import { formatDayKeyLong, formatDayKeyShort } from '@/lib/analytics/windows';
 import { Badge, Button, Card, EmptyState, ErrorState } from '@/components/ui/primitives';
@@ -96,7 +96,7 @@ const HEADLINE: Record<RoutineOverview['recovery']['status'], string> = {
 };
 
 function meaning(routine: RoutineOverview): string {
-  const gated = routine.recovery.indicators.some(i => i.gate);
+  const gated = routine.recovery.indicators.some(holdsProgression);
   if (!gated) return 'This plan sets no recovery limits, so the signals below are for information only and never hold a path back. Ask the analyst to add some — for example, hold progression if resting heart rate rises 5 bpm above your usual level.';
   switch (routine.recovery.status) {
     case 'warn':
@@ -121,7 +121,8 @@ function caution(tripped: RecoveryIndicator[], status: RoutineOverview['recovery
 
 function Now({ routine }: { routine: RoutineOverview }) {
   const r = routine.recovery;
-  const tripped = r.indicators.filter(i => i.gate && (i.status === 'warn' || i.status === 'watch'));
+  const tripped = r.indicators.filter(i => holdsProgression(i) && (i.status === 'warn' || i.status === 'watch'));
+  const callouts = trippedCallouts(r.indicators);
   return (
     <section className="scroll-mt-20" id="now" aria-labelledby="now-title">
       <SectionTitle>
@@ -158,6 +159,27 @@ function Now({ routine }: { routine: RoutineOverview }) {
             </div>
             <p className="text-[13px] text-text-primary rounded-control bg-surface-muted p-3 max-w-3xl">{caution(tripped, r.status)}</p>
           </>
+        )}
+
+        {callouts.length > 0 && (
+          <div>
+            <h4 className={`${MICRO_LABEL} mb-1.5`}>Worth a look</h4>
+            <ul className="space-y-3 list-none p-0 max-w-3xl">
+              {callouts.map(i => (
+                <li key={i.signal} className="text-[13px] text-text-secondary">
+                  <p>
+                    <a href={`#signal-${i.signal}`} className="font-medium text-text-primary hover:underline underline-offset-2">
+                      {i.label}
+                    </a>
+                    : {i.text}
+                  </p>
+                  {i.rule && <p className="mt-0.5">{i.rule}</p>}
+                  {i.advice && <p className="mt-0.5">{i.advice}</p>}
+                  <p className="mt-0.5">A callout only: it doesn’t hold any path back.</p>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </Card>
     </section>

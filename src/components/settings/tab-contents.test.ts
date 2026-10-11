@@ -26,7 +26,7 @@ describe('Sources tab', () => {
 describe('Connections tab', () => {
   it('holds the data pipeline with its data quality, and nothing else', () => {
     expect(connections).toContain('title="Data pipeline"');
-    expect(connections).toContain('<DataQualitySection report={report} onReady={refreshQuietly} />');
+    expect(connections).toContain('<DataQualitySection report={report} onReady={refreshDataset} checkKey={loads} />');
     expect(connections).not.toMatch(/<HaeConnection|<OuraConnection|<WorkoutSources|<MapProvidersCard/);
   });
 });

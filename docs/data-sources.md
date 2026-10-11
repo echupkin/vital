@@ -89,7 +89,7 @@ versions, so the setting names below describe what to look for rather than quote
 run in the background after each load of the live data, so no page waits for them; the panel
 shows that they are running until the result is ready. It reads the records as the server stores them, before they are
 added up per day. Each finding explains what it found, lists the affected days, and gives the
-steps that fix it:
+steps that fix it, or fixes it for you where Vital can:
 
 | Check | What it flags |
 |---|---|
@@ -101,7 +101,19 @@ steps that fix it:
 
 A finding whose affected days are all more than 90 days old is shown as a **note**, not a
 problem: recent figures (the trends, baselines and body goal) are not affected, and fixing it
-only completes the older history. The checks only report; they never change the data.
+only completes the older history.
+
+**Overlapping exports and duplicate readings are corrected automatically.** The records that
+only repeat others are left out of Vital's own totals: inside each hour that holds an hourly
+total, the finer records it already contains (only on days the check flags, so a stray hour is
+never touched), and the on-the-hour copy of a reading. The check then reads **Corrected by
+Vital** with how many records were left out. Vital never writes to the export server, so other
+readers of it (Grafana, say) still see the doubled records; repair those at the source as below.
+**Stop correcting** next to a corrected check counts every record again, and the finding comes
+back with a **Fix it** button that turns the correction back on. The choice is stored as
+configuration only (`quality_correction_off`, migration 0016). Missing days, a late start and a
+stalled automation cannot be corrected by Vital: the data never reached the server, so those
+findings keep their steps.
 
 Each finding has a **Silence** button. A silenced finding, identified by its check and its
 metric, stops showing everywhere, including the pipeline stage text and counts. Silenced findings
@@ -111,7 +123,8 @@ configuration only; it never changes the data.
 ### If the data already mixes groupings
 
 The symptom is daily steps, active energy or basal energy at roughly double the usual on some
-days, usually right after a manual export at a different time grouping. To repair it:
+days, usually right after a manual export at a different time grouping. Vital corrects this in
+its own totals (above). To repair it on the server itself, for every other reader of it:
 
 1. **Back up the server's database first.** For the reference server this is
    `mongodump --db health-auto-export --gzip --archive=…`.
@@ -369,7 +382,11 @@ it is reading. In live mode:
   normally finds it already filled. Once the TTL lapses the held dataset is served **stale
   immediately** — stale-while-revalidate, single-flight, so N concurrent requests start
   exactly one background refresh — and only a genuinely cold process (no dataset cached at
-  all) waits for upstream. Both are read-only cache fills: no ingestion job, no timer and no
+  all) waits for upstream. Even then the browser does not stare at a blank tab: the layout
+  hands the load to the page as a promise, so the sidebar and top bar paint at once, each page
+  shows "Loading your health data…" until its data arrives, and Settings renders immediately
+  (its Data & coverage tab waits; the pipeline stages each show "Checking…" until their own
+  check answers). Both are read-only cache fills: no ingestion job, no timer and no
   schedule exists, and nothing is persisted to disk.
 - **Metric-specific aggregation, not one strategy for everything.** Steps, distance flights,
   exercise minutes, stand hours, active/basal energy, daylight and dietary totals are **summed

@@ -10,10 +10,15 @@
 // "step" of every set at the top (so 12/12/10 counts for 8–12, 12/11/9 does not),
 // and no set went past the effort ceiling.
 //
+// For reps, a set past the ceiling still counts, a rep short for each RPE point
+// over it (RPE is about 10 minus reps in reserve): 12 at RPE 9.5 against a
+// ceiling of 9 is judged as 11.5 at 9, the same work stopped half a rep earlier.
+//
 // This covers bodyweight skill paths, holds, negatives, per-side work, a long
 // run that grows by distance, and assisted work (where less assistance is the
 // progress — see the load suffix and the "Reduce assistance" advice).
 
+import { easedKey } from '../deload';
 import { doseText, rangeText, weightText } from '../format';
 import type { PerformanceRecord } from '../records';
 import type { UnitSystem } from '../../prefs';
@@ -65,15 +70,22 @@ export function judge(record: PerformanceRecord, target: Dose | undefined, q: Qu
   const counted = values.slice(0, Math.max(minSets, 1));
   const enoughSets = values.length >= minSets;
   const inRange = Boolean(range) && enoughSets && counted.every(v => v >= range![0]);
-  const nearTop = Boolean(range) && inRange && sumOf(counted) >= counted.length * (range![1] - slack(range!));
+  const reachesTop = (vs: number[]) => Boolean(range) && enoughSets && vs.every(v => v >= range![0]) && sumOf(vs) >= vs.length * (range![1] - slack(range!));
+  const nearTop = reachesTop(counted);
   const rpes = rpesOf(record);
   const effortHigh = ceiling !== null && rpes.some(r => r > ceiling);
+  const qualifies = effortHigh && q === 'reps' ? reachesTop(creditedReps(record, ceiling!).slice(0, counted.length)) : nearTop && !effortHigh;
   // Each counted set earns up to the top of the range; the marker's total is full marks.
   const sets = Math.max(minSets, 1);
   const performance = range
     ? Math.min(inRange ? 1 : 0.95, sumOf(values.slice(0, sets).map(v => Math.min(v, range[1]))) / (sets * (range[1] - slack(range))))
     : null;
-  return { record, values, total, inRange, nearTop, effortHigh, qualifies: nearTop && !effortHigh, performance, effort: effortFactor(topRpe(record), ceiling) };
+  return { record, values, total, inRange, nearTop, effortHigh, qualifies, performance, effort: effortFactor(topRpe(record), ceiling) };
+}
+
+/** Each set's reps, less one per RPE point the set went past the ceiling. */
+function creditedReps(record: PerformanceRecord, ceiling: number): number[] {
+  return record.sets.filter(s => s.reps !== undefined).map(s => s.reps! - Math.max(0, (s.rpe ?? 0) - ceiling));
 }
 
 function rowFor(
@@ -121,9 +133,20 @@ export const variationModel: ProgressionModel = {
       const prevQ = quantityFor(prevTarget, ctx.previousRecords);
       const prev = ctx.previousRecords.map(r => judge(r, prevTarget, prevQ, rpeCeiling(prevTarget, ctx.rules)));
       let best = 0;
+      let before: number | null = null;
       prev.forEach((j, i) => {
-        const signal = i === prev.length - 1 ? `Final ${ctx.previousStage!.name.toLowerCase()} session before progression` : trendSignal(j.total, i ? prev[i - 1].total : null, best);
-        best = Math.max(best, j.total);
+        // Deload sessions of the previous stage are labelled as such and left out of its trend.
+        const easedPrev = ctx.eased.has(easedKey(ctx.previousStage!.id, j.record.sessionId));
+        const signal =
+          i === prev.length - 1
+            ? `Final ${ctx.previousStage!.name.toLowerCase()} session before progression`
+            : easedPrev
+              ? DELOAD_SIGNAL
+              : trendSignal(j.total, before, best);
+        if (!easedPrev) {
+          best = Math.max(best, j.total);
+          before = j.total;
+        }
         if (i >= prev.length - 3) {
           rows.push({ ...rowFor(j, ctx.previousStage!.name, ctx.previousStage!.id, prevQ, ctx), signal, keep: i === prev.length - 1 });
         }
@@ -199,11 +222,15 @@ export const variationModel: ProgressionModel = {
       nextAction = `Hold ${ctx.stage.name.toLowerCase()} and drop a set until the numbers recover; check sleep, soreness and joints before pushing again.`;
     } else if (readiness.met) {
       light = 'green';
-      reasons.push(`The marker (${targetText}) was met in ${q2} of the last ${recent.length} sessions with effort inside the target.`);
+      reasons.push(
+        recent.some(j => j.qualifies && j.effortHigh)
+          ? `The marker (${targetText}) was met in ${q2} of the last ${recent.length} sessions, counting a set a rep short for each RPE point past ${ceiling}.`
+          : `The marker (${targetText}) was met in ${q2} of the last ${recent.length} sessions with effort inside the target.`
+      );
       if (nextStep) nextAction = `Move on to ${nextStep.name.toLowerCase()} within ${ctx.stage.name.toLowerCase()}.`;
       else if (ctx.nextStage) nextAction = `Move to ${ctx.nextStage.name.toLowerCase()}: start at ${doseText(ctx.nextStage.prescription ?? ctx.nextStage.advanceWhen, ctx.system) || 'the bottom of its range'} and build back up.`;
       else nextAction = `This is the last stage of the path: keep ${ctx.stage.name.toLowerCase()} at ${targetText}, or add a harder stage.`;
-    } else if (last.nearTop && last.effortHigh) {
+    } else if (last.nearTop && last.effortHigh && !last.qualifies) {
       light = 'yellow-green';
       reasons.push(`The latest work (${facts.lastWork}) meets the ${range ? rangeText(range) : ''} range, but effort reached ${lastEffort}, above the RPE ${ceiling} ceiling.`);
       nextAction = `Repeat ${sets}×${topBand} with consistent form and lower perceived effort for ${qualText} sessions. Do not move on while sets are near failure.`;

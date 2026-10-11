@@ -254,6 +254,19 @@ describe('cache and single flight', () => {
     expect(calls.length).toBe(afterFirst);
   });
 
+  it('reads upstream again on a refresh ("Check again"), even inside the TTL, and caches the result', async () => {
+    setCacheTtlForTests(60_000);
+    liveCache.clear();
+    const { impl, calls } = recordingFetch();
+    const deps = { ...HAE_DEPS, env: ENV, fetchImpl: impl, now: () => NOW };
+    await loadLiveDataset(deps);
+    const onePass = calls.length;
+    await loadLiveDataset({ ...deps, refresh: true });
+    expect(calls.length).toBe(onePass * 2);
+    await loadLiveDataset(deps);
+    expect(calls.length).toBe(onePass * 2);
+  });
+
   it('collapses concurrent page loads into one upstream pass', async () => {
     liveCache.clear();
     const { impl, calls } = recordingFetch();
@@ -745,5 +758,43 @@ describe('live dataset from HAE and Oura', () => {
     const asked = upstream.ouraCalls.map(c => /usercollection\/([^?]+)/.exec(c.url)?.[1]).sort();
     expect(asked).toEqual(['daily_activity', 'daily_readiness', 'sleep']);
     for (const c of upstream.ouraCalls) expect(c.auth).toBe(`Bearer ${OURA_ACCESS}`);
+  });
+});
+
+describe('data-quality corrections in the live load', () => {
+  const DAY = '2026-09-10';
+  const HOURS = [8, 9, 10, 12, 13, 15, 17, 18];
+  /** Steps sample by sample plus the same hours as on-the-hour totals: the day counted twice. */
+  const doubled = HOURS.flatMap(h => {
+    const hh = String(h).padStart(2, '0');
+    return [
+      ...Array.from({ length: 12 }, (_, i) => ({ date: `${DAY}T${hh}:${String(i * 5).padStart(2, '0')}:07.000Z`, qty: 50, units: 'count', source: 'Apple Watch' })),
+      { date: `${DAY}T${hh}:00:00.000Z`, qty: 600, units: 'count', source: 'Apple Watch' },
+    ];
+  });
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    const body = url.includes('/api/metrics/step_count') ? doubled : url.includes('/api/workouts') ? [] : [];
+    return { ok: true, status: 200, json: async () => body } as unknown as Response;
+  }) as unknown as typeof fetch;
+  const load = (corrections: ReadonlySet<'overlapping-exports' | 'duplicate-readings'>) =>
+    fetchLiveDatasetUncached({ ...HAE_DEPS, env: ENV, fetchImpl, now: () => NOW, bypassCache: true, corrections });
+  const steps = (r: Awaited<ReturnType<typeof load>>) =>
+    (r.dataset.metrics.step_count as { date: string; qty: number }[]).find(o => o.date === DAY)!.qty;
+
+  it('counts the doubled day once and reports the check as corrected', async () => {
+    const result = await load(new Set(['overlapping-exports', 'duplicate-readings']));
+    expect(steps(result)).toBe(HOURS.length * 600);
+    const report = await result.quality!.promise;
+    expect(report!.checks.find(c => c.id === 'overlapping-exports')!.outcome).toBe('corrected');
+    expect(report!.findings.find(f => f.check === 'overlapping-exports')).toBeUndefined();
+    expect(result.provenance.find(p => p.metricId === 'step_count')!.dedupeRule).toMatch(/96 records that only repeat another/);
+  });
+
+  it('counts every record and reports a finding to fix with the correction off', async () => {
+    const result = await load(new Set());
+    expect(steps(result)).toBe(HOURS.length * 1200);
+    const report = await result.quality!.promise;
+    expect(report!.findings.find(f => f.check === 'overlapping-exports')!.correctable).toBe(true);
   });
 });

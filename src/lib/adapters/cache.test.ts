@@ -236,3 +236,44 @@ describe('statistics', () => {
     expect(stats.ttlMs).toBe(TTL_MS);
   });
 });
+
+describe('refresh ("Check again")', () => {
+  it('loads afresh inside the TTL, while other readers keep the value held, then stores the new one', async () => {
+    const cache = newCache();
+    await cache.getOrLoad('k', async () => 'old');
+    const d = deferred<string>();
+    let calls = 0;
+    const refreshed = cache.refresh('k', () => {
+      calls++;
+      return d.promise;
+    });
+    // Nobody else waits on the refresh.
+    expect(await cache.getOrLoad('k', async () => 'unused')).toBe('old');
+    d.resolve('new');
+    expect(await refreshed).toBe('new');
+    expect(calls).toBe(1);
+    expect(await cache.getOrLoad('k', async () => 'unused')).toBe('new');
+  });
+
+  it('joins a refresh already running instead of starting a second', async () => {
+    const cache = newCache();
+    const d = deferred<string>();
+    let calls = 0;
+    const loader = () => {
+      calls++;
+      return d.promise;
+    };
+    const a = cache.refresh('k', loader);
+    const b = cache.refresh('k', loader);
+    d.resolve('v');
+    expect(await Promise.all([a, b])).toEqual(['v', 'v']);
+    expect(calls).toBe(1);
+  });
+
+  it('keeps the held value when the refresh fails', async () => {
+    const cache = newCache();
+    await cache.getOrLoad('k', async () => 'old');
+    await expect(cache.refresh('k', async () => { throw new Error('upstream down'); })).rejects.toThrow('upstream down');
+    expect(await cache.getOrLoad('k', async () => 'unused')).toBe('old');
+  });
+});
