@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.3] - 2026-10-16
+
+### Changed
+
+- Leave overlapping exports and duplicate readings out of Vital's own totals, so steps, energy and similar sums no longer double count; the export server is untouched, and you can turn the correction off per check in Settings → Connections ([`6cee251`](https://github.com/echupkin/vital/commit/6cee251))
+- Weight the Body weight trend toward the last few weeks, so a change of pace shows sooner and one day's water swing barely moves it ([`c821dc3`](https://github.com/echupkin/vital/commit/c821dc3))
+- Move a training path on from your logged sessions and show milestones already begun as in progress ([`0fc0545`](https://github.com/echupkin/vital/commit/0fc0545), [`17e58a6`](https://github.com/echupkin/vital/commit/17e58a6))
+
+### Added
+
+- Show the app at once and let each page stream in as its data arrives, and check each data pipeline stage on its own with a "Checking…" state ([`3e58895`](https://github.com/echupkin/vital/commit/3e58895), [`53b229a`](https://github.com/echupkin/vital/commit/53b229a))
+
 ## [0.3.2] - 2026-10-09
 
 ### Added
@@ -143,7 +155,8 @@ _Documentation only; this version was merged but never tagged._
 
 - Fix analyst conversations being ordered by when they were last touched instead of when they were asked ([`2e9a981`](https://github.com/echupkin/vital/commit/2e9a981))
 
-[0.3.2]: https://github.com/echupkin/vital/commits/release/v0.3.2
+[0.3.3]: https://github.com/echupkin/vital/releases/tag/v0.3.3
+[0.3.2]: https://github.com/echupkin/vital/releases/tag/v0.3.2
 [0.3.1]: https://github.com/echupkin/vital/releases/tag/v0.3.1
 [0.3.0]: https://github.com/echupkin/vital/releases/tag/v0.3.0
 [0.2.4]: https://github.com/echupkin/vital/releases/tag/v0.2.4
