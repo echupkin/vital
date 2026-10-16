@@ -154,9 +154,8 @@ and deload status, and a card per progression path showing how close you are to 
 Set a target weight or body-fat percentage on the Body page, and Body and Nutrition read your data
 against it.
 
-- **Pace and maintenance from your own data.** Your four-week weight trend against a recommended
-  pace (or one you choose), and maintenance calories worked out two ways: from the trend and your
-  food log, and from your watch.
+- **Pace and maintenance from your own data.** Your weight trend over the last 28 days against a
+  recommended pace (or one you choose), and maintenance calories worked out two ways: from the trend and your food log, and from your watch.
 - **Targets to eat to.** Calories, protein, carbs, fat and fiber for the pace, beside what you
   logged, month by month — plus a check that your logged macros add up to your logged calories,
   which catches a food entry with a wrong value.

@@ -2,7 +2,7 @@
 
 // ── Overview: the body goal at a glance ─────────────────
 //
-// Phase, whether the four-week trend is on track (see GoalTrack), the
+// Phase, whether the weight trend is on track (see GoalTrack), the
 // projected arrival and what to eat, linking to Body. Hidden when no goal is set (or it cannot
 // be read): the Overview never shows an empty goal shell.
 

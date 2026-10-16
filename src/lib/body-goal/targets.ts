@@ -101,7 +101,7 @@ export function nutritionTargets(input: {
     fiber,
     checkIn:
       phase === 'maintain'
-        ? `Re-check the ${CHECK_IN_WEEKS * 7}-day weight trend every ${CHECK_IN_WEEKS} weeks; if it drifts more than a quarter of a percent a week, adjust by ${CHECK_IN_ADJUST_KCAL.min}–${CHECK_IN_ADJUST_KCAL.max} kcal.`
-        : `Re-check the ${CHECK_IN_WEEKS * 7}-day weight trend in ${CHECK_IN_WEEKS} weeks. If it is outside the pace you chose, adjust by ${CHECK_IN_ADJUST_KCAL.min}–${CHECK_IN_ADJUST_KCAL.max} kcal a day.`,
+        ? `Re-check the weight trend every ${CHECK_IN_WEEKS} weeks; if it drifts more than a quarter of a percent a week, adjust by ${CHECK_IN_ADJUST_KCAL.min}–${CHECK_IN_ADJUST_KCAL.max} kcal.`
+        : `Re-check the weight trend in ${CHECK_IN_WEEKS} weeks. If it is outside the pace you chose, adjust by ${CHECK_IN_ADJUST_KCAL.min}–${CHECK_IN_ADJUST_KCAL.max} kcal a day.`,
   };
 }

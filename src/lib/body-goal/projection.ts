@@ -6,6 +6,7 @@
 // moving away is described as what it is, beside what the chosen pace implies.
 
 import { addDays } from '../analytics/windows';
+import { WEIGHT_TREND_WINDOW } from '../analytics/weight-trend';
 import type { GoalPhase } from './phase';
 import type { EffectivePace, PaceBand } from './pace';
 
@@ -61,13 +62,13 @@ export function projectArrival(input: {
   const atPace = pace.source === 'custom' ? 'At your pace' : 'At the recommended pace';
   const toward = trendKgPerWeek !== null && Math.sign(trendKgPerWeek) === Math.sign(remainingKg) && Math.abs(trendKgPerWeek) >= 0.05;
   if (toward) {
-    push(row('trend', 'Current pace (your last four weeks)', Math.abs(trendKgPerWeek!), weightKg, remainingKg, today));
+    push(row('trend', `Current pace (your ${WEIGHT_TREND_WINDOW})`, Math.abs(trendKgPerWeek!), weightKg, remainingKg, today));
   } else if (trendKgPerWeek !== null && chosen) {
     const weeks = Math.round(chosen.weeks);
     trendNote =
       Math.abs(trendKgPerWeek) < 0.05
-        ? `Weight has held steady over the last four weeks. ${atPace} the goal is about ${weeks} week${weeks === 1 ? '' : 's'} away.`
-        : `Weight has moved ${formatRate(trendKgPerWeek)} over the last four weeks, away from the goal. ${atPace} the goal is about ${weeks} week${weeks === 1 ? '' : 's'} away.`;
+        ? `Weight has held steady over the ${WEIGHT_TREND_WINDOW}. ${atPace} the goal is about ${weeks} week${weeks === 1 ? '' : 's'} away.`
+        : `Weight has moved ${formatRate(trendKgPerWeek)} over the ${WEIGHT_TREND_WINDOW}, away from the goal. ${atPace} the goal is about ${weeks} week${weeks === 1 ? '' : 's'} away.`;
   }
 
   rows.sort((a, b) => a.kgPerWeek - b.kgPerWeek);

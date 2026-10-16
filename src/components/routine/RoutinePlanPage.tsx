@@ -398,6 +398,9 @@ function TargetLabel({ label, pathId, className = '' }: { label: string; pathId?
   );
 }
 
+// Done only once mastered (or the dose reached); begun is in progress, even where beginning is all the phase asks.
+const TARGET_MARK = { done: '✓ ', 'in-progress': '◐ ', 'not-started': '○ ', unchecked: '? ' } as const;
+
 function Phases({ routine }: { routine: RoutineOverview }) {
   if (routine.phases.length === 0) return null;
   const current = routine.currentPhase;
@@ -436,11 +439,17 @@ function Phases({ routine }: { routine: RoutineOverview }) {
                     className="text-xs text-text-secondary"
                     title={t.met === null ? 'Not checked: this milestone names no stage or dose, so logged sessions cannot show it. It never holds the phase back.' : undefined}
                   >
-                    <span aria-hidden="true">{t.met === true ? '✓ ' : t.met === false ? '○ ' : '? '}</span>
-                    <TargetLabel label={t.label} pathId={t.pathId} className={t.met ? 'text-text-primary' : ''} />
+                    <span aria-hidden="true">{TARGET_MARK[t.state ?? 'unchecked']}</span>
+                    <TargetLabel label={t.label} pathId={t.pathId} className={t.state === 'done' ? 'text-text-primary' : ''} />
                     {t.optional ? ' (optional)' : ''}
-                    {t.met === null ? ' (not checked)' : ''}
-                    {t.met && t.metOn ? <span className="tnum"> · {t.metOn}</span> : null}
+                    {t.state === null ? ' (not checked)' : ''}
+                    {t.state === 'done' && t.stateOn ? <span className="tnum"> · {t.stateOn}</span> : null}
+                    {t.state === 'in-progress' ? (
+                      <span>
+                        {' '}
+                        · in progress{t.stateOn ? <span className="tnum"> since {t.stateOn}</span> : null}
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>

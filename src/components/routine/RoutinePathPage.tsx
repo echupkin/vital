@@ -280,8 +280,8 @@ function StageMap({ path }: { path: PathProgress }) {
       <ol className="space-y-3">
         {path.stages.map(s => (
           <li key={s.id} className="flex items-start gap-2">
-            {s.status === 'done' ? (
-              <CheckCircle2 size={16} className="text-category-activity mt-0.5 shrink-0" aria-label="Done" />
+            {s.complete ? (
+              <CheckCircle2 size={16} className="text-category-activity mt-0.5 shrink-0" aria-label={s.status === 'current' ? 'Current, complete' : 'Done'} />
             ) : s.status === 'current' ? (
               <CircleDot size={16} className="text-primary mt-0.5 shrink-0" aria-label="Current" />
             ) : (
@@ -292,6 +292,7 @@ function StageMap({ path }: { path: PathProgress }) {
                 {s.name}
                 {s.expectedWeeks && <span className="text-[11px] font-normal text-text-secondary"> · {s.expectedWeeks[0]}–{s.expectedWeeks[1]} weeks</span>}
               </p>
+              {s.status === 'current' && s.complete && <p className="text-[11px] font-medium text-category-activity">{path.nextStage ? `Complete: ready for ${path.nextStage.name.toLowerCase()}` : 'Complete: the last stage of this path'}</p>}
               {s.target && <p className="text-[11px] text-text-secondary">Move on at {s.target}{s.startedOn ? ` · since ${s.startedOn}` : ''}</p>}
               {s.steps.length > 0 && <p className="text-[11px] text-text-secondary">Steps: {s.steps.join(' → ')}</p>}
             </div>

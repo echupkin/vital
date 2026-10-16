@@ -24,6 +24,7 @@ export interface BodyGoalSummary {
   current: { weight: number | null; bodyFatPct: number | null; leanMass: number | null };
   start: { weight: number | null; bodyFatPct: number | null };
   progressPct: number | null;
+  /** `perWeek` is the weight trend; `lastTwoWeeksPerWeek` is a plain slope over 14 days. */
   trend: { perWeek: number | null; pctBodyWeightPerWeek: number | null; lastTwoWeeksPerWeek: number | null; weighIns: number; comparedWithRecommended: string };
   recommendedPacePctPerWeek: { min: number; max: number } | null;
   paceInUse: { perWeek: number; pctBodyWeightPerWeek: number; source: string } | null;

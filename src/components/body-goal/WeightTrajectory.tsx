@@ -4,7 +4,7 @@
 //
 // The one weight chart on the Body page, with or without a goal: weigh-ins,
 // the seven-day average and the 30-day change, plus — when a goal is set — the
-// goal line and the projection at the pace in use. Beside it, the recorded
+// goal line and the projection at the chosen rate. Beside it, the recorded
 // range over the same 90 days. Rendered only when there are weigh-ins in the
 // window (owner request 2).
 
@@ -69,7 +69,7 @@ export function WeightTrajectory({ report }: { report: BodyGoalReport | null }) 
             {report?.projection?.trendNote && <DataStateNote>{report.projection.trendNote}</DataStateNote>}
             <DataStateNote>
               The thin line joins consecutive weigh-ins, about {Number.isFinite(avgGap) ? avgGap.toFixed(1) : '—'} days apart; it
-              does not mean weight was measured in between.{projecting ? ' The dashed line is a projection at the pace in use, not a deadline.' : ''}
+              does not mean weight was measured in between.{projecting ? ' The dashed line is a projection at the chosen rate, not a deadline.' : ''}
               {holding ? ` The shaded band is the maintenance range: ${holding.basis.charAt(0).toLowerCase()}${holding.basis.slice(1)}` : ''}
             </DataStateNote>
           </div>

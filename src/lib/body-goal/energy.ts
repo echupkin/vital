@@ -3,8 +3,11 @@
 // Two independent estimates of maintenance calories (TDEE), shown side by side:
 //
 //   weight trend  mean logged calories on complete days − the weight trend in
-//                 energy (kg/day × 7,700). Over four weeks this cancels most of
-//                 the noise in both, and needs no model of the reader's body.
+//                 energy (kg/day × 7,700). Both count recent weeks more, with
+//                 the same weights (analytics/weight-trend), so the intake is
+//                 read over the same days the trend leans on. Over four weeks
+//                 this cancels most of the noise in both, and needs no model of
+//                 the reader's body.
 //   device        mean of basal + active energy on days with both. Apple's
 //                 basal figure is computed from body weight, so it falls as
 //                 weight falls — that alone is not metabolic slowdown.
@@ -20,7 +23,8 @@
 // with no log are never counted as zero.
 
 import { addDays } from '../analytics/windows';
-import { linearSlope, mean, median } from '../analytics/stats';
+import { mean, median, weightedMean } from '../analytics/stats';
+import { trendWeights, weightTrendSlope } from '../analytics/weight-trend';
 import {
   ENERGY_AGREEMENT_KCAL,
   KCAL_PER_KG,
@@ -68,7 +72,7 @@ export interface EnergyBalance {
   foodLogged: boolean;
   /** Mean logged calories on complete days. */
   intake: number | null;
-  /** Weight slope over the window, kg/week. */
+  /** The weight trend over the window, kg/week. */
   weightRateKgPerWeek: number | null;
   weighIns: number;
   /** Maintenance from the weight trend, kcal/day. */
@@ -95,9 +99,10 @@ export function energyBalance(series: (id: string) => DayValue[], today: string)
   const to = addDays(today, -1);
   const from = addDays(today, -TREND_DAYS);
   const days = splitLoggedDays(between(series('dietary_energy'), from, to));
-  const weights = between(series('weight_body_mass'), from, today);
-  const slope = linearSlope(weights);
-  const intake = days.complete.length ? mean(days.complete.map(d => d.value)) : null;
+  // The same weigh-ins the trend reads, so the pace and this rate agree.
+  const weights = between(series('weight_body_mass'), addDays(today, -(TREND_DAYS - 1)), today);
+  const slope = weightTrendSlope(weights, today);
+  const intake = days.complete.length ? weightedMean(days.complete.map(d => d.value), trendWeights(days.complete, today)) : null;
 
   let adaptive: number | null = null;
   let adaptiveReason: string | null = null;

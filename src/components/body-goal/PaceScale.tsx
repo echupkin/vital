@@ -12,6 +12,7 @@
 
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { formatDayKeyLong, formatDayKeyShort } from '@/lib/analytics/windows';
+import { WEIGHT_TREND_WINDOW } from '@/lib/analytics/weight-trend';
 import { BULK_RISK_PCT, CUT_RISK_PCT } from '@/lib/body-goal/constants';
 import type { PaceBand } from '@/lib/body-goal/pace';
 import type { GoalPhase } from '@/lib/body-goal/phase';
@@ -24,7 +25,7 @@ import { formatKg, formatPct, formatWeeks } from './format';
 
 const ROW = 46;
 const BAR = 12;
-const TREND_TITLE = 'Current pace, last four weeks';
+const TREND_TITLE = `Current pace, ${WEIGHT_TREND_WINDOW}`;
 
 interface Marker {
   id: string;

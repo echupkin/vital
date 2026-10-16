@@ -2,12 +2,14 @@
 //
 // Weigh-ins are noisy (water, salt, timing) and irregular, so nothing here
 // reads a single weigh-in as "current": current weight is the mean of the last
-// seven days' weigh-ins, and the rate is a least-squares slope over four weeks
-// (with the last two beside it). Days without a weigh-in are simply absent —
-// nothing is carried forward or filled in.
+// seven days' weigh-ins, and the rate is the weight trend — a least-squares
+// line over four weeks with recent weeks counting more (analytics/weight-trend).
+// Days without a weigh-in are simply absent — nothing is carried forward or
+// filled in.
 
 import { addDays, diffDays } from '../analytics/windows';
 import { linearSlope, mean } from '../analytics/stats';
+import { weightTrendSlope } from '../analytics/weight-trend';
 import { CURRENT_DAYS, RECENT_TREND_DAYS, START_SEARCH_DAYS, TREND_DAYS } from './constants';
 
 export interface DayValue {
@@ -65,9 +67,9 @@ export function readingNear(points: DayValue[], day: string): Reading | null {
 
 export interface WeightTrend {
   current: Reading | null;
-  /** Least-squares slope over the trend window, kg/week. Negative when losing. */
+  /** The weight trend over the trend window, recent weeks counting more, kg/week. Negative when losing. */
   rateKgPerWeek: number | null;
-  /** The same over the last two weeks. */
+  /** A plain (equal-weight) least-squares slope over the last two weeks, kg/week. */
   recentRateKgPerWeek: number | null;
   /** `rateKgPerWeek` as % of current weight per week. */
   ratePct: number | null;
@@ -81,7 +83,7 @@ export function weightTrend(points: DayValue[], today: string): WeightTrend {
   const from = addDays(today, -(TREND_DAYS - 1));
   const window = between(points, from, today);
   const recent = between(points, addDays(today, -(RECENT_TREND_DAYS - 1)), today);
-  const perDay = linearSlope(window);
+  const perDay = weightTrendSlope(window, today);
   const recentPerDay = linearSlope(recent, 3);
   const current = currentReading(points, today);
   const rateKgPerWeek = perDay === null ? null : perDay * 7;

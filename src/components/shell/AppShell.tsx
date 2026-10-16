@@ -11,6 +11,7 @@ import { ProfileProvider } from '@/components/profile/ProfileProvider';
 import { TimezoneDefault } from '@/components/profile/TimezoneDefault';
 import { DiscussProvider } from '@/components/analyst/DiscussDialog';
 import type { VitalProfile } from '@/lib/profile/types';
+import type { InitialPrefs } from '@/components/ui/UnitsProvider';
 
 interface AppShellProps {
   children: ReactNode;
@@ -21,6 +22,8 @@ interface AppShellProps {
   profile: VitalProfile;
   /** True when the profile was read from storage rather than defaulted. */
   profileStored: boolean;
+  /** The stored units and theme, read on the server; null when unreadable. */
+  initialPrefs?: InitialPrefs | null;
   /**
    * Setup mode (live mode, nothing readable yet): no sidebar, mobile navigation,
    * breadcrumbs, search or links, so the only way forward is Settings → Sources.
@@ -28,14 +31,20 @@ interface AppShellProps {
   setupMode?: boolean;
 }
 
-export function AppShell({ children, profile, profileStored, setupMode = false }: AppShellProps) {
+export function AppShell({
+  children,
+  profile,
+  profileStored,
+  initialPrefs = null,
+  setupMode = false,
+}: AppShellProps) {
   // The palette is the one other way around the shell (Cmd+K, and its page list),
   // so setup mode leaves its provider out: the shortcut then does nothing.
   const Palette = setupMode ? Fragment : CommandPaletteProvider;
   return (
     <ProfileProvider initialProfile={profile} initialStored={profileStored}>
       <TimezoneDefault />
-      <UnitsProvider>
+      <UnitsProvider initial={initialPrefs}>
         <Palette>
           <DiscussProvider>
             <BreadcrumbProvider>

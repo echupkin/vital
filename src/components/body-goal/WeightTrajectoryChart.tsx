@@ -4,7 +4,7 @@
 //
 // Weigh-ins as a thin muted line and the seven-day mean as the trend line.
 // With a goal set, also the goal weight as a reference line and — dashed,
-// clearly a projection — where the trend weight goes at the pace in use. Once
+// clearly a projection — where the trend weight goes at the chosen rate. Once
 // the goal is reached, the goal line becomes the maintenance range: the target
 // as a dashed baseline inside the band of weights that count as holding it,
 // drawn like the metric page's baseline band. The weigh-in line joins
@@ -76,7 +76,7 @@ export function WeightTrajectoryChart({
   const { ticks, lo, hi } = niceTicks(Math.min(...values), Math.max(...values));
   const unit = weightUnit(units);
   const axis = { tick: { fontSize: 10, fill: 'var(--color-text-secondary)' }, tickLine: false as const, axisLine: false as const };
-  const summary = `Weight from ${formatDayKeyLong(from)} to ${formatDayKeyLong(today)}: ${history.length} weigh-ins${goal !== null ? `, goal ${goal} ${unit}` : ''}${hold ? `, maintaining ${hold.center} ${unit} within ${hold.low}–${hold.high} ${unit}` : ''}${chosen ? `, projected to reach it around ${formatDayKeyLong(chosen.arrival)} at the pace in use` : ''}.`;
+  const summary = `Weight from ${formatDayKeyLong(from)} to ${formatDayKeyLong(today)}: ${history.length} weigh-ins${goal !== null ? `, goal ${goal} ${unit}` : ''}${hold ? `, maintaining ${hold.center} ${unit} within ${hold.low}–${hold.high} ${unit}` : ''}${chosen ? `, projected to reach it around ${formatDayKeyLong(chosen.arrival)} at the chosen rate` : ''}.`;
 
   return (
     <figure className="m-0">
@@ -123,7 +123,7 @@ export function WeightTrajectoryChart({
       <figcaption className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-text-secondary">
         <span><span aria-hidden="true" className="inline-block h-px w-4 mr-1.5 align-middle" style={{ background: 'var(--color-text-secondary)', opacity: 0.6 }} />Weigh-ins</span>
         <span><span aria-hidden="true" className="inline-block h-0.5 w-4 bg-category-body mr-1.5 align-middle" />Seven-day average</span>
-        {chosen && <span><span aria-hidden="true" className="inline-block w-4 border-t-2 border-dashed border-category-body mr-1.5 align-middle" />Projection at the pace in use</span>}
+        {chosen && <span><span aria-hidden="true" className="inline-block w-4 border-t-2 border-dashed border-category-body mr-1.5 align-middle" />Projection at the chosen rate</span>}
         {hold && (
           <span title={range!.basis}>
             <span aria-hidden="true" className="inline-block h-2.5 w-4 rounded-sm mr-1.5 align-middle" style={{ background: 'var(--color-category-body)', opacity: 0.25 }} />

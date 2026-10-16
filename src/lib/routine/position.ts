@@ -138,6 +138,14 @@ export interface PhaseTargetView {
   met: boolean | null;
   /** When it was first met, when known. */
   metOn: string | null;
+  /**
+   * What the page shows. `done` only once the stage is mastered or the dose
+   * reached; a stage that has begun is `in-progress`, even where beginning it is
+   * all the phase asks (`met`). Null when the target cannot be checked.
+   */
+  state: 'done' | 'in-progress' | 'not-started' | null;
+  /** The day it was done, or, in progress, the day it began. */
+  stateOn: string | null;
 }
 
 export interface PhaseView {
@@ -186,28 +194,35 @@ function reachedOn(state: PathState, fromIndex: number): string | null {
   return days[0] ?? null;
 }
 
-function checkTarget(t: Phase['targets'][number], paths: Map<string, PathState>): { met: boolean | null; metOn: string | null } {
+type TargetCheck = Pick<PhaseTargetView, 'met' | 'metOn' | 'state' | 'stateOn'>;
+const UNCHECKED: TargetCheck = { met: null, metOn: null, state: null, stateOn: null };
+
+function checkTarget(t: Phase['targets'][number], paths: Map<string, PathState>): TargetCheck {
   const state = t.pathId ? paths.get(t.pathId) : undefined;
-  if (!state) return { met: null, metOn: null };
+  if (!state) return UNCHECKED;
   // A dose: reached in any session on the named stage (or on the path, without one).
   if (t.dose) {
     const records = t.stageId ? state.byStage.get(t.stageId) ?? [] : state.records;
     const q = quantityFor(t.dose, records);
     const hit = records.find(r => judge(r, t.dose, q, null).inRange);
-    return hit ? { met: true, metOn: hit.date } : { met: false, metOn: null };
+    if (hit) return { met: true, metOn: hit.date, state: 'done', stateOn: hit.date };
+    return { met: false, metOn: null, ...(records.length ? { state: 'in-progress', stateOn: records[0].date } : { state: 'not-started', stateOn: null }) };
   }
   if (t.stageId) {
     const i = stageIndex(state.path, t.stageId);
-    if (i < 0) return { met: null, metOn: null };
-    if ((t.reach ?? 'mastered') === 'started') {
-      const on = state.currentIndex >= i ? reachedOn(state, i) : null;
-      return on ? { met: true, metOn: on } : { met: false, metOn: null };
-    }
-    if (state.currentIndex > i) return { met: true, metOn: reachedOn(state, i + 1) };
-    if (state.currentIndex === i && state.ready) return { met: true, metOn: state.records[state.records.length - 1]?.date ?? null };
-    return { met: false, metOn: null };
+    if (i < 0) return UNCHECKED;
+    const mastered = state.currentIndex > i || (state.currentIndex === i && state.ready);
+    const masteredOn = state.currentIndex > i ? reachedOn(state, i + 1) : mastered ? state.records[state.records.length - 1]?.date ?? null : null;
+    const began = state.currentIndex >= i ? reachedOn(state, i) : null;
+    const view: Pick<TargetCheck, 'state' | 'stateOn'> = mastered
+      ? { state: 'done', stateOn: masteredOn }
+      : began
+        ? { state: 'in-progress', stateOn: began }
+        : { state: 'not-started', stateOn: null };
+    if ((t.reach ?? 'mastered') === 'started') return { met: Boolean(began), metOn: began, ...view };
+    return { met: mastered, metOn: masteredOn, ...view };
   }
-  return { met: null, metOn: null };
+  return UNCHECKED;
 }
 
 /**

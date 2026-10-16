@@ -23,7 +23,7 @@ import { convertValue, displayUnit, formatMetricWithUnit, hasConversion } from '
 import { coverageFact, coverageSentence } from '@/lib/analytics/coverage';
 import { formatDayKeyLong } from '@/lib/analytics/windows';
 import { REFERENCE_KEY, metricHasData, unavailableReasonFor } from '@/lib/adapters/dataset';
-import { useDatasetMeta } from '@/components/data/DatasetProvider';
+import { useDatasetMeta, useDatasetReady } from '@/components/data/DatasetProvider';
 import { SetupBanner } from '@/components/data/SetupBanner';
 import { listedMetrics } from '@/lib/metrics/listed';
 import {
@@ -32,7 +32,7 @@ import {
   type UnitSystem, type VitalPreferences,
 } from '@/lib/prefs';
 import {
-  Badge, Button, Card, ChoiceButton, DataStateNote, ErrorState, Select, Skeleton, Tabs,
+  Badge, BadgeSpinner, Button, Card, ChoiceButton, DataStateNote, ErrorState, Select, Skeleton, Tabs,
 } from '@/components/ui/primitives';
 import { FreshnessIndicator } from '@/components/shell/FreshnessIndicator';
 import { useProfile } from '@/components/profile/ProfileProvider';
@@ -554,15 +554,39 @@ function SourceSummary({ metrics }: { metrics: { id: string; displayName: string
 }
 
 function DataTab() {
+  // Settings renders before the dataset arrives on a cold start; coverage is read from it, so it waits.
+  const ready = useDatasetReady();
+  return (
+    <div className="space-y-5">
+      {/* ── Lab report upload ─────────────────────── */}
+      <LabUpload />
+      {ready ? (
+        <DataCoverage />
+      ) : (
+        <Card className="p-6" role="status" aria-live="polite">
+          <SectionHead icon={<Database size={18} className="text-text-secondary" />} title="Data coverage" />
+          <Badge variant="default" className="text-[10px]">
+            <BadgeSpinner />
+            Loading your health data…
+          </Badge>
+          <div className="mt-4 space-y-2" aria-hidden="true">
+            <Skeleton height={14} width="60%" />
+            <Skeleton height={14} width="45%" />
+            <Skeleton height={120} />
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function DataCoverage() {
   const activeSources = useDatasetMeta().activeSources;
   const metrics = useMemo(() => listedMetrics(getAllMetrics(), activeSources, metricHasData), [activeSources]);
   const categories = useMemo(() => [...new Set(metrics.map(m => m.category))], [metrics]);
 
   return (
-    <div className="space-y-5">
-      {/* ── Lab report upload ─────────────────────── */}
-      <LabUpload />
-
+    <>
       <Card className="p-6">
         <SectionHead icon={<Database size={18} className="text-text-secondary" />} title="Data coverage" />
         <p className="text-sm text-text-secondary mb-4">
@@ -666,7 +690,7 @@ function DataTab() {
           </p>
         </div>
       </Card>
-    </div>
+    </>
   );
 }
 

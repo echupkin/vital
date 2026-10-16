@@ -27,6 +27,7 @@ import type {
 } from '../metrics/types';
 import { dayKey, diffDays } from '../analytics/windows';
 import { convertUnit } from './units';
+import { dropRedundant, type CorrectableCheck } from './quality-correct';
 import {
   dedupeByInterval,
   dedupeSameInstant,
@@ -246,6 +247,8 @@ export interface NormalizedMetric {
   /** Intervals where a lower-priority device's records were set aside. */
   droppedIntervals: number;
   droppedRecords: number;
+  /** Of `droppedRecords`, those left out by a data-quality correction (see `quality-correct.ts`). */
+  correctedRecords: number;
 }
 
 export interface NormalizeContext {
@@ -261,6 +264,12 @@ export interface NormalizeContext {
    * once, through its own connection, rather than again through Health Auto Export.
    */
   excludeFamilies?: SourceFamily[];
+  /**
+   * Data-quality corrections that are on: records that only repeat others
+   * (overlapping exports, duplicate readings) are left out before the day is
+   * added up. Omitted: every record counts.
+   */
+  correct?: ReadonlySet<CorrectableCheck>;
 }
 
 /** Records not left out by `ctx.excludeFamilies`. */
@@ -304,7 +313,8 @@ export function normalizeSimpleMetric(
     converted.push({ date: record.date, source: record.source ?? '', value });
   }
 
-  const { kept, dropped, keptSources } = dedupeByInterval(converted, rule, dayOf);
+  const corrected = dropRedundant(converted, mapping.aggregation, ctx.correct, ctx.tz);
+  const { kept, dropped, keptSources } = dedupeByInterval(corrected.kept, rule, dayOf);
   const { kept: unique, duplicates } = dedupeSameInstant(kept, rule);
 
   const observations = aggregatePerDay(
@@ -338,7 +348,8 @@ export function normalizeSimpleMetric(
     recordsKept: unique.length,
     sources: allSources,
     droppedIntervals: dropped.length,
-    droppedRecords: dropped.reduce((a, d) => a + d.droppedCount, 0) + duplicates,
+    droppedRecords: dropped.reduce((a, d) => a + d.droppedCount, 0) + duplicates + corrected.dropped,
+    correctedRecords: corrected.dropped,
   };
 }
 

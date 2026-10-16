@@ -17,6 +17,10 @@
 //
 // The install happens during render, before children render, which is what makes
 // the server-rendered HTML and the hydrated client agree. It is idempotent.
+//
+// `pending` is for the one page that renders before the dataset has arrived
+// (Settings, see `DatasetStream`): nothing is installed, and `useDatasetReady`
+// tells the parts of it that read the data to wait.
 
 import {
   createContext,
@@ -37,23 +41,28 @@ import { FALLBACK_CLIENT_META } from './fallback-meta';
 const FALLBACK_META = FALLBACK_CLIENT_META;
 
 export const DatasetMetaContext = createContext<ClientDatasetMeta>(FALLBACK_META);
+const DatasetReadyContext = createContext(true);
 
 export interface DatasetProviderProps {
   mode: DataMode;
   /** Present only in live mode. */
   dataset: HealthFixtures | null;
   meta: ClientDatasetMeta | null;
+  /** The dataset has not arrived yet: install nothing, and report not ready. */
+  pending?: boolean;
   children: ReactNode;
 }
 
-export function DatasetProvider({ mode, dataset, meta, children }: DatasetProviderProps) {
+export function DatasetProvider({ mode, dataset, meta, pending = false, children }: DatasetProviderProps) {
   const value = useMemo<ClientDatasetMeta>(() => {
     if (meta) return meta;
     const server = datasetMeta();
     return { ...FALLBACK_META, mode: server.mode, live: server.live, referenceKey: server.referenceKey };
   }, [meta]);
 
-  if (mode === 'live' && dataset) {
+  if (pending) {
+    // Leave the data layer as it is until the dataset arrives.
+  } else if (mode === 'live' && dataset) {
     setActiveDataset(dataset, {
       mode: 'live',
       dataAsOf: meta?.dataAsOf ?? dataset.windowEnd,
@@ -63,7 +72,16 @@ export function DatasetProvider({ mode, dataset, meta, children }: DatasetProvid
     resetToDemoDataset();
   }
 
-  return <DatasetMetaContext.Provider value={value}>{children}</DatasetMetaContext.Provider>;
+  return (
+    <DatasetReadyContext.Provider value={!pending}>
+      <DatasetMetaContext.Provider value={value}>{children}</DatasetMetaContext.Provider>
+    </DatasetReadyContext.Provider>
+  );
+}
+
+/** False while the dataset is still on its way (Settings renders before it); every other page only renders once it is here. */
+export function useDatasetReady(): boolean {
+  return useContext(DatasetReadyContext);
 }
 
 /** What the active dataset is, how fresh it is, and where it came from. */

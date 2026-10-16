@@ -1,15 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Database, RefreshCw, CircleDashed, CircleCheck, CircleAlert, CircleSlash } from 'lucide-react';
-import { Dialog, Badge, Button, ErrorState, Skeleton } from '@/components/ui/primitives';
-import type { PipelineStatusReport, StageStatus } from '@/lib/pipeline/types';
+import { useState } from 'react';
+import { Database, RefreshCw, CircleDashed, CircleCheck, CircleAlert, CircleSlash, LoaderCircle } from 'lucide-react';
+import { Dialog, Badge, BadgeSpinner, Button, ErrorState } from '@/components/ui/primitives';
+import type { StageStatus } from '@/lib/pipeline/types';
+import { usePipelineReport } from '@/components/settings/usePipelineReport';
 import { STAGE_STATUS_LABEL } from '@/lib/pipeline/types';
 
 function StageIcon({ status }: { status: StageStatus }) {
   if (status === 'healthy') return <CircleCheck size={15} className="text-category-activity shrink-0" aria-hidden="true" />;
   if (status === 'degraded') return <CircleAlert size={15} className="text-category-attention shrink-0" aria-hidden="true" />;
   if (status === 'unconfigured') return <CircleSlash size={15} className="text-text-secondary shrink-0" aria-hidden="true" />;
+  if (status === 'checking') return <LoaderCircle size={15} className="text-primary shrink-0 motion-safe:animate-spin" aria-hidden="true" />;
   return <CircleDashed size={15} className="text-text-secondary shrink-0" aria-hidden="true" />;
 }
 
@@ -28,26 +30,10 @@ function StageBadge({ status }: { status: StageStatus }) {
  */
 export function FreshnessIndicator() {
   const [open, setOpen] = useState(false);
-  const [report, setReport] = useState<PipelineStatusReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const res = await fetch('/api/pipeline/status', { cache: 'no-store' });
-      if (!res.ok) throw new Error(`The status endpoint answered HTTP ${res.status}.`);
-      setReport((await res.json()) as PipelineStatusReport);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'The pipeline status could not be read.');
-      setReport(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (open && !report && !error) void load();
-  }, [open, report, error, load]);
-
-  const live = report?.mode === 'live';
+  // Checked part by part once the dialog first opens; each stage fills in as its own check answers.
+  const { report, error, load } = usePipelineReport({ enabled: open });
+  const live = report.mode === 'live';
+  const checking = (part: 'sources' | 'dataset') => report.pending.includes(part);
 
   return (
     <>
@@ -62,15 +48,6 @@ export function FreshnessIndicator() {
       </button>
 
       <Dialog open={open} onClose={() => setOpen(false)} title="Data pipeline">
-        {/* ── Loading ─────────────────────────────── */}
-        {!report && !error && (
-          <div role="status" aria-live="polite" className="space-y-3">
-            <span className="sr-only">Checking each pipeline stage</span>
-            <Skeleton height={16} width="45%" />
-            <Skeleton height={140} />
-          </div>
-        )}
-
         {/* ── Error ───────────────────────────────── */}
         {error && (
           <ErrorState
@@ -81,10 +58,17 @@ export function FreshnessIndicator() {
         )}
 
         {/* ── Report ──────────────────────────────── */}
-        {report && (
+        {!error && (
           <>
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <Badge variant={live ? 'success' : 'accent'}>{live ? 'Live source configured' : 'Demo mode'}</Badge>
+            <div className="flex flex-wrap items-center gap-2 mb-4" role="status" aria-live="polite">
+              {checking('sources') ? (
+                <Badge variant="default">
+                  <BadgeSpinner />
+                  Checking…
+                </Badge>
+              ) : (
+                <Badge variant={live ? 'success' : 'accent'}>{live ? 'Live source configured' : 'Demo mode'}</Badge>
+              )}
               <span className="text-xs text-text-secondary">{report.summary}</span>
             </div>
 
@@ -117,19 +101,24 @@ export function FreshnessIndicator() {
               <Database size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
               <div className="space-y-1 leading-relaxed">
                 <p>
-                  A stage is marked healthy only when a real check confirmed it. Unknown means nothing could be
-                  confirmed, and it is the correct state for every upstream stage in demo mode.
+                  A stage is marked healthy only when a real check confirmed it. Checking… means its check is still
+                  running. Unknown means nothing could be confirmed, and it is the correct state for every upstream
+                  stage in demo mode.
                 </p>
-                <p>
-                  Dataset: {report.dataset.source === 'live' ? 'live history' : 'demo data'} ·{' '}
-                  {report.dataset.observationCount} daily observations across {report.dataset.metricCount} metrics ·{' '}
-                  coverage {report.dataset.windowStartKey} → {report.dataset.referenceKey} · newest observation{' '}
-                  {report.dataset.lastObservationAt ?? 'unknown'} · checked {report.checkedAt}. Imported records are
-                  read-only in this build: this pipeline sends nothing upstream, and no background ingestion job
-                  exists.
-                  The live dataset is refreshed only by a read-only cache warm-up at process start and by
-                  stale-while-revalidate once the cache TTL lapses.
-                </p>
+                {checking('dataset') ? (
+                  <p>Dataset: still checking.</p>
+                ) : (
+                  <p>
+                    Dataset: {report.dataset.source === 'live' ? 'live history' : 'demo data'} ·{' '}
+                    {report.dataset.observationCount} daily observations across {report.dataset.metricCount} metrics ·{' '}
+                    coverage {report.dataset.windowStartKey} → {report.dataset.referenceKey} · newest observation{' '}
+                    {report.dataset.lastObservationAt ?? 'unknown'} · checked {report.checkedAt}. Imported records are
+                    read-only in this build: this pipeline sends nothing upstream, and no background ingestion job
+                    exists.
+                    The live dataset is refreshed only by a read-only cache warm-up at process start and by
+                    stale-while-revalidate once the cache TTL lapses.
+                  </p>
+                )}
                 {report.dataset.error && (
                   <p className="text-category-attention">Dataset load problem: {report.dataset.error}</p>
                 )}
@@ -140,18 +129,20 @@ export function FreshnessIndicator() {
                     {report.probe.durationMs ?? '—'} ms, {report.probe.records ?? 0} record(s).
                   </p>
                 )}
-                <p>
-                  Cache: {report.cache.keys} key(s), TTL {report.cache.ttlSeconds}s, age{' '}
-                  {report.cache.ageMs == null ? 'n/a' : `${Math.round(report.cache.ageMs / 1000)}s`}, {' '}
-                  {report.cache.hits} hit(s) / {report.cache.misses} miss(es). One upstream pass serves
-                  concurrent page loads, and a lapsed TTL serves the held dataset while it refreshes in the
-                  background.
-                </p>
+                {!checking('dataset') && (
+                  <p>
+                    Cache: {report.cache.keys} key(s), TTL {report.cache.ttlSeconds}s, age{' '}
+                    {report.cache.ageMs == null ? 'n/a' : `${Math.round(report.cache.ageMs / 1000)}s`}, {' '}
+                    {report.cache.hits} hit(s) / {report.cache.misses} miss(es). One upstream pass serves
+                    concurrent page loads, and a lapsed TTL serves the held dataset while it refreshes in the
+                    background.
+                  </p>
+                )}
               </div>
             </div>
 
             <div className="mt-3 flex justify-end">
-              <Button variant="secondary" size="sm" onClick={() => void load()}>
+              <Button variant="secondary" size="sm" onClick={() => load({ fresh: true })}>
                 <RefreshCw size={12} aria-hidden="true" />
                 <span className="ml-1.5">Check again</span>
               </Button>

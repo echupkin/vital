@@ -7,7 +7,7 @@
 // other source, and the demo sessions, show the sync line alone. Settings is the
 // only page that names a data source.
 
-import { Card, DataStateNote } from '@/components/ui/primitives';
+import { Badge, BadgeSpinner, Card, DataStateNote } from '@/components/ui/primitives';
 import type { PipelineStatusReport } from '@/lib/pipeline/types';
 import { HevyConnection } from './HevyConnection';
 import { hasConnectionForm, workoutSourceLine } from './workout-source';
@@ -22,6 +22,7 @@ export interface WorkoutSourcesProps {
 
 export function WorkoutSources({ report, heading, onChanged }: WorkoutSourcesProps) {
   const sources = report?.workoutSources ?? [];
+  const checking = report?.pending?.includes('workouts') ?? false;
   return (
     <div className="space-y-3">
       <div>
@@ -50,7 +51,16 @@ export function WorkoutSources({ report, heading, onChanged }: WorkoutSourcesPro
           </Card>
         );
       })}
-      {report && sources.length === 0 && (
+      {checking && (
+        <Card className="p-6" role="status" aria-live="polite">
+          <Badge variant="default" className="text-[10px]">
+            <BadgeSpinner />
+            Checking…
+          </Badge>
+          <p className="mt-2 text-xs text-text-secondary">Checking the workout sources and bringing their sessions up to date.</p>
+        </Card>
+      )}
+      {report && !checking && sources.length === 0 && (
         <Card className="p-6">
           <p className="text-xs text-text-secondary">No workout source was checked.</p>
         </Card>

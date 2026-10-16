@@ -81,6 +81,8 @@ export interface SourceRequestDeps {
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
   now?: () => number;
+  /** Sync every source now instead of serving the cached sync ("Check again"). */
+  refresh?: boolean;
   /** Tests pass a no-op so rate-limit backoff does not really sleep. */
   sleep?: (ms: number) => Promise<void>;
   /** Replaces the process Postgres pool when reading a stored connection (tests). `null` means no database. */

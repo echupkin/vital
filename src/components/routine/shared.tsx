@@ -249,8 +249,10 @@ export function useRoutineFetch<T>(url: string, system: UnitSystem): { state: Lo
   const [nonce, setNonce] = useState(0);
   useEffect(() => {
     let cancelled = false;
+    // A superseded request (a new unit system, a reload) is dropped, not downloaded.
+    const abort = new AbortController();
     setState(s => (s.status === 'ok' ? s : { status: 'loading' }));
-    fetch(`${url}${url.includes('?') ? '&' : '?'}system=${system}`, { cache: 'no-store' })
+    fetch(`${url}${url.includes('?') ? '&' : '?'}system=${system}`, { cache: 'no-store', signal: abort.signal })
       .then(async res => {
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error((body as { error?: string }).error ?? `The routine answered HTTP ${res.status}.`);
@@ -260,6 +262,7 @@ export function useRoutineFetch<T>(url: string, system: UnitSystem): { state: Lo
       .catch(e => !cancelled && setState({ status: 'error', message: e instanceof Error ? e.message : 'The routine could not be loaded.' }));
     return () => {
       cancelled = true;
+      abort.abort();
     };
   }, [url, system, nonce]);
   const reload = useCallback(() => setNonce(n => n + 1), []);

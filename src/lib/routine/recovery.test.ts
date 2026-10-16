@@ -39,6 +39,9 @@ describe('recovery indicators', () => {
     expect(weight.points[27].value).toBeCloseTo(176.37, 1);
     // The trend is the whole window: there is no separate baseline.
     expect(weight.recentFrom).toBe(weight.points[0].key);
+    // 0.07 kg a week, as the Body pages read it, in lb.
+    expect(weight.current).toBeCloseTo(0.15, 2);
+    expect(weight.text).toBe('+0.15 lb/week over the last 28 days (28 weigh-ins).');
   });
 
   it('count training sessions per week over five weeks', () => {
@@ -60,7 +63,7 @@ describe('recovery indicators', () => {
     expect(get('resting_hr').rule).toBe('Watch if the 7-day average rises 5 bpm or more above the 28 days before.');
     expect(get('hrv').rule).toBe('Hold progression if the 7-day average drops 10 ms or more below the 28 days before.');
     expect(get('sleep_hours').rule).toBe('Hold progression if average sleep over the last 7 nights is below 6.5 h.');
-    expect(get('body_weight_rate').rule).toBe('Watch if the 28-day weight trend is below -2.2 lb/week.');
+    expect(get('body_weight_rate').rule).toBe('Flag if the 28-day weight trend is below -2.2 lb/week.');
     expect(get('training_load').rule).toBe('Watch if sessions in the last 7 days are more than 50% above the weekly average of the 4 weeks before.');
     expect(indicators({})('resting_hr').rule).toBeNull();
   });

@@ -154,6 +154,27 @@ describe('applySilenced', () => {
   });
 });
 
+describe('applySilenced and corrected checks', () => {
+  const OVERLAP = finding({ check: 'overlapping-exports', severity: 'problem', correctable: true, metrics: ['step_count'] });
+
+  it('leaves out a silence on a check Vital is correcting: there is nothing to hide', () => {
+    const base = report([STALE]);
+    const corrected: DataQualityReport = {
+      ...base,
+      checks: base.checks.map(c => (c.id === 'overlapping-exports' ? { ...c, outcome: 'corrected' as const, summary: 'Corrected by Vital.' } : c)),
+    };
+    const { report: shown, silenced } = applySilenced(corrected, [{ checkId: 'overlapping-exports', metricId: '' }]);
+    expect(silenced).toEqual([]);
+    expect(shown.checks.find(c => c.id === 'overlapping-exports')).toMatchObject({ outcome: 'corrected', summary: 'Corrected by Vital.' });
+  });
+
+  it('still hides the finding when the correction is off, and lists it as found', () => {
+    const { report: shown, silenced } = applySilenced(report([OVERLAP]), [{ checkId: 'overlapping-exports', metricId: '' }]);
+    expect(shown.findings).toEqual([]);
+    expect(silenced).toEqual([expect.objectContaining({ checkId: 'overlapping-exports', found: true })]);
+  });
+});
+
 describe('validateSilenceInput', () => {
   it('accepts a known check without a metric as the empty metric id', () => {
     expect(validateSilenceInput({ checkId: 'stale' })).toEqual({ ok: true, key: { checkId: 'stale', metricId: '' } });

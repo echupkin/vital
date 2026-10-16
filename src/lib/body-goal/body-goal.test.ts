@@ -127,6 +127,9 @@ describe('energy balance', () => {
     // 2,066 + 2 lb/week in energy ≈ 3,066 kcal/day.
     expect(e.adaptive!).toBeGreaterThan(3000);
     expect(e.adaptive!).toBeLessThan(3130);
+    // Intake and trend use the same weights, so the balance is the trend's.
+    expect(e.balance!).toBeCloseTo(e.trendBalance!, 6);
+    expect(e.weightRateKgPerWeek).toBeCloseTo(weightTrend(cutSeries().weight_body_mass, TODAY).rateKgPerWeek!, 10);
     expect(e.device).toBe(2854);
     expect(e.maintenanceSource).toBe('weight-trend');
     expect(e.balance!).toBeLessThan(-900);

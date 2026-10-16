@@ -178,6 +178,20 @@ export async function resolveDataset(deps: LiveDeps = {}): Promise<ResolvedDatas
 }
 
 /**
+ * Setup mode as far as it is known without loading anything: live mode with no
+ * health source connected (a database read, not an upstream one). A connected
+ * source that cannot be read is only known once the load fails. Never throws.
+ */
+export async function knownSetupMode(env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
+  if (readDataMode(env) !== 'live') return false;
+  try {
+    return (await activeHealthSources(defaultContext(env))).length === 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Install the resolved dataset into the server process (the route-handler bundle)
  * so route handlers read exactly what the pages are showing. Idempotent.
  */
